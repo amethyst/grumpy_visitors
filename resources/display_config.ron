@@ -1,0 +1,10 @@
+(
+  title: "hello_amethyst",
+  dimensions: None,
+  max_dimensions: None,
+  min_dimensions: Some((1024, 768)),
+  fullscreen: false,
+  multisampling: 1,
+  visibility: true,
+  vsync: true,
+)
