@@ -1,6 +1,6 @@
 use amethyst::{
     core::Transform,
-    ecs::{Entities, Read, ReadExpect, System, WriteStorage},
+    ecs::{Entities, Join, Read, ReadExpect, ReadStorage, System, WriteStorage},
     input::InputHandler,
     renderer::{Material, MeshHandle, MouseButton},
 };
@@ -8,7 +8,7 @@ use amethyst::{
 use std::time::{Duration, Instant};
 
 use crate::{
-    components::{Missile, WorldPosition},
+    components::{Missile, Player, WorldPosition},
     data_resources::MissileGraphics,
     factories::create_missile,
     Vector2,
@@ -38,6 +38,7 @@ impl<'s> System<'s> for MouseSystem {
         WriteStorage<'s, Material>,
         WriteStorage<'s, WorldPosition>,
         WriteStorage<'s, Missile>,
+        ReadStorage<'s, Player>,
     );
 
     fn run(
@@ -51,6 +52,7 @@ impl<'s> System<'s> for MouseSystem {
             mut materials,
             mut world_positions,
             mut missiles,
+            players,
         ): Self::SystemData,
     ) {
         let mouse_position = input.mouse_position();
@@ -61,8 +63,11 @@ impl<'s> System<'s> for MouseSystem {
             if input.mouse_button_is_down(MouseButton::Left) {
                 let now = Instant::now();
                 if now.duration_since(self.last_spawned) > SPAWN_COOLDOWN {
+                    let (_, player_position) = (&players, &world_positions).join().next().unwrap();
+
                     create_missile(
                         Vector2::new(mouse_x, mouse_y),
+                        player_position.position,
                         now,
                         entities.build_entity(),
                         &missile_graphics,

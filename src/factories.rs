@@ -12,6 +12,7 @@ use crate::{components::*, data_resources::MissileGraphics, Vector2, Vector3};
 
 pub fn create_missile(
     position: Vector2,
+    direction: Vector2,
     time_spawned: Instant,
     entity_builder: EntityResBuilder,
     missile_graphic: &ReadExpect<MissileGraphics>,
@@ -30,7 +31,7 @@ pub fn create_missile(
         .with(material, materials)
         .with(transform, transforms)
         .with(WorldPosition::new(position), world_positions)
-        .with(Missile::new(time_spawned), missiles)
+        .with(Missile::new(direction - position, time_spawned), missiles)
         .build();
 }
 

@@ -9,7 +9,7 @@ use crate::{Vector2, Vector3};
 
 pub struct PlayersMovementSystem;
 
-const PLAYER_SPEED: f32 = 750.0;
+const PLAYER_SPEED: f32 = 500.0;
 
 impl<'s> System<'s> for PlayersMovementSystem {
     type SystemData = (

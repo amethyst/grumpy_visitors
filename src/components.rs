@@ -25,9 +25,9 @@ pub struct Missile {
 }
 
 impl Missile {
-    pub fn new(time_spawned: Instant) -> Self {
+    pub fn new(direction: Vector2, time_spawned: Instant) -> Self {
         Self {
-            velocity: Vector2::new(10.0, 10.0),
+            velocity: direction,
             acceleration: 10.0,
             time_spawned,
         }

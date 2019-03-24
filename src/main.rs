@@ -10,8 +10,7 @@ use amethyst::{
     input::InputBundle,
     prelude::*,
     renderer::{
-        Camera, DisplayConfig, DrawFlat, Pipeline, PosTex, Projection, RenderBundle,
-        Stage,
+        Camera, DisplayConfig, DrawFlat, Pipeline, PosTex, Projection, RenderBundle, Stage,
     },
     utils::application_root_dir,
 };
