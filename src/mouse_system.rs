@@ -70,7 +70,7 @@ impl<'s> System<'s> for MouseSystem {
                         player_position.position,
                         now,
                         entities.build_entity(),
-                        &missile_graphics,
+                        missile_graphics.0.clone(),
                         &mut transforms,
                         &mut meshes,
                         &mut materials,

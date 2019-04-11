@@ -1,9 +1,13 @@
+#![allow(clippy::type_complexity, clippy::too_many_arguments)]
+
 mod components;
 mod data_resources;
 mod factories;
 mod missiles_system;
+mod models;
 mod mouse_system;
 mod players_movement_system;
+mod systems;
 
 use amethyst::{
     core::transform::{Transform, TransformBundle},
@@ -15,13 +19,15 @@ use amethyst::{
     utils::application_root_dir,
 };
 
-use crate::players_movement_system::PlayersMovementSystem;
 use crate::{
     components::*,
-    data_resources::MissileGraphics,
-    factories::{create_color_material, create_mesh, create_player, generate_circle_vertices},
+    data_resources::{MissileGraphics, MonsterDefinitions},
+    factories::create_player,
     missiles_system::MissilesSystem,
+    models::{Count, SpawnAction, SpawnActions},
     mouse_system::MouseSystem,
+    players_movement_system::PlayersMovementSystem,
+    systems::SpawnerSystem,
 };
 
 struct HelloAmethyst;
@@ -31,25 +37,31 @@ type Vector3 = amethyst::core::math::Vector3<f32>;
 
 impl SimpleState for HelloAmethyst {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
-        let mut world = data.world;
+        let world = data.world;
         world.register::<WorldPosition>();
         world.register::<Missile>();
         world.register::<Player>();
 
-        let mesh = create_mesh(world, generate_circle_vertices(5.0, 64));
-        let material = create_color_material(world, [1.0, 1.0, 1.0, 1.0]);
-        world.add_resource(MissileGraphics { mesh, material });
+        MissileGraphics::register(world);
+        MonsterDefinitions::register(world);
+        world.add_resource(SpawnActions(vec![SpawnAction {
+            monsters: Count {
+                entity: "Ghoul".to_owned(),
+                num: 1,
+            },
+        }]));
 
         initialise_camera(world);
-        create_player(&mut world);
-        dbg!("Initialized");
+        create_player(world);
     }
 }
 
 fn main() -> amethyst::Result<()> {
     amethyst::start_logger(Default::default());
 
-    let display_config_path = application_root_dir().unwrap().join("resources/display_config.ron");
+    let display_config_path = application_root_dir()
+        .unwrap()
+        .join("resources/display_config.ron");
     let display_config = DisplayConfig::load(&display_config_path);
 
     let pipe = Pipeline::build().with_stage(
@@ -58,7 +70,9 @@ fn main() -> amethyst::Result<()> {
             .with_pass(DrawFlat::<PosTex>::new()),
     );
 
-    let bindings_config_path = application_root_dir().unwrap().join("resources/bindings_config.ron");
+    let bindings_config_path = application_root_dir()
+        .unwrap()
+        .join("resources/bindings_config.ron");
     let input_bundle =
         InputBundle::<String, String>::new().with_bindings_from_file(bindings_config_path)?;
 
@@ -66,6 +80,7 @@ fn main() -> amethyst::Result<()> {
         .with_bundle(RenderBundle::new(pipe, Some(display_config)))?
         .with_bundle(TransformBundle::new())?
         .with_bundle(input_bundle)?
+        .with(SpawnerSystem, "spawner_system", &[])
         .with(MouseSystem::new(), "mouse_system", &["input_system"])
         .with(
             PlayersMovementSystem,

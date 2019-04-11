@@ -55,3 +55,13 @@ impl Player {
 impl Component for Player {
     type Storage = DenseVecStorage<Self>;
 }
+
+pub struct Monster {
+    pub health: f32,
+    pub velocity: Vector2,
+    pub name: String,
+}
+
+impl Component for Monster {
+    type Storage = DenseVecStorage<Self>;
+}

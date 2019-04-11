@@ -1,28 +1,30 @@
 use amethyst::{
     assets::Loader,
     core::Transform,
-    ecs::{world::EntityResBuilder, ReadExpect, WriteStorage},
+    ecs::{world::EntityResBuilder, WriteStorage},
     prelude::{Builder, World},
     renderer::{Material, MaterialDefaults, MeshHandle, PosTex},
 };
 
 use std::time::Instant;
 
-use crate::{components::*, data_resources::MissileGraphics, Vector2, Vector3};
+use crate::{
+    components::*, data_resources::EntityGraphics, models::MonsterDefinition, Vector2, Vector3,
+};
 
 pub fn create_missile(
     position: Vector2,
     direction: Vector2,
     time_spawned: Instant,
     entity_builder: EntityResBuilder,
-    missile_graphic: &ReadExpect<MissileGraphics>,
+    missile_graphic: EntityGraphics,
     transforms: &mut WriteStorage<Transform>,
     meshes: &mut WriteStorage<MeshHandle>,
     materials: &mut WriteStorage<Material>,
     world_positions: &mut WriteStorage<WorldPosition>,
     missiles: &mut WriteStorage<Missile>,
 ) {
-    let MissileGraphics { mesh, material } = (*missile_graphic).clone();
+    let EntityGraphics { mesh, material } = missile_graphic;
     let mut transform = Transform::default();
     transform.set_translation_xyz(position.x, position.y, 0.0);
 
@@ -49,6 +51,43 @@ pub fn create_player(world: &mut World) {
         .with(transform)
         .with(WorldPosition::new(Vector2::new(500.0, 300.0)))
         .with(Player::new())
+        .build();
+}
+
+pub fn create_monster(
+    position: Vector2,
+    _direction: Vector2,
+    monster_definition: &MonsterDefinition,
+    entity_builder: EntityResBuilder,
+    transforms: &mut WriteStorage<Transform>,
+    meshes: &mut WriteStorage<MeshHandle>,
+    materials: &mut WriteStorage<Material>,
+    world_positions: &mut WriteStorage<WorldPosition>,
+    monsters: &mut WriteStorage<Monster>,
+) {
+    let mut transform = Transform::default();
+    transform.set_translation_xyz(position.x, position.y, 0.0);
+
+    let MonsterDefinition {
+        name,
+        base_health,
+        base_speed: _base_speed,
+        base_attack: _base_attack,
+        graphics: EntityGraphics { mesh, material },
+    } = monster_definition.clone();
+    entity_builder
+        .with(mesh, meshes)
+        .with(material, materials)
+        .with(transform, transforms)
+        .with(WorldPosition::new(position), world_positions)
+        .with(
+            Monster {
+                health: base_health,
+                velocity: Vector2::zeros(),
+                name,
+            },
+            monsters,
+        )
         .build();
 }
 
