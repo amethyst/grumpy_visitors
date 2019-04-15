@@ -29,6 +29,7 @@ use crate::{
     players_movement_system::PlayersMovementSystem,
     systems::SpawnerSystem,
 };
+use crate::systems::{MonsterMovementSystem, MonsterActionSystem};
 
 struct HelloAmethyst;
 
@@ -86,6 +87,16 @@ fn main() -> amethyst::Result<()> {
             PlayersMovementSystem,
             "players_movement_system",
             &["input_system"],
+        )
+        .with(
+            MonsterActionSystem,
+            "monster_action_system",
+            &["players_movement_system"],
+        )
+        .with(
+            MonsterMovementSystem,
+            "monster_movement_system",
+            &["monster_action_system"]
         )
         .with(
             MissilesSystem,

@@ -9,7 +9,10 @@ use amethyst::{
 use std::time::Instant;
 
 use crate::{
-    components::*, data_resources::EntityGraphics, models::MonsterDefinition, Vector2, Vector3,
+    components::*,
+    data_resources::EntityGraphics,
+    models::{MonsterAction, MonsterDefinition},
+    Vector2, Vector3,
 };
 
 pub fn create_missile(
@@ -85,6 +88,7 @@ pub fn create_monster(
                 health: base_health,
                 velocity: Vector2::zeros(),
                 name,
+                action: MonsterAction::idle(),
             },
             monsters,
         )
