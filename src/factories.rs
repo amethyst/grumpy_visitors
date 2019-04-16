@@ -24,7 +24,7 @@ pub fn create_missile(
 ) {
     let MissileGraphics { mesh, material } = (*missile_graphic).clone();
     let mut transform = Transform::default();
-    transform.set_xyz(position.x, position.y, 0.0);
+    transform.set_translation_xyz(position.x, position.y, 0.0);
 
     entity_builder
         .with(mesh, meshes)
@@ -40,7 +40,7 @@ pub fn create_player(world: &mut World) {
     let color = [1.0, 1.0, 1.0, 1.0];
     let material = create_color_material(world, color);
     let mut transform = Transform::default();
-    transform.set_xyz(500.0, 300.0, 0.0);
+    transform.set_translation_xyz(500.0, 300.0, 0.0);
 
     world
         .create_entity()

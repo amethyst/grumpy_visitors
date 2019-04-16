@@ -6,3 +6,6 @@ edition = "2018"
 
 [dependencies]
 amethyst = { version = "0.10.0", features = ["nightly"] }
+
+[patch.crates-io]
+amethyst = { git = "ssh://git@github.com/azriel91/amethyst.git", rev = "9590802" }

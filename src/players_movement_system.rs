@@ -36,7 +36,7 @@ impl<'s> System<'s> for PlayersMovementSystem {
                     * PLAYER_SPEED
                     * time.delta_real_seconds();
 
-                transform.set_position(Vector3::new(
+                transform.set_translation(Vector3::new(
                     world_position.position.x,
                     world_position.position.y,
                     0.0,

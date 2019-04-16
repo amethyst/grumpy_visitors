@@ -26,8 +26,8 @@ use crate::{
 
 struct HelloAmethyst;
 
-type Vector2 = amethyst::core::nalgebra::Vector2<f32>;
-type Vector3 = amethyst::core::nalgebra::Vector3<f32>;
+type Vector2 = amethyst::core::math::Vector2<f32>;
+type Vector3 = amethyst::core::math::Vector3<f32>;
 
 impl SimpleState for HelloAmethyst {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
@@ -49,7 +49,7 @@ impl SimpleState for HelloAmethyst {
 fn main() -> amethyst::Result<()> {
     amethyst::start_logger(Default::default());
 
-    let display_config_path = format!("{}/resources/display_config.ron", application_root_dir());
+    let display_config_path = application_root_dir().unwrap().join("resources/display_config.ron");
     let display_config = DisplayConfig::load(&display_config_path);
 
     let pipe = Pipeline::build().with_stage(
@@ -58,7 +58,7 @@ fn main() -> amethyst::Result<()> {
             .with_pass(DrawFlat::<PosTex>::new()),
     );
 
-    let bindings_config_path = format!("{}/resources/bindings_config.ron", application_root_dir());
+    let bindings_config_path = application_root_dir().unwrap().join("resources/bindings_config.ron");
     let input_bundle =
         InputBundle::<String, String>::new().with_bindings_from_file(bindings_config_path)?;
 
@@ -89,7 +89,7 @@ pub const ARENA_HEIGHT: f32 = 768.0;
 
 fn initialise_camera(world: &mut World) {
     let mut transform = Transform::default();
-    transform.set_z(1.0);
+    transform.set_translation_z(1.0);
     world
         .create_entity()
         .with(Camera::from(Projection::orthographic(

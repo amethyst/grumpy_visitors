@@ -1,6 +1,6 @@
 use amethyst::{
     core::{
-        nalgebra::{clamp, Rotation2},
+        math::{clamp, Rotation2},
         Time, Transform,
     },
     ecs::{Entities, Join, Read, ReadStorage, System, WriteStorage},
@@ -70,7 +70,6 @@ impl<'s> System<'s> for MissilesSystem {
 
             let direction = player_position + player_velocity - *missile_position;
             let needed_angle = Rotation2::rotation_between(&missile.velocity, &direction).angle();
-            dbg!(needed_angle);
             let angle = needed_angle.abs().min(MAX_ROTATION) * needed_angle.signum();
             let a = if needed_angle.abs() > angle.abs() {
                 -MISSILE_ACCELERATION
@@ -84,7 +83,7 @@ impl<'s> System<'s> for MissilesSystem {
             missile.velocity = new_direction * speed;
 
             *missile_position += missile.velocity * time.delta_real_seconds();
-            transform.set_position(Vector3::new(missile_position.x, missile_position.y, 0.0));
+            transform.set_translation(Vector3::new(missile_position.x, missile_position.y, 0.0));
         }
     }
 }
