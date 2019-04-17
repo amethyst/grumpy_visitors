@@ -14,13 +14,13 @@ use crate::{
     Vector2,
 };
 
-pub struct MouseSystem {
+pub struct InputSystem {
     last_spawned: Instant,
 }
 
 const SPAWN_COOLDOWN: Duration = Duration::from_millis(500);
 
-impl MouseSystem {
+impl InputSystem {
     pub fn new() -> Self {
         Self {
             last_spawned: Instant::now() - SPAWN_COOLDOWN,
@@ -28,7 +28,7 @@ impl MouseSystem {
     }
 }
 
-impl<'s> System<'s> for MouseSystem {
+impl<'s> System<'s> for InputSystem {
     type SystemData = (
         Read<'s, InputHandler<String, String>>,
         Entities<'s>,

@@ -16,11 +16,10 @@ impl<'s> System<'s> for MonsterMovementSystem {
         WriteStorage<'s, WorldPosition>,
     );
 
-    fn run(
-        &mut self,
-        (time, monsters, mut transforms, mut world_positions): Self::SystemData,
-    ) {
-        for (monster, transform, world_position) in (&monsters, &mut transforms, &mut world_positions).join() {
+    fn run(&mut self, (time, monsters, mut transforms, mut world_positions): Self::SystemData) {
+        for (monster, transform, world_position) in
+            (&monsters, &mut transforms, &mut world_positions).join()
+        {
             world_position.position += monster.velocity * time.delta_real_seconds();
 
             transform.set_translation(Vector3::new(

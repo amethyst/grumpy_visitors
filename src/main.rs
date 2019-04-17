@@ -5,19 +5,20 @@ mod data_resources;
 mod factories;
 mod missiles_system;
 mod models;
-mod mouse_system;
 mod players_movement_system;
 mod systems;
 
 use amethyst::{
     core::transform::{Transform, TransformBundle},
-    input::InputBundle,
+    input::{is_close_requested, InputBundle},
     prelude::*,
     renderer::{
         Camera, DisplayConfig, DrawFlat, Pipeline, PosTex, Projection, RenderBundle, Stage,
+        WindowMessages,
     },
     utils::application_root_dir,
 };
+use winit::{ElementState, VirtualKeyCode};
 
 use crate::{
     components::*,
@@ -25,13 +26,13 @@ use crate::{
     factories::create_player,
     missiles_system::MissilesSystem,
     models::{Count, SpawnAction, SpawnActions},
-    mouse_system::MouseSystem,
     players_movement_system::PlayersMovementSystem,
-    systems::SpawnerSystem,
+    systems::{InputSystem, MonsterActionSystem, MonsterMovementSystem, SpawnerSystem},
 };
-use crate::systems::{MonsterMovementSystem, MonsterActionSystem};
 
-struct HelloAmethyst;
+struct HelloAmethyst {
+    pub fullscreen: bool,
+}
 
 type Vector2 = amethyst::core::math::Vector2<f32>;
 type Vector3 = amethyst::core::math::Vector3<f32>;
@@ -55,6 +56,46 @@ impl SimpleState for HelloAmethyst {
         initialise_camera(world);
         create_player(world);
     }
+
+    fn handle_event(
+        &mut self,
+        data: StateData<'_, GameData<'_, '_>>,
+        event: StateEvent,
+    ) -> SimpleTrans {
+        let world = data.world;
+
+        if let StateEvent::Window(event) = &event {
+            if is_close_requested(&event) {
+                return Trans::Quit;
+            }
+
+            if let winit::Event::WindowEvent {
+                event: winit::WindowEvent::KeyboardInput { input, .. },
+                ..
+            } = event
+            {
+                if input.virtual_keycode == Some(VirtualKeyCode::F11)
+                    && input.state == ElementState::Released
+                {
+                    let mut window_messages = world.write_resource::<WindowMessages>();
+                    let is_fullscreen = self.fullscreen;
+                    self.fullscreen = !self.fullscreen;
+                    window_messages.send_command(move |window| {
+                        let monitor_id = if is_fullscreen {
+                            None
+                        } else {
+                            window.get_available_monitors().next()
+                        };
+                        window.set_fullscreen(monitor_id);
+                    });
+                }
+            }
+
+            Trans::None
+        } else {
+            Trans::None
+        }
+    }
 }
 
 fn main() -> amethyst::Result<()> {
@@ -64,6 +105,7 @@ fn main() -> amethyst::Result<()> {
         .unwrap()
         .join("resources/display_config.ron");
     let display_config = DisplayConfig::load(&display_config_path);
+    let fullscreen = display_config.fullscreen;
 
     let pipe = Pipeline::build().with_stage(
         Stage::with_backbuffer()
@@ -82,7 +124,7 @@ fn main() -> amethyst::Result<()> {
         .with_bundle(TransformBundle::new())?
         .with_bundle(input_bundle)?
         .with(SpawnerSystem, "spawner_system", &[])
-        .with(MouseSystem::new(), "mouse_system", &["input_system"])
+        .with(InputSystem::new(), "mouse_system", &["input_system"])
         .with(
             PlayersMovementSystem,
             "players_movement_system",
@@ -96,22 +138,19 @@ fn main() -> amethyst::Result<()> {
         .with(
             MonsterMovementSystem,
             "monster_movement_system",
-            &["monster_action_system"]
+            &["monster_action_system"],
         )
         .with(
             MissilesSystem,
             "missiles_system",
             &["mouse_system", "players_movement_system"],
         );
-    let mut game = Application::new("./", HelloAmethyst, game_data)?;
+    let mut game = Application::new("./", HelloAmethyst { fullscreen }, game_data)?;
 
     game.run();
 
     Ok(())
 }
-
-pub const ARENA_WIDTH: f32 = 1024.0;
-pub const ARENA_HEIGHT: f32 = 768.0;
 
 fn initialise_camera(world: &mut World) {
     let mut transform = Transform::default();
@@ -119,10 +158,7 @@ fn initialise_camera(world: &mut World) {
     world
         .create_entity()
         .with(Camera::from(Projection::orthographic(
-            0.0,
-            ARENA_WIDTH,
-            0.0,
-            ARENA_HEIGHT,
+            0.0, 1024.0, 0.0, 768.0,
         )))
         .with(transform)
         .build();

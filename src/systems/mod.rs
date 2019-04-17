@@ -1,9 +1,9 @@
-mod spawner;
+mod input;
 mod monster_action;
 mod monster_movement;
+mod spawner;
 
 pub use self::{
-    spawner::SpawnerSystem,
-    monster_action::MonsterActionSystem,
-    monster_movement::MonsterMovementSystem,
+    input::InputSystem, monster_action::MonsterActionSystem,
+    monster_movement::MonsterMovementSystem, spawner::SpawnerSystem,
 };

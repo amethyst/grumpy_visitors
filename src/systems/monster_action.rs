@@ -1,13 +1,11 @@
-use amethyst::{
-    ecs::{Entities, Entity, Join, ReadExpect, ReadStorage, System, WriteStorage},
-};
+use amethyst::ecs::{Entities, Entity, Join, ReadExpect, ReadStorage, System, WriteStorage};
 use rand::{self, Rng};
 
 use crate::{
     components::{Monster, Player, WorldPosition},
     data_resources::MonsterDefinitions,
     models::{AttackAction, MonsterAction, MonsterActionType},
-    Vector2, ARENA_HEIGHT, ARENA_WIDTH,
+    Vector2,
 };
 use std::time::Instant;
 
@@ -24,13 +22,7 @@ impl<'s> System<'s> for MonsterActionSystem {
 
     fn run(
         &mut self,
-        (
-            entities,
-            _monster_definitions,
-            players,
-            world_positions,
-            mut monsters,
-        ): Self::SystemData,
+        (entities, _monster_definitions, players, world_positions, mut monsters): Self::SystemData,
     ) {
         let now = Instant::now();
         let mut rng = rand::thread_rng();
@@ -44,10 +36,8 @@ impl<'s> System<'s> for MonsterActionSystem {
                     ) {
                         Some(MonsterActionType::Chase(entity))
                     } else {
-                        let pos = Vector2::new(
-                            rng.gen_range(0.0, ARENA_WIDTH),
-                            rng.gen_range(0.0, ARENA_HEIGHT),
-                        );
+                        let pos =
+                            Vector2::new(rng.gen_range(0.0, 1024.0), rng.gen_range(0.0, 768.0));
                         Some(MonsterActionType::Move(pos))
                     }
                 }
@@ -77,7 +67,8 @@ impl<'s> System<'s> for MonsterActionSystem {
             }
 
             if let Some(new_destination) = new_destination {
-                monster.velocity = (new_destination - monster_position.position).normalize() * 500.0;
+                monster.velocity =
+                    (new_destination - monster_position.position).normalize() * 500.0;
             }
         }
     }

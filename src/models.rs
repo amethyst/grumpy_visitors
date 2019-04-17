@@ -2,10 +2,7 @@ use amethyst::ecs::Entity;
 
 use std::time::Instant;
 
-use crate::{
-    data_resources::EntityGraphics,
-    Vector2,
-};
+use crate::{data_resources::EntityGraphics, Vector2};
 
 pub struct SpawnActions(pub Vec<SpawnAction>);
 
