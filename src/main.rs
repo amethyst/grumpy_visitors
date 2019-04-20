@@ -126,11 +126,8 @@ impl SimpleState for HelloAmethyst {
 
                 _ => {}
             };
-
-            Trans::None
-        } else {
-            Trans::None
         }
+        Trans::None
     }
 }
 

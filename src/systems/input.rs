@@ -1,8 +1,8 @@
 use amethyst::{
-    core::Transform,
-    ecs::{Entities, Join, Read, ReadExpect, ReadStorage, System, WriteStorage},
+    core::{math::Point2, GlobalTransform, Transform},
+    ecs::{Entities, Join, ReadExpect, ReadStorage, System, WriteStorage},
     input::InputHandler,
-    renderer::{Material, MeshHandle, MouseButton},
+    renderer::{Camera, Material, MeshHandle, MouseButton, ScreenDimensions},
 };
 
 use std::time::{Duration, Instant};
@@ -30,7 +30,8 @@ impl InputSystem {
 
 impl<'s> System<'s> for InputSystem {
     type SystemData = (
-        Read<'s, InputHandler<String, String>>,
+        ReadExpect<'s, InputHandler<String, String>>,
+        ReadExpect<'s, ScreenDimensions>,
         Entities<'s>,
         ReadExpect<'s, MissileGraphics>,
         WriteStorage<'s, Transform>,
@@ -39,12 +40,15 @@ impl<'s> System<'s> for InputSystem {
         WriteStorage<'s, WorldPosition>,
         WriteStorage<'s, Missile>,
         ReadStorage<'s, Player>,
+        ReadStorage<'s, Camera>,
+        ReadStorage<'s, GlobalTransform>,
     );
 
     fn run(
         &mut self,
         (
             input,
+            screen_dimensions,
             entities,
             missile_graphics,
             mut transforms,
@@ -53,12 +57,19 @@ impl<'s> System<'s> for InputSystem {
             mut world_positions,
             mut missiles,
             players,
+            cameras,
+            global_transforms,
         ): Self::SystemData,
     ) {
         let mouse_position = input.mouse_position();
         if let Some((mouse_x, mouse_y)) = mouse_position {
-            let mouse_x = mouse_x as f32;
-            let mouse_y = 768. - mouse_y as f32;
+            let (camera, camera_global_transform) =
+                (&cameras, &global_transforms).join().next().unwrap();
+            let position = camera.position_from_screen(
+                Point2::new(mouse_x as f32, mouse_y as f32),
+                camera_global_transform,
+                &screen_dimensions,
+            );
 
             if input.mouse_button_is_down(MouseButton::Left) {
                 let now = Instant::now();
@@ -66,7 +77,7 @@ impl<'s> System<'s> for InputSystem {
                     let (_, player_position) = (&players, &world_positions).join().next().unwrap();
 
                     create_missile(
-                        Vector2::new(mouse_x, mouse_y),
+                        Vector2::new(position.x, position.y),
                         player_position.position,
                         now,
                         entities.build_entity(),
