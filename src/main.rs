@@ -1,5 +1,6 @@
 #![allow(clippy::type_complexity, clippy::too_many_arguments)]
 
+mod application_settings;
 mod components;
 mod data_resources;
 mod factories;
@@ -9,18 +10,22 @@ mod players_movement_system;
 mod systems;
 
 use amethyst::{
-    core::transform::{Transform, TransformBundle},
+    core::{
+        math::Orthographic3,
+        transform::{Transform, TransformBundle},
+    },
+    ecs::Join,
     input::{is_close_requested, InputBundle},
     prelude::*,
     renderer::{
-        Camera, DisplayConfig, DrawFlat, Pipeline, PosTex, Projection, RenderBundle, Stage,
+        Camera, DrawFlat, Pipeline, PosTex, Projection, RenderBundle, ScreenDimensions, Stage,
         WindowMessages,
     },
-    utils::application_root_dir,
 };
 use winit::{ElementState, VirtualKeyCode};
 
 use crate::{
+    application_settings::ApplicationSettings,
     components::*,
     data_resources::{MissileGraphics, MonsterDefinitions},
     factories::create_player,
@@ -30,9 +35,7 @@ use crate::{
     systems::{InputSystem, MonsterActionSystem, MonsterMovementSystem, SpawnerSystem},
 };
 
-struct HelloAmethyst {
-    pub fullscreen: bool,
-}
+struct HelloAmethyst;
 
 type Vector2 = amethyst::core::math::Vector2<f32>;
 type Vector3 = amethyst::core::math::Vector3<f32>;
@@ -63,33 +66,66 @@ impl SimpleState for HelloAmethyst {
         event: StateEvent,
     ) -> SimpleTrans {
         let world = data.world;
+        let mut application_settings = world.write_resource::<ApplicationSettings>();
+        let display = application_settings.display();
 
         if let StateEvent::Window(event) = &event {
             if is_close_requested(&event) {
                 return Trans::Quit;
             }
 
-            if let winit::Event::WindowEvent {
-                event: winit::WindowEvent::KeyboardInput { input, .. },
-                ..
-            } = event
-            {
-                if input.virtual_keycode == Some(VirtualKeyCode::F11)
-                    && input.state == ElementState::Released
-                {
-                    let mut window_messages = world.write_resource::<WindowMessages>();
-                    let is_fullscreen = self.fullscreen;
-                    self.fullscreen = !self.fullscreen;
-                    window_messages.send_command(move |window| {
-                        let monitor_id = if is_fullscreen {
-                            None
-                        } else {
-                            window.get_available_monitors().next()
-                        };
-                        window.set_fullscreen(monitor_id);
-                    });
+            match event {
+                winit::Event::WindowEvent {
+                    event: winit::WindowEvent::KeyboardInput { input, .. },
+                    ..
+                } if input.state == ElementState::Released => match input.virtual_keycode {
+                    Some(VirtualKeyCode::F11) => {
+                        let mut window_messages = world.write_resource::<WindowMessages>();
+                        let is_fullscreen = display.fullscreen;
+                        application_settings
+                            .save_fullscreen(!is_fullscreen)
+                            .expect("Failed to save settings");
+
+                        window_messages.send_command(move |window| {
+                            let monitor_id = if is_fullscreen {
+                                None
+                            } else {
+                                window.get_available_monitors().next()
+                            };
+                            window.set_fullscreen(monitor_id);
+                        });
+                    }
+                    Some(VirtualKeyCode::F10) => {
+                        let screen_dimensions = world.read_resource::<ScreenDimensions>();
+                        println!(
+                            "{}:{}",
+                            screen_dimensions.width(),
+                            screen_dimensions.height()
+                        );
+                    }
+                    _ => {}
+                },
+
+                winit::Event::WindowEvent {
+                    event: winit::WindowEvent::Resized(size),
+                    ..
+                } => {
+                    let mut cameras = world.write_storage::<Camera>();
+                    let camera: &mut Camera = (&mut cameras).join().next().unwrap();
+
+                    camera.proj = Orthographic3::new(
+                        0.0,
+                        size.width as f32,
+                        0.0,
+                        size.height as f32,
+                        0.1,
+                        2000.0,
+                    )
+                    .to_homogeneous();
                 }
-            }
+
+                _ => {}
+            };
 
             Trans::None
         } else {
@@ -101,11 +137,9 @@ impl SimpleState for HelloAmethyst {
 fn main() -> amethyst::Result<()> {
     amethyst::start_logger(Default::default());
 
-    let display_config_path = application_root_dir()
-        .unwrap()
-        .join("resources/display_config.ron");
-    let display_config = DisplayConfig::load(&display_config_path);
-    let fullscreen = display_config.fullscreen;
+    let application_settings = ApplicationSettings::new()?;
+
+    let display_config = application_settings.display().clone();
 
     let pipe = Pipeline::build().with_stage(
         Stage::with_backbuffer()
@@ -113,11 +147,8 @@ fn main() -> amethyst::Result<()> {
             .with_pass(DrawFlat::<PosTex>::new()),
     );
 
-    let bindings_config_path = application_root_dir()
-        .unwrap()
-        .join("resources/bindings_config.ron");
-    let input_bundle =
-        InputBundle::<String, String>::new().with_bindings_from_file(bindings_config_path)?;
+    let bindings = application_settings.bindings().clone();
+    let input_bundle = InputBundle::<String, String>::new().with_bindings(bindings);
 
     let game_data = GameDataBuilder::default()
         .with_bundle(RenderBundle::new(pipe, Some(display_config)))?
@@ -145,7 +176,9 @@ fn main() -> amethyst::Result<()> {
             "missiles_system",
             &["mouse_system", "players_movement_system"],
         );
-    let mut game = Application::new("./", HelloAmethyst { fullscreen }, game_data)?;
+    let mut builder = Application::build("./", HelloAmethyst)?;
+    builder.world.add_resource(application_settings);
+    let mut game = builder.build(game_data)?;
 
     game.run();
 
