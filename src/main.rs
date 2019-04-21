@@ -176,6 +176,11 @@ fn main() -> amethyst::Result<()> {
             MissilesSystem,
             "missiles_system",
             &["mouse_system", "players_movement_system"],
+        )
+        .with(
+            CameraTranslationSystem,
+            "camera_translation_system",
+            &["players_movement_system"],
         );
     let mut builder = Application::build("./", HelloAmethyst)?;
     builder.world.add_resource(application_settings);

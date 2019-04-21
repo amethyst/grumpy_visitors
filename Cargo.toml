@@ -11,6 +11,7 @@ rand = "0.6.5"
 winit = "0.18"
 directories = "1.0.2"
 ron = "0.5.1"
+num = "0.2.0"
 
 [patch.crates-io]
 amethyst = { git = "https://github.com/amethyst/amethyst.git", rev = "9590802" }

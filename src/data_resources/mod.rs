@@ -57,10 +57,16 @@ pub struct GameScene {
     pub dimensions: Vector2,
 }
 
+impl GameScene {
+    pub fn half_size(&self) -> Vector2 {
+        self.dimensions / 2.0
+    }
+}
+
 impl Default for GameScene {
     fn default() -> Self {
         Self {
-            dimensions: Vector2::new(2000.0, 2000.0),
+            dimensions: Vector2::new(1500.0, 1500.0),
         }
     }
 }
