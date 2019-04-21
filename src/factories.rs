@@ -96,6 +96,8 @@ pub fn create_monster(
 }
 
 pub fn create_debug_scene_border(world: &mut World) {
+    let border_width = 3.0;
+
     let screen_dimensions = world.read_resource::<GameScene>().dimensions;
     let half_screen_width = screen_dimensions.x / 2.0;
     let half_screen_height = screen_dimensions.y / 2.0;
@@ -132,26 +134,26 @@ pub fn create_debug_scene_border(world: &mut World) {
     // Top.
     generate_rectangle(
         &mut vertices,
-        Vector2::new(-half_screen_width, half_screen_height - 1.0),
+        Vector2::new(-half_screen_width, half_screen_height - border_width),
         Vector2::new(half_screen_width, half_screen_height),
     );
     // Right.
     generate_rectangle(
         &mut vertices,
-        Vector2::new(half_screen_width - 1.0, -half_screen_height),
+        Vector2::new(half_screen_width - border_width, -half_screen_height),
         Vector2::new(half_screen_width, half_screen_height),
     );
     // Bottom.
     generate_rectangle(
         &mut vertices,
         Vector2::new(-half_screen_width, -half_screen_height),
-        Vector2::new(half_screen_width, -half_screen_height + 1.0),
+        Vector2::new(half_screen_width, -half_screen_height + border_width),
     );
     // Left.
     generate_rectangle(
         &mut vertices,
         Vector2::new(-half_screen_width, -half_screen_height),
-        Vector2::new(-half_screen_width + 1.0, half_screen_height),
+        Vector2::new(-half_screen_width + border_width, half_screen_height),
     );
 
     let mesh = create_mesh(world, vertices);
