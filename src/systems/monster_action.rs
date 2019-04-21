@@ -67,8 +67,12 @@ impl<'s> System<'s> for MonsterActionSystem {
             }
 
             if let Some(new_destination) = new_destination {
-                monster.velocity =
-                    (new_destination - monster_position.position).normalize() * 500.0;
+                let displacement = new_destination - monster_position.position;
+                monster.velocity = if displacement.norm_squared() > 0.0 {
+                    (new_destination - monster_position.position).normalize() * 500.0
+                } else {
+                    Vector2::new(0.0, 0.0)
+                }
             }
         }
     }
