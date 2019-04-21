@@ -113,17 +113,19 @@ impl SimpleState for HelloAmethyst {
                     ..
                 } => {
                     let mut cameras = world.write_storage::<Camera>();
-                    let camera: &mut Camera = (&mut cameras).join().next().unwrap();
+                    let mut transforms = world.write_storage::<Transform>();
+                    let (mut camera, camera_transform) =
+                        (&mut cameras, &mut transforms).join().next().unwrap();
+                    let (screen_width, screen_height) = (size.width as f32, size.height as f32);
 
-                    camera.proj = Orthographic3::new(
-                        0.0,
-                        size.width as f32,
-                        0.0,
-                        size.height as f32,
-                        0.1,
-                        2000.0,
-                    )
-                    .to_homogeneous();
+                    camera.proj =
+                        Orthographic3::new(0.0, screen_width, 0.0, screen_height, 0.1, 2000.0)
+                            .to_homogeneous();
+                    camera_transform.set_translation(Vector3::new(
+                        -screen_width / 2.0,
+                        -screen_height / 2.0,
+                        1.0,
+                    ));
                 }
 
                 _ => {}
