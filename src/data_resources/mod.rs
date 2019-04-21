@@ -59,6 +59,8 @@ pub struct GameScene {
 
 impl Default for GameScene {
     fn default() -> Self {
-        Self { dimensions: Vector2::new(2000.0, 2000.0) }
+        Self {
+            dimensions: Vector2::new(2000.0, 2000.0),
+        }
     }
 }

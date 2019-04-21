@@ -12,9 +12,9 @@ mod systems;
 use amethyst::{
     core::{
         math::Orthographic3,
-        transform::{Transform, TransformBundle},
+        transform::{Parent, Transform, TransformBundle},
     },
-    ecs::Join,
+    ecs::{Entity, Join},
     input::{is_close_requested, InputBundle},
     prelude::*,
     renderer::{
@@ -27,12 +27,12 @@ use winit::{ElementState, VirtualKeyCode};
 use crate::{
     application_settings::ApplicationSettings,
     components::*,
-    data_resources::{MissileGraphics, MonsterDefinitions, GameScene},
+    data_resources::*,
     factories::create_player,
     missiles_system::MissilesSystem,
     models::{Count, SpawnAction, SpawnActions},
     players_movement_system::PlayersMovementSystem,
-    systems::{InputSystem, MonsterActionSystem, MonsterMovementSystem, SpawnerSystem},
+    systems::*,
 };
 
 struct HelloAmethyst;
@@ -57,8 +57,8 @@ impl SimpleState for HelloAmethyst {
         }]));
         world.add_resource(GameScene::default());
 
-        initialise_camera(world);
-        create_player(world);
+        let player = create_player(world);
+        initialise_camera(world, player);
     }
 
     fn handle_event(
@@ -183,14 +183,24 @@ fn main() -> amethyst::Result<()> {
     Ok(())
 }
 
-fn initialise_camera(world: &mut World) {
-    let mut transform = Transform::default();
-    transform.set_translation_z(1.0);
+fn initialise_camera(world: &mut World, player: Entity) {
+    let transform = {
+        let screen_dimensions = world.read_resource::<ScreenDimensions>();
+        let mut transform = Transform::default();
+        transform.set_translation(Vector3::new(
+            -screen_dimensions.width() / 2.0,
+            -screen_dimensions.height() / 2.0,
+            1.0,
+        ));
+        transform
+    };
+
     world
         .create_entity()
         .with(Camera::from(Projection::orthographic(
             0.0, 1024.0, 0.0, 768.0,
         )))
         .with(transform)
+        .with(Parent::new(player))
         .build();
 }

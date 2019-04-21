@@ -1,7 +1,7 @@
 use amethyst::{
     assets::Loader,
     core::Transform,
-    ecs::{world::EntityResBuilder, WriteStorage},
+    ecs::{world::EntityResBuilder, Entity, WriteStorage},
     prelude::{Builder, World},
     renderer::{Material, MaterialDefaults, MeshHandle, PosTex},
 };
@@ -40,7 +40,7 @@ pub fn create_missile(
         .build();
 }
 
-pub fn create_player(world: &mut World) {
+pub fn create_player(world: &mut World) -> Entity {
     let mesh = create_mesh(world, generate_circle_vertices(15.0, 64));
     let color = [1.0, 1.0, 1.0, 1.0];
     let material = create_color_material(world, color);
@@ -54,7 +54,7 @@ pub fn create_player(world: &mut World) {
         .with(transform)
         .with(WorldPosition::new(Vector2::new(500.0, 300.0)))
         .with(Player::new())
-        .build();
+        .build()
 }
 
 pub fn create_monster(
