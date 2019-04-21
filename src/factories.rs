@@ -10,7 +10,7 @@ use std::time::Instant;
 
 use crate::{
     components::*,
-    data_resources::EntityGraphics,
+    data_resources::{EntityGraphics, GameScene},
     models::{MonsterAction, MonsterDefinition},
     Vector2, Vector3,
 };
@@ -44,15 +44,14 @@ pub fn create_player(world: &mut World) -> Entity {
     let mesh = create_mesh(world, generate_circle_vertices(15.0, 64));
     let color = [1.0, 1.0, 1.0, 1.0];
     let material = create_color_material(world, color);
-    let mut transform = Transform::default();
-    transform.set_translation_xyz(500.0, 300.0, 0.0);
+    let transform = Transform::default();
 
     world
         .create_entity()
         .with(mesh)
         .with(material)
         .with(transform)
-        .with(WorldPosition::new(Vector2::new(500.0, 300.0)))
+        .with(WorldPosition::new(Vector2::new(0.0, 0.0)))
         .with(Player::new())
         .build()
 }
@@ -92,6 +91,78 @@ pub fn create_monster(
             },
             monsters,
         )
+        .build();
+}
+
+pub fn create_debug_scene_border(world: &mut World) {
+    let screen_dimensions = world.read_resource::<GameScene>().dimensions;
+    let half_screen_width = screen_dimensions.x / 2.0;
+    let half_screen_height = screen_dimensions.y / 2.0;
+
+    let generate_rectangle =
+        |vertices: &mut Vec<PosTex>, left_bottom: Vector2, right_top: Vector2| {
+            vertices.push(PosTex {
+                position: Vector3::new(left_bottom.x, right_top.y, 0.0),
+                tex_coord: Vector2::new(0.0, 1.0),
+            });
+            vertices.push(PosTex {
+                position: Vector3::new(left_bottom.x, left_bottom.y, 0.0),
+                tex_coord: Vector2::new(0.0, 0.0),
+            });
+            vertices.push(PosTex {
+                position: Vector3::new(right_top.x, left_bottom.y, 0.0),
+                tex_coord: Vector2::new(1.0, 0.0),
+            });
+            vertices.push(PosTex {
+                position: Vector3::new(right_top.x, left_bottom.y, 0.0),
+                tex_coord: Vector2::new(1.0, 0.0),
+            });
+            vertices.push(PosTex {
+                position: Vector3::new(right_top.x, right_top.y, 0.0),
+                tex_coord: Vector2::new(1.0, 1.0),
+            });
+            vertices.push(PosTex {
+                position: Vector3::new(left_bottom.x, right_top.y, 0.0),
+                tex_coord: Vector2::new(0.0, 1.0),
+            });
+        };
+
+    let mut vertices = Vec::with_capacity(24);
+    // Top.
+    generate_rectangle(
+        &mut vertices,
+        Vector2::new(-half_screen_width, half_screen_height - 1.0),
+        Vector2::new(half_screen_width, half_screen_height),
+    );
+    // Right.
+    generate_rectangle(
+        &mut vertices,
+        Vector2::new(half_screen_width - 1.0, -half_screen_height),
+        Vector2::new(half_screen_width, half_screen_height),
+    );
+    // Bottom.
+    generate_rectangle(
+        &mut vertices,
+        Vector2::new(-half_screen_width, -half_screen_height),
+        Vector2::new(half_screen_width, -half_screen_height + 1.0),
+    );
+    // Left.
+    generate_rectangle(
+        &mut vertices,
+        Vector2::new(-half_screen_width, -half_screen_height),
+        Vector2::new(-half_screen_width + 1.0, half_screen_height),
+    );
+
+    let mesh = create_mesh(world, vertices);
+    let color = [0.0, 0.0, 1.0, 1.0];
+    let material = create_color_material(world, color);
+    let transform = Transform::default();
+
+    world
+        .create_entity()
+        .with(mesh)
+        .with(material)
+        .with(transform)
         .build();
 }
 

@@ -28,7 +28,7 @@ use crate::{
     application_settings::ApplicationSettings,
     components::*,
     data_resources::*,
-    factories::create_player,
+    factories::{create_debug_scene_border, create_player},
     missiles_system::MissilesSystem,
     models::{Count, SpawnAction, SpawnActions},
     players_movement_system::PlayersMovementSystem,
@@ -59,6 +59,7 @@ impl SimpleState for HelloAmethyst {
 
         let player = create_player(world);
         initialise_camera(world, player);
+        create_debug_scene_border(world);
     }
 
     fn handle_event(
