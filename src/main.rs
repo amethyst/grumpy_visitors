@@ -27,7 +27,7 @@ use winit::{ElementState, VirtualKeyCode};
 use crate::{
     application_settings::ApplicationSettings,
     components::*,
-    data_resources::{MissileGraphics, MonsterDefinitions},
+    data_resources::{MissileGraphics, MonsterDefinitions, GameScene},
     factories::create_player,
     missiles_system::MissilesSystem,
     models::{Count, SpawnAction, SpawnActions},
@@ -55,6 +55,7 @@ impl SimpleState for HelloAmethyst {
                 num: 1,
             },
         }]));
+        world.add_resource(GameScene::default());
 
         initialise_camera(world);
         create_player(world);

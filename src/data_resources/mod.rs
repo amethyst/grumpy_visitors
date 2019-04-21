@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use crate::{
     factories::{create_color_material, create_mesh, generate_circle_vertices},
     models::MonsterDefinition,
+    Vector2,
 };
 
 #[derive(Clone)]
@@ -49,5 +50,15 @@ impl MonsterDefinitions {
             },
         );
         world.add_resource(Self(map))
+    }
+}
+
+pub struct GameScene {
+    pub dimensions: Vector2,
+}
+
+impl Default for GameScene {
+    fn default() -> Self {
+        Self { dimensions: Vector2::new(2000.0, 2000.0) }
     }
 }
