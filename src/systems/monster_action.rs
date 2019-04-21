@@ -1,20 +1,28 @@
-use amethyst::ecs::{Entities, Entity, Join, ReadExpect, ReadStorage, System, WriteStorage};
+use amethyst::{
+    core::Time,
+    ecs::{Entities, Entity, Join, ReadExpect, ReadStorage, System, WriteStorage},
+};
 use rand::{self, Rng};
+
+use std::time::Duration;
 
 use crate::{
     components::{Monster, Player, WorldPosition},
-    data_resources::MonsterDefinitions,
+    data_resources::{GameScene, MonsterDefinitions},
     models::{AttackAction, MonsterAction, MonsterActionType},
     Vector2,
 };
-use std::time::Instant;
+
+const IDLE_TIME_SEC: f32 = 0.5;
 
 pub struct MonsterActionSystem;
 
 impl<'s> System<'s> for MonsterActionSystem {
     type SystemData = (
         Entities<'s>,
+        ReadExpect<'s, Time>,
         ReadExpect<'s, MonsterDefinitions>,
+        ReadExpect<'s, GameScene>,
         ReadStorage<'s, Player>,
         ReadStorage<'s, WorldPosition>,
         WriteStorage<'s, Monster>,
@@ -22,9 +30,16 @@ impl<'s> System<'s> for MonsterActionSystem {
 
     fn run(
         &mut self,
-        (entities, _monster_definitions, players, world_positions, mut monsters): Self::SystemData,
+        (
+            entities,
+            time,
+            _monster_definitions,
+            game_scene,
+            players,
+            world_positions,
+            mut monsters,
+        ): Self::SystemData,
     ) {
-        let now = Instant::now();
         let mut rng = rand::thread_rng();
         for (mut monster, monster_position) in (&mut monsters, &world_positions).join() {
             let new_action_type = match monster.action.action_type {
@@ -36,9 +51,31 @@ impl<'s> System<'s> for MonsterActionSystem {
                     ) {
                         Some(MonsterActionType::Chase(entity))
                     } else {
-                        let pos =
-                            Vector2::new(rng.gen_range(0.0, 1024.0), rng.gen_range(0.0, 768.0));
-                        Some(MonsterActionType::Move(pos))
+                        let time_being_idle = time.absolute_time() - monster.action.started_at;
+                        let max_idle_duration =
+                            Duration::from_millis((IDLE_TIME_SEC as f32 * 1000.0).round() as u64);
+                        if time_being_idle > max_idle_duration {
+                            let pos = Vector2::new(
+                                rng.gen_range(-game_scene.half_size().x, game_scene.half_size().x),
+                                rng.gen_range(-game_scene.half_size().y, game_scene.half_size().y),
+                            );
+                            Some(MonsterActionType::Move(pos))
+                        } else {
+                            None
+                        }
+                    }
+                }
+                MonsterActionType::Move(destination) => {
+                    if let Some((entity, _player_position)) = find_player_in_radius(
+                        (&entities, &players, &world_positions).join(),
+                        monster_position.position,
+                        200.0,
+                    ) {
+                        Some(MonsterActionType::Chase(entity))
+                    } else if (monster_position.position - destination).norm_squared() < 0.01 {
+                        Some(MonsterActionType::Idle)
+                    } else {
+                        None
                     }
                 }
                 _ => None,
@@ -56,22 +93,22 @@ impl<'s> System<'s> for MonsterActionSystem {
                     _ => None,
                 }
             } else {
-                None
+                match monster.action.action_type {
+                    MonsterActionType::Chase(entity) => {
+                        Some(world_positions.get(entity).unwrap().position)
+                    }
+                    _ => None,
+                }
             };
+
+            if let Some(destination) = new_destination {
+                monster.destination = destination;
+            }
 
             if let Some(action_type) = new_action_type {
                 monster.action = MonsterAction {
-                    started_at: now,
+                    started_at: time.absolute_time(),
                     action_type,
-                }
-            }
-
-            if let Some(new_destination) = new_destination {
-                let displacement = new_destination - monster_position.position;
-                monster.velocity = if displacement.norm_squared() > 0.0 {
-                    (new_destination - monster_position.position).normalize() * 500.0
-                } else {
-                    Vector2::new(0.0, 0.0)
                 }
             }
         }

@@ -58,7 +58,7 @@ impl Component for Player {
 
 pub struct Monster {
     pub health: f32,
-    pub velocity: Vector2,
+    pub destination: Vector2,
     pub name: String,
     pub action: MonsterAction,
 }

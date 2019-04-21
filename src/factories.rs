@@ -6,7 +6,7 @@ use amethyst::{
     renderer::{Material, MaterialDefaults, MeshHandle, PosTex},
 };
 
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crate::{
     components::*,
@@ -58,7 +58,8 @@ pub fn create_player(world: &mut World) -> Entity {
 
 pub fn create_monster(
     position: Vector2,
-    _direction: Vector2,
+    destination: Vector2,
+    time: Duration,
     monster_definition: &MonsterDefinition,
     entity_builder: EntityResBuilder,
     transforms: &mut WriteStorage<Transform>,
@@ -85,9 +86,9 @@ pub fn create_monster(
         .with(
             Monster {
                 health: base_health,
-                velocity: Vector2::zeros(),
+                destination,
                 name,
-                action: MonsterAction::idle(),
+                action: MonsterAction::idle(time),
             },
             monsters,
         )

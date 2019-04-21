@@ -1,12 +1,12 @@
 use amethyst::{
-    core::Transform,
+    core::{Time, Transform},
     ecs::{Entities, ReadExpect, System, WriteExpect, WriteStorage},
     renderer::{Material, MeshHandle},
 };
 
 use crate::{
     components::{Monster, WorldPosition},
-    data_resources::MonsterDefinitions,
+    data_resources::{GameScene, MonsterDefinitions},
     factories::create_monster,
     models::SpawnActions,
     Vector2,
@@ -17,7 +17,9 @@ pub struct SpawnerSystem;
 impl<'s> System<'s> for SpawnerSystem {
     type SystemData = (
         Entities<'s>,
+        ReadExpect<'s, Time>,
         ReadExpect<'s, MonsterDefinitions>,
+        ReadExpect<'s, GameScene>,
         WriteExpect<'s, SpawnActions>,
         WriteStorage<'s, Transform>,
         WriteStorage<'s, MeshHandle>,
@@ -30,7 +32,9 @@ impl<'s> System<'s> for SpawnerSystem {
         &mut self,
         (
             entities,
+            time,
             monster_definitions,
+            game_scene,
             mut spawn_actions,
             mut transforms,
             mut meshes,
@@ -47,8 +51,9 @@ impl<'s> System<'s> for SpawnerSystem {
                 .expect("Failed to get Ghoul monster definition");
 
             create_monster(
+                -game_scene.half_size() - Vector2::new(100.0, 100.0),
                 Vector2::new(0.0, 0.0),
-                Vector2::new(1.0, 0.0),
+                time.absolute_time(),
                 ghoul,
                 entities.build_entity(),
                 &mut transforms,

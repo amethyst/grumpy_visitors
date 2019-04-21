@@ -1,6 +1,6 @@
 use amethyst::ecs::Entity;
 
-use std::time::Instant;
+use std::time::Duration;
 
 use crate::{data_resources::EntityGraphics, Vector2};
 
@@ -24,20 +24,22 @@ pub struct MonsterDefinition {
     pub graphics: EntityGraphics,
 }
 
+#[derive(Debug)]
 pub struct MonsterAction {
-    pub started_at: Instant,
+    pub started_at: Duration,
     pub action_type: MonsterActionType,
 }
 
 impl MonsterAction {
-    pub fn idle() -> Self {
+    pub fn idle(started_at: Duration) -> Self {
         Self {
-            started_at: Instant::now(),
+            started_at,
             action_type: MonsterActionType::Idle,
         }
     }
 }
 
+#[derive(Debug)]
 pub enum MonsterActionType {
     /// Just spawned.
     Idle,
@@ -50,6 +52,7 @@ pub enum MonsterActionType {
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct AttackAction {
     /// Entity id.
     pub target: Entity,
@@ -57,6 +60,7 @@ pub struct AttackAction {
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub enum AttackType {
     Melee,
     SlowMelee,
