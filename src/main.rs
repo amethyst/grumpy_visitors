@@ -24,6 +24,7 @@ use amethyst::{
 };
 use winit::{ElementState, VirtualKeyCode};
 
+use crate::models::SpawnType;
 use crate::{
     application_settings::ApplicationSettings,
     components::*,
@@ -49,12 +50,22 @@ impl SimpleState for HelloAmethyst {
 
         MissileGraphics::register(world);
         MonsterDefinitions::register(world);
-        world.add_resource(SpawnActions(vec![SpawnAction {
-            monsters: Count {
-                entity: "Ghoul".to_owned(),
-                num: 1,
+        world.add_resource(SpawnActions(vec![
+            SpawnAction {
+                monsters: Count {
+                    entity: "Ghoul".to_owned(),
+                    num: 1,
+                },
+                spawn_type: SpawnType::Borderline,
             },
-        }]));
+            SpawnAction {
+                monsters: Count {
+                    entity: "Ghoul".to_owned(),
+                    num: 5,
+                },
+                spawn_type: SpawnType::Random,
+            },
+        ]));
         world.add_resource(GameScene::default());
 
         let player = create_player(world);

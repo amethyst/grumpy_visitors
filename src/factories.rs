@@ -6,12 +6,12 @@ use amethyst::{
     renderer::{Material, MaterialDefaults, MeshHandle, PosTex},
 };
 
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use crate::{
     components::*,
     data_resources::{EntityGraphics, GameScene},
-    models::{MonsterAction, MonsterDefinition},
+    models::{MonsterAction, MonsterActionType, MonsterDefinition},
     Vector2, Vector3,
 };
 
@@ -58,8 +58,7 @@ pub fn create_player(world: &mut World) -> Entity {
 
 pub fn create_monster(
     position: Vector2,
-    destination: Vector2,
-    time: Duration,
+    action: MonsterAction,
     monster_definition: &MonsterDefinition,
     entity_builder: EntityResBuilder,
     transforms: &mut WriteStorage<Transform>,
@@ -70,6 +69,11 @@ pub fn create_monster(
 ) {
     let mut transform = Transform::default();
     transform.set_translation_xyz(position.x, position.y, 0.0);
+    let destination = if let MonsterActionType::Move(destination) = action.action_type {
+        destination
+    } else {
+        Vector2::new(0.0, 0.0)
+    };
 
     let MonsterDefinition {
         name,
@@ -88,7 +92,7 @@ pub fn create_monster(
                 health: base_health,
                 destination,
                 name,
-                action: MonsterAction::idle(time),
+                action,
             },
             monsters,
         )
