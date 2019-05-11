@@ -1,5 +1,5 @@
 use amethyst::{
-    assets::Loader,
+    assets::{Handle, Loader, Prefab},
     core::Transform,
     ecs::{world::EntityResBuilder, Entity, WriteStorage},
     prelude::{Builder, World},
@@ -7,6 +7,8 @@ use amethyst::{
 };
 
 use std::time::Instant;
+
+use animation_prefabs::GameSpritePrefab;
 
 use crate::{
     components::*,
@@ -40,17 +42,13 @@ pub fn create_missile(
         .build();
 }
 
-pub fn create_player(world: &mut World) -> Entity {
-    let mesh = create_mesh(world, generate_circle_vertices(15.0, 64));
-    let color = [1.0, 1.0, 1.0, 1.0];
-    let material = create_color_material(world, color);
+pub fn create_player(world: &mut World, prefab_handle: Handle<Prefab<GameSpritePrefab>>) -> Entity {
     let transform = Transform::default();
 
     world
         .create_entity()
-        .with(mesh)
-        .with(material)
         .with(transform)
+        .with(prefab_handle)
         .with(WorldPosition::new(Vector2::new(0.0, 0.0)))
         .with(Player::new())
         .build()

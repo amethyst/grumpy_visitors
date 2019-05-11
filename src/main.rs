@@ -10,33 +10,42 @@ mod players_movement_system;
 mod systems;
 
 use amethyst::{
+    animation::{
+        get_animation_set, AnimationBundle, AnimationCommand, AnimationControlSet, AnimationSet,
+        EndControl,
+    },
+    assets::{PrefabLoader, PrefabLoaderSystem, ProgressCounter, RonFormat},
     core::{
         math::Orthographic3,
         transform::{Parent, Transform, TransformBundle},
     },
-    ecs::{Entity, Join},
+    ecs::{Entities, Entity, Join, ReadStorage, WriteStorage},
     input::{is_close_requested, InputBundle},
     prelude::*,
     renderer::{
-        Camera, DrawFlat, Pipeline, PosTex, Projection, RenderBundle, ScreenDimensions, Stage,
-        WindowMessages,
+        Camera, DrawFlat, DrawFlat2D, Pipeline, PosTex, Projection, RenderBundle, ScreenDimensions,
+        SpriteRender, Stage, WindowMessages,
     },
 };
 use winit::{ElementState, VirtualKeyCode};
 
-use crate::models::SpawnType;
+use animation_prefabs::{AnimationId, GameSpritePrefab};
+
 use crate::{
     application_settings::ApplicationSettings,
     components::*,
     data_resources::*,
     factories::{create_debug_scene_border, create_player},
     missiles_system::MissilesSystem,
-    models::{Count, SpawnAction, SpawnActions},
+    models::{Count, SpawnAction, SpawnActions, SpawnType},
     players_movement_system::PlayersMovementSystem,
     systems::*,
 };
 
-struct HelloAmethyst;
+#[derive(Default)]
+struct HelloAmethyst {
+    pub progress_counter: Option<ProgressCounter>,
+}
 
 type Vector2 = amethyst::core::math::Vector2<f32>;
 type Vector3 = amethyst::core::math::Vector3<f32>;
@@ -44,6 +53,18 @@ type Vector3 = amethyst::core::math::Vector3<f32>;
 impl SimpleState for HelloAmethyst {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
         let world = data.world;
+
+        self.progress_counter = Some(Default::default());
+        // Starts asset loading
+        let prefab_handle = world.exec(|loader: PrefabLoader<'_, GameSpritePrefab>| {
+            loader.load(
+                "resources/animation_metadata.ron",
+                RonFormat,
+                (),
+                self.progress_counter.as_mut().unwrap(),
+            )
+        });
+
         world.register::<WorldPosition>();
         world.register::<Missile>();
         world.register::<Player>();
@@ -68,7 +89,7 @@ impl SimpleState for HelloAmethyst {
         ]));
         world.add_resource(GameScene::default());
 
-        let player = create_player(world);
+        let player = create_player(world, prefab_handle);
         initialise_camera(world, player);
         create_debug_scene_border(world);
     }
@@ -144,6 +165,41 @@ impl SimpleState for HelloAmethyst {
         }
         Trans::None
     }
+
+    fn update(&mut self, data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
+        // Checks if we are still loading data
+        if let Some(ref progress_counter) = self.progress_counter {
+            // Checks progress
+            if progress_counter.is_complete() {
+                let StateData { world, .. } = data;
+                // Execute a pass similar to a system
+                world.exec(
+                    |(entities, animation_sets, mut control_sets): (
+                        Entities,
+                        ReadStorage<AnimationSet<AnimationId, SpriteRender>>,
+                        WriteStorage<AnimationControlSet<AnimationId, SpriteRender>>,
+                    )| {
+                        // For each entity that has AnimationSet
+                        for (entity, animation_set) in (&entities, &animation_sets).join() {
+                            // Creates a new AnimationControlSet for the entity
+                            let control_set = get_animation_set(&mut control_sets, entity).unwrap();
+                            // Adds the `Fly` animation to AnimationControlSet and loops infinitely
+                            control_set.add_animation(
+                                AnimationId::Walk,
+                                &animation_set.get(&AnimationId::Walk).unwrap(),
+                                EndControl::Loop(None),
+                                1.0,
+                                AnimationCommand::Start,
+                            );
+                        }
+                    },
+                );
+                // All data loaded
+                self.progress_counter = None;
+            }
+        }
+        Trans::None
+    }
 }
 
 fn main() -> amethyst::Result<()> {
@@ -155,16 +211,22 @@ fn main() -> amethyst::Result<()> {
 
     let pipe = Pipeline::build().with_stage(
         Stage::with_backbuffer()
-            .clear_target([0.00196, 0.23726, 0.21765, 1.0], 1.0)
-            .with_pass(DrawFlat::<PosTex>::new()),
+            .clear_target([0.10196, 0.23726, 0.21765, 1.0], 1.0)
+            .with_pass(DrawFlat::<PosTex>::new())
+            .with_pass(DrawFlat2D::new()),
     );
 
     let bindings = application_settings.bindings().clone();
     let input_bundle = InputBundle::<String, String>::new().with_bindings(bindings);
 
     let game_data = GameDataBuilder::default()
-        .with_bundle(RenderBundle::new(pipe, Some(display_config)))?
+        .with(PrefabLoaderSystem::<GameSpritePrefab>::default(), "", &[])
+        .with_bundle(RenderBundle::new(pipe, Some(display_config)).with_sprite_sheet_processor())?
         .with_bundle(TransformBundle::new())?
+        .with_bundle(AnimationBundle::<AnimationId, SpriteRender>::new(
+            "animation_control_system",
+            "sampler_interpolation_system",
+        ))?
         .with_bundle(input_bundle)?
         .with(SpawnerSystem, "spawner_system", &[])
         .with(InputSystem::new(), "mouse_system", &["input_system"])
@@ -193,7 +255,7 @@ fn main() -> amethyst::Result<()> {
             "camera_translation_system",
             &["players_movement_system"],
         );
-    let mut builder = Application::build("./", HelloAmethyst)?;
+    let mut builder = Application::build("./", HelloAmethyst::default())?;
     builder.world.add_resource(application_settings);
     let mut game = builder.build(game_data)?;
 
