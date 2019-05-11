@@ -7,13 +7,13 @@ use amethyst::{
     renderer::SpriteRender,
 };
 
-use animation_prefabs::{AnimationId, GameSpritePrefab};
+use animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
 
 pub fn load_prefab(
     world: &mut World,
     progress_counter: &mut Option<ProgressCounter>,
-) -> Handle<Prefab<GameSpritePrefab>> {
-    world.exec(|loader: PrefabLoader<'_, GameSpritePrefab>| {
+) -> Handle<Prefab<GameSpriteAnimationPrefab>> {
+    world.exec(|loader: PrefabLoader<'_, GameSpriteAnimationPrefab>| {
         loader.load(
             "resources/animation_metadata.ron",
             RonFormat,

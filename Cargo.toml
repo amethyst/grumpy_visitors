@@ -6,7 +6,7 @@ edition = "2018"
 
 [workspace]
 members = [
-#    "assets_packer",
+    "assets_packer",
 ]
 
 [dependencies.animation_prefabs]

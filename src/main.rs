@@ -23,7 +23,7 @@ use amethyst::{
     },
 };
 
-use animation_prefabs::{AnimationId, GameSpritePrefab};
+use animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
 
 use crate::utils::animation::update_loading_prefab;
 use crate::{
@@ -117,7 +117,7 @@ fn main() -> amethyst::Result<()> {
     let input_bundle = InputBundle::<String, String>::new().with_bindings(bindings);
 
     let game_data = GameDataBuilder::default()
-        .with(PrefabLoaderSystem::<GameSpritePrefab>::default(), "", &[])
+        .with(PrefabLoaderSystem::<GameSpriteAnimationPrefab>::default(), "", &[])
         .with_bundle(RenderBundle::new(pipe, Some(display_config)).with_sprite_sheet_processor())?
         .with_bundle(TransformBundle::new())?
         .with_bundle(AnimationBundle::<AnimationId, SpriteRender>::new(
