@@ -8,29 +8,24 @@ mod missiles_system;
 mod models;
 mod players_movement_system;
 mod systems;
+mod utils;
 
 use amethyst::{
-    animation::{
-        get_animation_set, AnimationBundle, AnimationCommand, AnimationControlSet, AnimationSet,
-        EndControl,
-    },
-    assets::{PrefabLoader, PrefabLoaderSystem, ProgressCounter, RonFormat},
-    core::{
-        math::Orthographic3,
-        transform::{Parent, Transform, TransformBundle},
-    },
-    ecs::{Entities, Entity, Join, ReadStorage, WriteStorage},
-    input::{is_close_requested, InputBundle},
+    animation::AnimationBundle,
+    assets::{PrefabLoaderSystem, ProgressCounter},
+    core::transform::{Parent, Transform, TransformBundle},
+    ecs::Entity,
+    input::InputBundle,
     prelude::*,
     renderer::{
         Camera, DrawFlat, DrawFlat2D, Pipeline, PosTex, Projection, RenderBundle, ScreenDimensions,
-        SpriteRender, Stage, WindowMessages,
+        SpriteRender, Stage,
     },
 };
-use winit::{ElementState, VirtualKeyCode};
 
 use animation_prefabs::{AnimationId, GameSpritePrefab};
 
+use crate::utils::animation::update_loading_prefab;
 use crate::{
     application_settings::ApplicationSettings,
     components::*,
@@ -40,6 +35,7 @@ use crate::{
     models::{Count, SpawnAction, SpawnActions, SpawnType},
     players_movement_system::PlayersMovementSystem,
     systems::*,
+    utils::animation,
 };
 
 #[derive(Default)]
@@ -52,18 +48,10 @@ type Vector3 = amethyst::core::math::Vector3<f32>;
 
 impl SimpleState for HelloAmethyst {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
-        let world = data.world;
+        let mut world = data.world;
 
         self.progress_counter = Some(Default::default());
-        // Starts asset loading
-        let prefab_handle = world.exec(|loader: PrefabLoader<'_, GameSpritePrefab>| {
-            loader.load(
-                "resources/animation_metadata.ron",
-                RonFormat,
-                (),
-                self.progress_counter.as_mut().unwrap(),
-            )
-        });
+        let hero_prefab_handle = animation::load_prefab(&mut world, &mut self.progress_counter);
 
         world.register::<WorldPosition>();
         world.register::<Missile>();
@@ -89,7 +77,7 @@ impl SimpleState for HelloAmethyst {
         ]));
         world.add_resource(GameScene::default());
 
-        let player = create_player(world, prefab_handle);
+        let player = create_player(world, hero_prefab_handle);
         initialise_camera(world, player);
         create_debug_scene_border(world);
     }
@@ -100,104 +88,13 @@ impl SimpleState for HelloAmethyst {
         event: StateEvent,
     ) -> SimpleTrans {
         let world = data.world;
-        let mut application_settings = world.write_resource::<ApplicationSettings>();
-        let display = application_settings.display();
-
-        if let StateEvent::Window(event) = &event {
-            if is_close_requested(&event) {
-                return Trans::Quit;
-            }
-
-            match event {
-                winit::Event::WindowEvent {
-                    event: winit::WindowEvent::KeyboardInput { input, .. },
-                    ..
-                } if input.state == ElementState::Released => match input.virtual_keycode {
-                    Some(VirtualKeyCode::F11) => {
-                        let mut window_messages = world.write_resource::<WindowMessages>();
-                        let is_fullscreen = display.fullscreen;
-                        application_settings
-                            .save_fullscreen(!is_fullscreen)
-                            .expect("Failed to save settings");
-
-                        window_messages.send_command(move |window| {
-                            let monitor_id = if is_fullscreen {
-                                None
-                            } else {
-                                window.get_available_monitors().next()
-                            };
-                            window.set_fullscreen(monitor_id);
-                        });
-                    }
-                    Some(VirtualKeyCode::F10) => {
-                        let screen_dimensions = world.read_resource::<ScreenDimensions>();
-                        println!(
-                            "{}:{}",
-                            screen_dimensions.width(),
-                            screen_dimensions.height()
-                        );
-                    }
-                    _ => {}
-                },
-
-                winit::Event::WindowEvent {
-                    event: winit::WindowEvent::Resized(size),
-                    ..
-                } => {
-                    let mut cameras = world.write_storage::<Camera>();
-                    let mut transforms = world.write_storage::<Transform>();
-                    let (mut camera, camera_transform) =
-                        (&mut cameras, &mut transforms).join().next().unwrap();
-                    let (screen_width, screen_height) = (size.width as f32, size.height as f32);
-
-                    camera.proj =
-                        Orthographic3::new(0.0, screen_width, 0.0, screen_height, 0.1, 2000.0)
-                            .to_homogeneous();
-                    camera_transform.set_translation(Vector3::new(
-                        -screen_width / 2.0,
-                        -screen_height / 2.0,
-                        1.0,
-                    ));
-                }
-
-                _ => {}
-            };
-        }
+        utils::handle_window_event(&world, &event);
         Trans::None
     }
 
     fn update(&mut self, data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
-        // Checks if we are still loading data
-        if let Some(ref progress_counter) = self.progress_counter {
-            // Checks progress
-            if progress_counter.is_complete() {
-                let StateData { world, .. } = data;
-                // Execute a pass similar to a system
-                world.exec(
-                    |(entities, animation_sets, mut control_sets): (
-                        Entities,
-                        ReadStorage<AnimationSet<AnimationId, SpriteRender>>,
-                        WriteStorage<AnimationControlSet<AnimationId, SpriteRender>>,
-                    )| {
-                        // For each entity that has AnimationSet
-                        for (entity, animation_set) in (&entities, &animation_sets).join() {
-                            // Creates a new AnimationControlSet for the entity
-                            let control_set = get_animation_set(&mut control_sets, entity).unwrap();
-                            // Adds the `Fly` animation to AnimationControlSet and loops infinitely
-                            control_set.add_animation(
-                                AnimationId::Walk,
-                                &animation_set.get(&AnimationId::Walk).unwrap(),
-                                EndControl::Loop(None),
-                                1.0,
-                                AnimationCommand::Start,
-                            );
-                        }
-                    },
-                );
-                // All data loaded
-                self.progress_counter = None;
-            }
-        }
+        let StateData { ref mut world, .. } = data;
+        update_loading_prefab(world, &mut self.progress_counter);
         Trans::None
     }
 }
