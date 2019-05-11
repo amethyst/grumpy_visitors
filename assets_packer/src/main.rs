@@ -4,10 +4,10 @@ use amethyst::{
         SpriteRenderPrimitive,
     },
     assets::Prefab,
-    core::Named,
+    core::{transform::Transform, Named},
     renderer::{
         SpriteList, SpritePosition, SpriteScenePrefab, SpriteSheetPrefab, Sprites, TextureFormat,
-        TextureMetadata, TexturePrefab,
+        TextureMetadata, TexturePrefab, Transparent,
     },
 };
 use failure;
@@ -87,19 +87,27 @@ fn main() -> Result<(), failure::Error> {
 
     let prefab = {
         let mut prefab = Prefab::new();
-        prefab.main(Some(create_prefab(
-            "hero_torso",
-            Some(sprite_sheet),
-            torso_indices,
-            AnimationId::Walk,
-        )));
-        prefab.add(None,
-        Some(create_prefab(
-            "hero_legs",
-            None,
-            legs_indices,
-            AnimationId::Walk,
-        )),
+        prefab.add(
+            Some(0),
+            Some(create_prefab(
+                "hero_torso",
+                Some(sprite_sheet),
+                torso_indices,
+                AnimationId::Walk,
+                None,
+            )),
+        );
+        let mut legs_transform = Transform::default();
+        legs_transform.set_translation_z(-0.1);
+        prefab.add(
+            Some(0),
+            Some(create_prefab(
+                "hero_legs",
+                None,
+                legs_indices,
+                AnimationId::Walk,
+                Some(legs_transform),
+            )),
         );
         prefab
     };
@@ -177,6 +185,7 @@ fn create_prefab(
     sprite_sheet: Option<SpriteSheetPrefab>,
     frames_indices: Vec<SpriteRenderPrimitive>,
     animation_id: AnimationId,
+    transform: Option<Transform>,
 ) -> GameSpriteAnimationPrefab {
     GameSpriteAnimationPrefab {
         name: Named::new(name),
@@ -184,7 +193,7 @@ fn create_prefab(
             sheet: sprite_sheet,
             // TODO: fix after https://github.com/amethyst/amethyst/issues/1585.
             render: from_str("Some((sheet: 0, sprite_number: 0))").unwrap(),
-            transform: None,
+            transform: transform.or_else(|| Some(Transform::default())),
         },
         animation_set: AnimationSetPrefab {
             animations: vec![(animation_id, {
@@ -201,5 +210,6 @@ fn create_prefab(
                 prefab
             })],
         },
+        transparent: Transparent,
     }
 }

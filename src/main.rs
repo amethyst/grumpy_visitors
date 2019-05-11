@@ -117,8 +117,16 @@ fn main() -> amethyst::Result<()> {
     let input_bundle = InputBundle::<String, String>::new().with_bindings(bindings);
 
     let game_data = GameDataBuilder::default()
-        .with(PrefabLoaderSystem::<GameSpriteAnimationPrefab>::default(), "", &[])
-        .with_bundle(RenderBundle::new(pipe, Some(display_config)).with_sprite_sheet_processor())?
+        .with(
+            PrefabLoaderSystem::<GameSpriteAnimationPrefab>::default(),
+            "",
+            &[],
+        )
+        .with_bundle(
+            RenderBundle::new(pipe, Some(display_config))
+                .with_sprite_sheet_processor()
+                .with_sprite_visibility_sorting(&[]),
+        )?
         .with_bundle(TransformBundle::new())?
         .with_bundle(AnimationBundle::<AnimationId, SpriteRender>::new(
             "animation_control_system",

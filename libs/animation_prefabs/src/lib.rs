@@ -1,11 +1,11 @@
 use amethyst::{
     animation::AnimationSetPrefab,
     assets::{PrefabData, ProgressCounter},
-    derive::PrefabData,
-    ecs::Entity,
     core::Named,
+    derive::PrefabData,
+    ecs::{Entity, WriteStorage},
     error::Error,
-    renderer::{SpriteRender, SpriteScenePrefab},
+    renderer::{SpriteRender, SpriteScenePrefab, Transparent},
 };
 use serde_derive::{Deserialize, Serialize};
 
@@ -19,4 +19,7 @@ pub struct GameSpriteAnimationPrefab {
     pub name: Named,
     pub sprite_scene: SpriteScenePrefab,
     pub animation_set: AnimationSetPrefab<AnimationId, SpriteRender>,
+    #[serde(skip)]
+    #[prefab(Component)]
+    pub transparent: Transparent,
 }

@@ -42,7 +42,10 @@ pub fn create_missile(
         .build();
 }
 
-pub fn create_player(world: &mut World, prefab_handle: Handle<Prefab<GameSpriteAnimationPrefab>>) -> Entity {
+pub fn create_player(
+    world: &mut World,
+    prefab_handle: Handle<Prefab<GameSpriteAnimationPrefab>>,
+) -> Entity {
     let transform = Transform::default();
 
     world
