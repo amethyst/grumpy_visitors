@@ -21,7 +21,7 @@ use texture_packer::{
 };
 
 use std::{
-    collections::HashMap,
+    collections::btree_map::BTreeMap,
     env,
     fs::{self, File},
     io::Write,
@@ -36,6 +36,8 @@ struct SpriteSceneData {
     torso_indices: Vec<SpriteRenderPrimitive>,
     legs_indices: Vec<SpriteRenderPrimitive>,
 }
+
+struct FramesMap(BTreeMap<String, Frame>);
 
 const FRAMES_COUNT: usize = 20;
 
@@ -75,12 +77,20 @@ fn main() -> Result<(), failure::Error> {
     let output_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("output");
     let output_file = output_dir.join("atlas.png");
 
+    let frames_map = FramesMap(
+        packer
+            .get_frames()
+            .iter()
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect(),
+    );
+
     let SpriteSceneData {
         sprite_sheet,
         torso_indices,
         legs_indices,
     } = construct_sprite_scene(
-        packer.get_frames(),
+        &frames_map,
         packer.width(),
         packer.height(),
         mage64_center_x,
@@ -134,13 +144,14 @@ fn main() -> Result<(), failure::Error> {
 }
 
 fn construct_sprite_scene(
-    frames: &HashMap<String, Frame>,
+    frames: &FramesMap,
     atlas_width: u32,
     atlas_height: u32,
     sprite_center_x: f32,
     sprite_center_y: f32,
     output_file_path: impl AsRef<Path>,
 ) -> SpriteSceneData {
+    let frames = &frames.0;
     let mut sprites = Vec::with_capacity(frames.len());
     let mut torso_indices = vec![SpriteRenderPrimitive::SpriteIndex(0); 20];
     let mut legs_indices = vec![SpriteRenderPrimitive::SpriteIndex(0); 20];
