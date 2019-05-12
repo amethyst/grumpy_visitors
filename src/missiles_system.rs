@@ -45,8 +45,8 @@ impl<'s> System<'s> for MissilesSystem {
         let Player {
             velocity: player_velocity,
             radius: player_radius,
-        } = player.clone();
-        let player_position = player_position.position.clone();
+        } = player;
+        let player_position = player_position.position;
 
         for (entity, mut missile, transform, missile_position) in (
             &entities,

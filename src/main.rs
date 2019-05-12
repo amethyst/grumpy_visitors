@@ -1,27 +1,39 @@
+#![allow(clippy::type_complexity, clippy::too_many_arguments)]
+
+mod application_settings;
 mod components;
 mod data_resources;
 mod factories;
 mod missiles_system;
-mod mouse_system;
+mod models;
 mod players_movement_system;
+mod systems;
 
 use amethyst::{
-    core::transform::{Transform, TransformBundle},
-    input::InputBundle,
+    core::{
+        math::Orthographic3,
+        transform::{Parent, Transform, TransformBundle},
+    },
+    ecs::{Entity, Join},
+    input::{is_close_requested, InputBundle},
     prelude::*,
     renderer::{
-        Camera, DisplayConfig, DrawFlat, Pipeline, PosTex, Projection, RenderBundle, Stage,
+        Camera, DrawFlat, Pipeline, PosTex, Projection, RenderBundle, ScreenDimensions, Stage,
+        WindowMessages,
     },
-    utils::application_root_dir,
 };
+use winit::{ElementState, VirtualKeyCode};
 
-use crate::players_movement_system::PlayersMovementSystem;
+use crate::models::SpawnType;
 use crate::{
+    application_settings::ApplicationSettings,
     components::*,
-    data_resources::MissileGraphics,
-    factories::{create_color_material, create_mesh, create_player, generate_circle_vertices},
+    data_resources::*,
+    factories::{create_debug_scene_border, create_player},
     missiles_system::MissilesSystem,
-    mouse_system::MouseSystem,
+    models::{Count, SpawnAction, SpawnActions},
+    players_movement_system::PlayersMovementSystem,
+    systems::*,
 };
 
 struct HelloAmethyst;
@@ -31,26 +43,115 @@ type Vector3 = amethyst::core::math::Vector3<f32>;
 
 impl SimpleState for HelloAmethyst {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
-        let mut world = data.world;
+        let world = data.world;
         world.register::<WorldPosition>();
         world.register::<Missile>();
         world.register::<Player>();
 
-        let mesh = create_mesh(world, generate_circle_vertices(5.0, 64));
-        let material = create_color_material(world, [1.0, 1.0, 1.0, 1.0]);
-        world.add_resource(MissileGraphics { mesh, material });
+        MissileGraphics::register(world);
+        MonsterDefinitions::register(world);
+        world.add_resource(SpawnActions(vec![
+            SpawnAction {
+                monsters: Count {
+                    entity: "Ghoul".to_owned(),
+                    num: 1,
+                },
+                spawn_type: SpawnType::Borderline,
+            },
+            SpawnAction {
+                monsters: Count {
+                    entity: "Ghoul".to_owned(),
+                    num: 5,
+                },
+                spawn_type: SpawnType::Random,
+            },
+        ]));
+        world.add_resource(GameScene::default());
 
-        initialise_camera(world);
-        create_player(&mut world);
-        dbg!("Initialized");
+        let player = create_player(world);
+        initialise_camera(world, player);
+        create_debug_scene_border(world);
+    }
+
+    fn handle_event(
+        &mut self,
+        data: StateData<'_, GameData<'_, '_>>,
+        event: StateEvent,
+    ) -> SimpleTrans {
+        let world = data.world;
+        let mut application_settings = world.write_resource::<ApplicationSettings>();
+        let display = application_settings.display();
+
+        if let StateEvent::Window(event) = &event {
+            if is_close_requested(&event) {
+                return Trans::Quit;
+            }
+
+            match event {
+                winit::Event::WindowEvent {
+                    event: winit::WindowEvent::KeyboardInput { input, .. },
+                    ..
+                } if input.state == ElementState::Released => match input.virtual_keycode {
+                    Some(VirtualKeyCode::F11) => {
+                        let mut window_messages = world.write_resource::<WindowMessages>();
+                        let is_fullscreen = display.fullscreen;
+                        application_settings
+                            .save_fullscreen(!is_fullscreen)
+                            .expect("Failed to save settings");
+
+                        window_messages.send_command(move |window| {
+                            let monitor_id = if is_fullscreen {
+                                None
+                            } else {
+                                window.get_available_monitors().next()
+                            };
+                            window.set_fullscreen(monitor_id);
+                        });
+                    }
+                    Some(VirtualKeyCode::F10) => {
+                        let screen_dimensions = world.read_resource::<ScreenDimensions>();
+                        println!(
+                            "{}:{}",
+                            screen_dimensions.width(),
+                            screen_dimensions.height()
+                        );
+                    }
+                    _ => {}
+                },
+
+                winit::Event::WindowEvent {
+                    event: winit::WindowEvent::Resized(size),
+                    ..
+                } => {
+                    let mut cameras = world.write_storage::<Camera>();
+                    let mut transforms = world.write_storage::<Transform>();
+                    let (mut camera, camera_transform) =
+                        (&mut cameras, &mut transforms).join().next().unwrap();
+                    let (screen_width, screen_height) = (size.width as f32, size.height as f32);
+
+                    camera.proj =
+                        Orthographic3::new(0.0, screen_width, 0.0, screen_height, 0.1, 2000.0)
+                            .to_homogeneous();
+                    camera_transform.set_translation(Vector3::new(
+                        -screen_width / 2.0,
+                        -screen_height / 2.0,
+                        1.0,
+                    ));
+                }
+
+                _ => {}
+            };
+        }
+        Trans::None
     }
 }
 
 fn main() -> amethyst::Result<()> {
     amethyst::start_logger(Default::default());
 
-    let display_config_path = application_root_dir().unwrap().join("resources/display_config.ron");
-    let display_config = DisplayConfig::load(&display_config_path);
+    let application_settings = ApplicationSettings::new()?;
+
+    let display_config = application_settings.display().clone();
 
     let pipe = Pipeline::build().with_stage(
         Stage::with_backbuffer()
@@ -58,46 +159,67 @@ fn main() -> amethyst::Result<()> {
             .with_pass(DrawFlat::<PosTex>::new()),
     );
 
-    let bindings_config_path = application_root_dir().unwrap().join("resources/bindings_config.ron");
-    let input_bundle =
-        InputBundle::<String, String>::new().with_bindings_from_file(bindings_config_path)?;
+    let bindings = application_settings.bindings().clone();
+    let input_bundle = InputBundle::<String, String>::new().with_bindings(bindings);
 
     let game_data = GameDataBuilder::default()
         .with_bundle(RenderBundle::new(pipe, Some(display_config)))?
         .with_bundle(TransformBundle::new())?
         .with_bundle(input_bundle)?
-        .with(MouseSystem::new(), "mouse_system", &["input_system"])
+        .with(SpawnerSystem, "spawner_system", &[])
+        .with(InputSystem::new(), "mouse_system", &["input_system"])
         .with(
             PlayersMovementSystem,
             "players_movement_system",
             &["input_system"],
         )
         .with(
+            MonsterActionSystem,
+            "monster_action_system",
+            &["players_movement_system"],
+        )
+        .with(
+            MonsterMovementSystem,
+            "monster_movement_system",
+            &["monster_action_system"],
+        )
+        .with(
             MissilesSystem,
             "missiles_system",
             &["mouse_system", "players_movement_system"],
+        )
+        .with(
+            CameraTranslationSystem,
+            "camera_translation_system",
+            &["players_movement_system"],
         );
-    let mut game = Application::new("./", HelloAmethyst, game_data)?;
+    let mut builder = Application::build("./", HelloAmethyst)?;
+    builder.world.add_resource(application_settings);
+    let mut game = builder.build(game_data)?;
 
     game.run();
 
     Ok(())
 }
 
-pub const ARENA_WIDTH: f32 = 1024.0;
-pub const ARENA_HEIGHT: f32 = 768.0;
+fn initialise_camera(world: &mut World, player: Entity) {
+    let transform = {
+        let screen_dimensions = world.read_resource::<ScreenDimensions>();
+        let mut transform = Transform::default();
+        transform.set_translation(Vector3::new(
+            -screen_dimensions.width() / 2.0,
+            -screen_dimensions.height() / 2.0,
+            1.0,
+        ));
+        transform
+    };
 
-fn initialise_camera(world: &mut World) {
-    let mut transform = Transform::default();
-    transform.set_translation_z(1.0);
     world
         .create_entity()
         .with(Camera::from(Projection::orthographic(
-            0.0,
-            ARENA_WIDTH,
-            0.0,
-            ARENA_HEIGHT,
+            0.0, 1024.0, 0.0, 768.0,
         )))
         .with(transform)
+        .with(Parent::new(player))
         .build();
 }

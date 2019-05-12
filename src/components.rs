@@ -2,7 +2,7 @@ use amethyst::ecs::prelude::{Component, DenseVecStorage, VecStorage};
 
 use std::time::Instant;
 
-use crate::Vector2;
+use crate::{models::MonsterAction, Vector2};
 
 pub struct WorldPosition {
     pub position: Vector2,
@@ -53,5 +53,16 @@ impl Player {
 }
 
 impl Component for Player {
+    type Storage = DenseVecStorage<Self>;
+}
+
+pub struct Monster {
+    pub health: f32,
+    pub destination: Vector2,
+    pub name: String,
+    pub action: MonsterAction,
+}
+
+impl Component for Monster {
     type Storage = DenseVecStorage<Self>;
 }
