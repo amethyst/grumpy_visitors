@@ -54,6 +54,7 @@ fn main() -> Result<(), failure::Error> {
     };
     let import_path = Path::new(&import_path);
 
+    let (mage64_center_x, mage64_center_y) = (31.0, 40.0);
     // Pack torso.
     for i in 0..FRAMES_COUNT {
         let name = format!("mage64_{:04}.png", i);
@@ -82,6 +83,8 @@ fn main() -> Result<(), failure::Error> {
         packer.get_frames(),
         packer.width(),
         packer.height(),
+        mage64_center_x,
+        mage64_center_y,
         &output_file,
     );
 
@@ -134,6 +137,8 @@ fn construct_sprite_scene(
     frames: &HashMap<String, Frame>,
     atlas_width: u32,
     atlas_height: u32,
+    sprite_center_x: f32,
+    sprite_center_y: f32,
     output_file_path: impl AsRef<Path>,
 ) -> SpriteSceneData {
     let mut sprites = Vec::with_capacity(frames.len());
@@ -141,12 +146,21 @@ fn construct_sprite_scene(
     let mut legs_indices = vec![SpriteRenderPrimitive::SpriteIndex(0); 20];
 
     for (sprite_index, (filename, frame)) in frames.iter().enumerate() {
+        let sprite_center_x = frame.source.w as f32 - sprite_center_x;
+        let cropped_source_x = (frame.source.w - frame.source.x - frame.frame.w) as f32;
+        let cropped_source_y = frame.source.y as f32;
+        // Revert amethyst center aligning, apply sprite center taking into account frame cropping.
+        let offsets = Some([
+            frame.frame.w as f32 / 2.0 - sprite_center_x + cropped_source_x,
+            frame.frame.h as f32 / 2.0 - sprite_center_y + cropped_source_y,
+        ]);
+
         sprites.push(SpritePosition {
             x: frame.frame.x,
             y: frame.frame.y,
             width: frame.frame.w,
             height: frame.frame.h,
-            offsets: Some([(frame.source.x as f32), (frame.source.y as f32)]),
+            offsets,
         });
 
         let number = &filename[filename.len() - 8..filename.len() - 4];
