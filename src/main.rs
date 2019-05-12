@@ -8,42 +8,51 @@ mod missiles_system;
 mod models;
 mod players_movement_system;
 mod systems;
+mod utils;
 
 use amethyst::{
-    core::{
-        math::Orthographic3,
-        transform::{Parent, Transform, TransformBundle},
-    },
-    ecs::{Entity, Join},
-    input::{is_close_requested, InputBundle},
+    animation::AnimationBundle,
+    assets::{PrefabLoaderSystem, ProgressCounter},
+    core::transform::{Parent, Transform, TransformBundle},
+    ecs::Entity,
+    input::InputBundle,
     prelude::*,
     renderer::{
-        Camera, DrawFlat, Pipeline, PosTex, Projection, RenderBundle, ScreenDimensions, Stage,
-        WindowMessages,
+        Camera, DrawFlat, DrawFlat2D, Pipeline, PosTex, Projection, RenderBundle, ScreenDimensions,
+        SpriteRender, Stage,
     },
 };
-use winit::{ElementState, VirtualKeyCode};
 
-use crate::models::SpawnType;
+use animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
+
+use crate::utils::animation::update_loading_prefab;
 use crate::{
     application_settings::ApplicationSettings,
     components::*,
     data_resources::*,
     factories::{create_debug_scene_border, create_player},
     missiles_system::MissilesSystem,
-    models::{Count, SpawnAction, SpawnActions},
+    models::{Count, SpawnAction, SpawnActions, SpawnType},
     players_movement_system::PlayersMovementSystem,
     systems::*,
+    utils::animation,
 };
 
-struct HelloAmethyst;
+#[derive(Default)]
+struct HelloAmethyst {
+    pub progress_counter: Option<ProgressCounter>,
+}
 
 type Vector2 = amethyst::core::math::Vector2<f32>;
 type Vector3 = amethyst::core::math::Vector3<f32>;
 
 impl SimpleState for HelloAmethyst {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
-        let world = data.world;
+        let mut world = data.world;
+
+        self.progress_counter = Some(Default::default());
+        let hero_prefab_handle = animation::load_prefab(&mut world, &mut self.progress_counter);
+
         world.register::<WorldPosition>();
         world.register::<Missile>();
         world.register::<Player>();
@@ -68,7 +77,7 @@ impl SimpleState for HelloAmethyst {
         ]));
         world.add_resource(GameScene::default());
 
-        let player = create_player(world);
+        let player = create_player(world, hero_prefab_handle);
         initialise_camera(world, player);
         create_debug_scene_border(world);
     }
@@ -79,69 +88,13 @@ impl SimpleState for HelloAmethyst {
         event: StateEvent,
     ) -> SimpleTrans {
         let world = data.world;
-        let mut application_settings = world.write_resource::<ApplicationSettings>();
-        let display = application_settings.display();
+        utils::handle_window_event(&world, &event);
+        Trans::None
+    }
 
-        if let StateEvent::Window(event) = &event {
-            if is_close_requested(&event) {
-                return Trans::Quit;
-            }
-
-            match event {
-                winit::Event::WindowEvent {
-                    event: winit::WindowEvent::KeyboardInput { input, .. },
-                    ..
-                } if input.state == ElementState::Released => match input.virtual_keycode {
-                    Some(VirtualKeyCode::F11) => {
-                        let mut window_messages = world.write_resource::<WindowMessages>();
-                        let is_fullscreen = display.fullscreen;
-                        application_settings
-                            .save_fullscreen(!is_fullscreen)
-                            .expect("Failed to save settings");
-
-                        window_messages.send_command(move |window| {
-                            let monitor_id = if is_fullscreen {
-                                None
-                            } else {
-                                window.get_available_monitors().next()
-                            };
-                            window.set_fullscreen(monitor_id);
-                        });
-                    }
-                    Some(VirtualKeyCode::F10) => {
-                        let screen_dimensions = world.read_resource::<ScreenDimensions>();
-                        println!(
-                            "{}:{}",
-                            screen_dimensions.width(),
-                            screen_dimensions.height()
-                        );
-                    }
-                    _ => {}
-                },
-
-                winit::Event::WindowEvent {
-                    event: winit::WindowEvent::Resized(size),
-                    ..
-                } => {
-                    let mut cameras = world.write_storage::<Camera>();
-                    let mut transforms = world.write_storage::<Transform>();
-                    let (mut camera, camera_transform) =
-                        (&mut cameras, &mut transforms).join().next().unwrap();
-                    let (screen_width, screen_height) = (size.width as f32, size.height as f32);
-
-                    camera.proj =
-                        Orthographic3::new(0.0, screen_width, 0.0, screen_height, 0.1, 2000.0)
-                            .to_homogeneous();
-                    camera_transform.set_translation(Vector3::new(
-                        -screen_width / 2.0,
-                        -screen_height / 2.0,
-                        1.0,
-                    ));
-                }
-
-                _ => {}
-            };
-        }
+    fn update(&mut self, data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
+        let StateData { ref mut world, .. } = data;
+        update_loading_prefab(world, &mut self.progress_counter);
         Trans::None
     }
 }
@@ -155,16 +108,20 @@ fn main() -> amethyst::Result<()> {
 
     let pipe = Pipeline::build().with_stage(
         Stage::with_backbuffer()
-            .clear_target([0.00196, 0.23726, 0.21765, 1.0], 1.0)
-            .with_pass(DrawFlat::<PosTex>::new()),
+            .clear_target([0.10196, 0.23726, 0.21765, 1.0], 1.0)
+            .with_pass(DrawFlat::<PosTex>::new())
+            .with_pass(DrawFlat2D::new()),
     );
 
     let bindings = application_settings.bindings().clone();
     let input_bundle = InputBundle::<String, String>::new().with_bindings(bindings);
 
     let game_data = GameDataBuilder::default()
-        .with_bundle(RenderBundle::new(pipe, Some(display_config)))?
-        .with_bundle(TransformBundle::new())?
+        .with(
+            PrefabLoaderSystem::<GameSpriteAnimationPrefab>::default(),
+            "",
+            &[],
+        )
         .with_bundle(input_bundle)?
         .with(SpawnerSystem, "spawner_system", &[])
         .with(InputSystem::new(), "mouse_system", &["input_system"])
@@ -189,11 +146,32 @@ fn main() -> amethyst::Result<()> {
             &["mouse_system", "players_movement_system"],
         )
         .with(
+            AnimationSystem,
+            "animation_system",
+            &["players_movement_system", "monster_movement_system"],
+        )
+        .with_bundle(
+            TransformBundle::new()
+                .with_dep(&["players_movement_system", "monster_movement_system"]),
+        )?
+        .with_bundle(
+            RenderBundle::new(pipe, Some(display_config))
+                .with_sprite_sheet_processor()
+                .with_sprite_visibility_sorting(&["transform_system"]),
+        )?
+        .with_bundle(
+            AnimationBundle::<AnimationId, SpriteRender>::new(
+                "animation_control_system",
+                "sampler_interpolation_system",
+            )
+            .with_dep(&["animation_system"]),
+        )?
+        .with(
             CameraTranslationSystem,
             "camera_translation_system",
             &["players_movement_system"],
         );
-    let mut builder = Application::build("./", HelloAmethyst)?;
+    let mut builder = Application::build("./", HelloAmethyst::default())?;
     builder.world.add_resource(application_settings);
     let mut game = builder.build(game_data)?;
 

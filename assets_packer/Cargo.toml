@@ -1,0 +1,15 @@
+[package]
+name = "assets_packer"
+version = "0.1.0"
+authors = []
+edition = "2018"
+
+[dependencies.animation_prefabs]
+path = "../libs/animation_prefabs"
+
+[dependencies]
+amethyst = { version = "0.10.0", features = ["nightly"] }
+texture_packer = "0.16.0"
+image = "0.21.1"
+ron = "0.5.1"
+failure = "0.1.5"
