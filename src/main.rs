@@ -122,16 +122,6 @@ fn main() -> amethyst::Result<()> {
             "",
             &[],
         )
-        .with_bundle(
-            RenderBundle::new(pipe, Some(display_config))
-                .with_sprite_sheet_processor()
-                .with_sprite_visibility_sorting(&[]),
-        )?
-        .with_bundle(TransformBundle::new())?
-        .with_bundle(AnimationBundle::<AnimationId, SpriteRender>::new(
-            "animation_control_system",
-            "sampler_interpolation_system",
-        ))?
         .with_bundle(input_bundle)?
         .with(SpawnerSystem, "spawner_system", &[])
         .with(InputSystem::new(), "mouse_system", &["input_system"])
@@ -155,6 +145,27 @@ fn main() -> amethyst::Result<()> {
             "missiles_system",
             &["mouse_system", "players_movement_system"],
         )
+        .with(
+            AnimationSystem,
+            "animation_system",
+            &["players_movement_system", "monster_movement_system"],
+        )
+        .with_bundle(
+            TransformBundle::new()
+                .with_dep(&["players_movement_system", "monster_movement_system"]),
+        )?
+        .with_bundle(
+            RenderBundle::new(pipe, Some(display_config))
+                .with_sprite_sheet_processor()
+                .with_sprite_visibility_sorting(&["transform_system"]),
+        )?
+        .with_bundle(
+            AnimationBundle::<AnimationId, SpriteRender>::new(
+                "animation_control_system",
+                "sampler_interpolation_system",
+            )
+            .with_dep(&["animation_system"]),
+        )?
         .with(
             CameraTranslationSystem,
             "camera_translation_system",
