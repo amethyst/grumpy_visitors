@@ -45,6 +45,7 @@ impl<'s> System<'s> for MissilesSystem {
         let Player {
             velocity: player_velocity,
             radius: player_radius,
+            ..
         } = player;
         let player_position = player_position.position;
 

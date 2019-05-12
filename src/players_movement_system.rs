@@ -36,6 +36,7 @@ impl<'s> System<'s> for PlayersMovementSystem {
         match (input.axis_value("horizontal"), input.axis_value("vertical")) {
             (Some(x), Some(y)) if x != 0.0 || y != 0.0 => {
                 player.velocity = Vector2::new(x as f32, y as f32).normalize() * PLAYER_SPEED;
+                player.walking_direction = player.velocity;
 
                 let world_position = &mut world_position.position;
                 *world_position += player.velocity * time.delta_real_seconds();

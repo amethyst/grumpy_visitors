@@ -39,7 +39,7 @@ impl<'s> System<'s> for InputSystem {
         WriteStorage<'s, Material>,
         WriteStorage<'s, WorldPosition>,
         WriteStorage<'s, Missile>,
-        ReadStorage<'s, Player>,
+        WriteStorage<'s, Player>,
         ReadStorage<'s, Camera>,
         ReadStorage<'s, GlobalTransform>,
     );
@@ -56,7 +56,7 @@ impl<'s> System<'s> for InputSystem {
             mut materials,
             mut world_positions,
             mut missiles,
-            players,
+            mut players,
             cameras,
             global_transforms,
         ): Self::SystemData,
@@ -71,11 +71,14 @@ impl<'s> System<'s> for InputSystem {
                 &screen_dimensions,
             );
 
+            let (mut player, player_position) =
+                (&mut players, &world_positions).join().next().unwrap();
+            player.looking_direction =
+                Vector2::new(position.x, position.y) - player_position.position;
+
             if input.mouse_button_is_down(MouseButton::Left) {
                 let now = Instant::now();
                 if now.duration_since(self.last_spawned) > SPAWN_COOLDOWN {
-                    let (_, player_position) = (&players, &world_positions).join().next().unwrap();
-
                     create_missile(
                         Vector2::new(position.x, position.y),
                         player_position.position,
@@ -88,7 +91,6 @@ impl<'s> System<'s> for InputSystem {
                         &mut world_positions,
                         &mut missiles,
                     );
-
                     self.last_spawned = now;
                 }
             }

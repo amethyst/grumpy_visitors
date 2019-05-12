@@ -40,6 +40,8 @@ impl Component for Missile {
 
 pub struct Player {
     pub velocity: Vector2,
+    pub walking_direction: Vector2,
+    pub looking_direction: Vector2,
     pub radius: f32,
 }
 
@@ -47,6 +49,8 @@ impl Player {
     pub fn new() -> Self {
         Self {
             velocity: Vector2::new(0.0, 0.0),
+            walking_direction: Vector2::new(0.0, 1.0),
+            looking_direction: Vector2::new(0.0, 1.0),
             radius: 20.0,
         }
     }
