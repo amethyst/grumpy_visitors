@@ -26,20 +26,19 @@ impl<'s> System<'s> for PlayersMovementSystem {
 
     fn run(
         &mut self,
-        (time, input, game_scene, players, mut transforms, mut world_positions): Self::SystemData,
+        (time, input, game_scene, mut players, mut transforms, mut world_positions): Self::SystemData,
     ) {
+        let (player, transform, world_position) =
+            (&mut players, &mut transforms, &mut world_positions)
+                .join()
+                .next()
+                .unwrap();
         match (input.axis_value("horizontal"), input.axis_value("vertical")) {
             (Some(x), Some(y)) if x != 0.0 || y != 0.0 => {
-                let (_player, transform, world_position) =
-                    (&players, &mut transforms, &mut world_positions)
-                        .join()
-                        .next()
-                        .unwrap();
+                player.velocity = Vector2::new(x as f32, y as f32).normalize() * PLAYER_SPEED;
 
                 let world_position = &mut world_position.position;
-                *world_position += Vector2::new(x as f32, y as f32).normalize()
-                    * PLAYER_SPEED
-                    * time.delta_real_seconds();
+                *world_position += player.velocity * time.delta_real_seconds();
 
                 let scene_half_size_x = game_scene.dimensions.x / 2.0;
                 let scene_half_size_y = game_scene.dimensions.y / 2.0;
@@ -48,7 +47,9 @@ impl<'s> System<'s> for PlayersMovementSystem {
 
                 transform.set_translation(Vector3::new(world_position.x, world_position.y, 0.0));
             }
-            _ => {}
+            _ => {
+                player.velocity = Vector2::new(0.0, 0.0);
+            }
         }
     }
 }
