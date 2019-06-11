@@ -28,11 +28,14 @@ impl<'s> System<'s> for PlayersMovementSystem {
         &mut self,
         (time, input, game_scene, mut players, mut transforms, mut world_positions): Self::SystemData,
     ) {
-        let (player, transform, world_position) =
-            (&mut players, &mut transforms, &mut world_positions)
-                .join()
-                .next()
-                .unwrap();
+        let components = (&mut players, &mut transforms, &mut world_positions)
+            .join()
+            .next();
+        if components.is_none() {
+            return;
+        }
+        let (player, transform, world_position) = components.unwrap();
+
         match (input.axis_value("horizontal"), input.axis_value("vertical")) {
             (Some(x), Some(y)) if x != 0.0 || y != 0.0 => {
                 player.velocity = Vector2::new(x as f32, y as f32).normalize() * PLAYER_SPEED;

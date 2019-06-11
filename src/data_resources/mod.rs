@@ -66,7 +66,7 @@ impl GameScene {
 impl Default for GameScene {
     fn default() -> Self {
         Self {
-            dimensions: Vector2::new(1500.0, 1500.0),
+            dimensions: Vector2::new(4096.0, 4096.0),
         }
     }
 }

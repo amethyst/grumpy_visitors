@@ -12,25 +12,27 @@ mod utils;
 
 use amethyst::{
     animation::AnimationBundle,
-    assets::{PrefabLoaderSystem, ProgressCounter},
+    assets::{
+        AssetStorage, Handle, Loader, Prefab, PrefabLoader, PrefabLoaderSystem, ProgressCounter,
+        RonFormat,
+    },
     core::transform::{Parent, Transform, TransformBundle},
     ecs::Entity,
     input::InputBundle,
     prelude::*,
     renderer::{
-        Camera, DrawFlat, DrawFlat2D, Pipeline, PosTex, Projection, RenderBundle, ScreenDimensions,
-        SpriteRender, Stage,
+        Camera, DrawFlat, DrawFlat2D, Pipeline, PngFormat, PosTex, Projection, RenderBundle,
+        ScreenDimensions, SpriteRender, Stage, Texture, TextureHandle, TextureMetadata,
     },
 };
 
 use animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
 
-use crate::utils::animation::update_loading_prefab;
 use crate::{
     application_settings::ApplicationSettings,
     components::*,
     data_resources::*,
-    factories::{create_debug_scene_border, create_player},
+    factories::{create_debug_scene_border, create_landscape, create_player},
     missiles_system::MissilesSystem,
     models::{Count, SpawnAction, SpawnActions, SpawnType},
     players_movement_system::PlayersMovementSystem,
@@ -38,20 +40,21 @@ use crate::{
     utils::animation,
 };
 
-#[derive(Default)]
-struct HelloAmethyst {
-    pub progress_counter: Option<ProgressCounter>,
+struct LoadingState {
+    pub progress_counter: ProgressCounter,
 }
 
-type Vector2 = amethyst::core::math::Vector2<f32>;
-type Vector3 = amethyst::core::math::Vector3<f32>;
+impl LoadingState {
+    fn new() -> Self {
+        Self {
+            progress_counter: Default::default(),
+        }
+    }
+}
 
-impl SimpleState for HelloAmethyst {
+impl SimpleState for LoadingState {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
-        let mut world = data.world;
-
-        self.progress_counter = Some(Default::default());
-        let hero_prefab_handle = animation::load_prefab(&mut world, &mut self.progress_counter);
+        let world = data.world;
 
         world.register::<WorldPosition>();
         world.register::<Missile>();
@@ -59,26 +62,94 @@ impl SimpleState for HelloAmethyst {
 
         MissileGraphics::register(world);
         MonsterDefinitions::register(world);
-        world.add_resource(SpawnActions(vec![
-            SpawnAction {
-                monsters: Count {
-                    entity: "Ghoul".to_owned(),
-                    num: 1,
-                },
-                spawn_type: SpawnType::Borderline,
-            },
-            SpawnAction {
-                monsters: Count {
-                    entity: "Ghoul".to_owned(),
-                    num: 5,
-                },
-                spawn_type: SpawnType::Random,
-            },
-        ]));
+        world.add_resource(SpawnActions(Vec::new()));
         world.add_resource(GameScene::default());
 
-        let player = create_player(world, hero_prefab_handle);
+        let landscape_handle = {
+            let loader = world.read_resource::<Loader>();
+            let texture_storage = world.read_resource::<AssetStorage<Texture>>();
+
+            loader.load(
+                "resources/levels/desert.png",
+                PngFormat,
+                TextureMetadata::srgb_scale(),
+                &mut self.progress_counter,
+                &texture_storage,
+            )
+        };
+
+        let hero_prefab_handle = world.exec(
+            |prefab_loader: PrefabLoader<'_, GameSpriteAnimationPrefab>| {
+                prefab_loader.load(
+                    "resources/animation_metadata.ron",
+                    RonFormat,
+                    (),
+                    &mut self.progress_counter,
+                )
+            },
+        );
+
+        let player = create_player(world, hero_prefab_handle.clone());
         initialise_camera(world, player);
+
+        world.add_resource(AssetsHandles {
+            hero_prefab_handle,
+            landscape_handle,
+        });
+    }
+
+    fn update(&mut self, data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
+        let StateData { ref mut world, .. } = data;
+        if self.progress_counter.is_complete() {
+            animation::start_hero_animations(world);
+            Trans::Switch(Box::new(HelloAmethyst))
+        } else {
+            Trans::None
+        }
+    }
+}
+
+#[derive(Clone)]
+struct AssetsHandles {
+    hero_prefab_handle: Handle<Prefab<GameSpriteAnimationPrefab>>,
+    landscape_handle: TextureHandle,
+}
+
+#[derive(Default)]
+struct HelloAmethyst;
+
+type Vector2 = amethyst::core::math::Vector2<f32>;
+type Vector3 = amethyst::core::math::Vector3<f32>;
+
+impl SimpleState for HelloAmethyst {
+    fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
+        let world = data.world;
+
+        {
+            let mut spawn_actions = world.write_resource::<SpawnActions>();
+            spawn_actions.0.append(&mut vec![
+                SpawnAction {
+                    monsters: Count {
+                        entity: "Ghoul".to_owned(),
+                        num: 1,
+                    },
+                    spawn_type: SpawnType::Borderline,
+                },
+                SpawnAction {
+                    monsters: Count {
+                        entity: "Ghoul".to_owned(),
+                        num: 5,
+                    },
+                    spawn_type: SpawnType::Random,
+                },
+            ]);
+        }
+
+        let AssetsHandles {
+            landscape_handle, ..
+        } = world.read_resource::<AssetsHandles>().clone();
+
+        create_landscape(world, landscape_handle);
         create_debug_scene_border(world);
     }
 
@@ -92,9 +163,7 @@ impl SimpleState for HelloAmethyst {
         Trans::None
     }
 
-    fn update(&mut self, data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
-        let StateData { ref mut world, .. } = data;
-        update_loading_prefab(world, &mut self.progress_counter);
+    fn update(&mut self, _data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
         Trans::None
     }
 }
@@ -108,7 +177,7 @@ fn main() -> amethyst::Result<()> {
 
     let pipe = Pipeline::build().with_stage(
         Stage::with_backbuffer()
-            .clear_target([0.10196, 0.23726, 0.21765, 1.0], 1.0)
+            .clear_target([0.0, 0.0, 0.0, 1.0], 1.0)
             .with_pass(DrawFlat::<PosTex>::new())
             .with_pass(DrawFlat2D::new()),
     );
@@ -171,7 +240,7 @@ fn main() -> amethyst::Result<()> {
             "camera_translation_system",
             &["players_movement_system"],
         );
-    let mut builder = Application::build("./", HelloAmethyst::default())?;
+    let mut builder = Application::build("./", LoadingState::new())?;
     builder.world.add_resource(application_settings);
     let mut game = builder.build(game_data)?;
 

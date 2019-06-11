@@ -3,7 +3,7 @@ use amethyst::{
     core::Transform,
     ecs::{world::EntityResBuilder, Entity, WriteStorage},
     prelude::{Builder, World},
-    renderer::{Material, MaterialDefaults, MeshHandle, PosTex},
+    renderer::{Material, MaterialDefaults, MeshHandle, PosTex, TextureHandle},
 };
 
 use std::time::Instant;
@@ -97,6 +97,17 @@ pub fn create_monster(
             },
             monsters,
         )
+        .build();
+}
+
+pub fn create_landscape(world: &mut World, landscape_texture_handle: TextureHandle) {
+    let mut transform = Transform::default();
+    transform.set_translation_z(-1.0);
+
+    world
+        .create_entity()
+        .with(transform)
+        .with(landscape_texture_handle)
         .build();
 }
 

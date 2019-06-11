@@ -41,7 +41,13 @@ impl<'s> System<'s> for MissilesSystem {
         (time, entities, mut missiles, mut transforms, mut world_positions, players): Self::SystemData,
     ) {
         let now = Instant::now();
-        let (player, player_position) = (&players, &world_positions).join().next().unwrap();
+
+        let components = (&players, &world_positions).join().next();
+        if components.is_none() {
+            return;
+        }
+        let (player, player_position) = components.unwrap();
+
         let Player {
             velocity: player_velocity,
             radius: player_radius,

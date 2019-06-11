@@ -62,37 +62,42 @@ impl<'s> System<'s> for InputSystem {
         ): Self::SystemData,
     ) {
         let mouse_position = input.mouse_position();
-        if let Some((mouse_x, mouse_y)) = mouse_position {
-            let (camera, camera_global_transform) =
-                (&cameras, &global_transforms).join().next().unwrap();
-            let position = camera.position_from_screen(
-                Point2::new(mouse_x as f32, mouse_y as f32),
-                camera_global_transform,
-                &screen_dimensions,
-            );
+        if mouse_position.is_none() {
+            return;
+        }
+        let (mouse_x, mouse_y) = mouse_position.unwrap();
 
-            let (mut player, player_position) =
-                (&mut players, &world_positions).join().next().unwrap();
-            player.looking_direction =
-                Vector2::new(position.x, position.y) - player_position.position;
+        let components = (&cameras, &global_transforms).join().next();
+        if components.is_none() {
+            return;
+        }
+        let (camera, camera_global_transform) = components.unwrap();
 
-            if input.mouse_button_is_down(MouseButton::Left) {
-                let now = Instant::now();
-                if now.duration_since(self.last_spawned) > SPAWN_COOLDOWN {
-                    create_missile(
-                        Vector2::new(position.x, position.y),
-                        player_position.position,
-                        now,
-                        entities.build_entity(),
-                        missile_graphics.0.clone(),
-                        &mut transforms,
-                        &mut meshes,
-                        &mut materials,
-                        &mut world_positions,
-                        &mut missiles,
-                    );
-                    self.last_spawned = now;
-                }
+        let position = camera.position_from_screen(
+            Point2::new(mouse_x as f32, mouse_y as f32),
+            camera_global_transform,
+            &screen_dimensions,
+        );
+
+        let (mut player, player_position) = (&mut players, &world_positions).join().next().unwrap();
+        player.looking_direction = Vector2::new(position.x, position.y) - player_position.position;
+
+        if input.mouse_button_is_down(MouseButton::Left) {
+            let now = Instant::now();
+            if now.duration_since(self.last_spawned) > SPAWN_COOLDOWN {
+                create_missile(
+                    Vector2::new(position.x, position.y),
+                    player_position.position,
+                    now,
+                    entities.build_entity(),
+                    missile_graphics.0.clone(),
+                    &mut transforms,
+                    &mut meshes,
+                    &mut materials,
+                    &mut world_positions,
+                    &mut missiles,
+                );
+                self.last_spawned = now;
             }
         }
     }

@@ -33,8 +33,11 @@ impl<'s> System<'s> for CameraTranslationSystem {
             mut transforms,
         ): Self::SystemData,
     ) {
-        let (camera, camera_parent, camera_id) =
-            (&cameras, &parents, &entities).join().next().unwrap();
+        let components = (&cameras, &parents, &entities).join().next();
+        if components.is_none() {
+            return;
+        }
+        let (camera, camera_parent, camera_id) = components.unwrap();
         let mut relaxed_camera_transform = transforms.get(camera_parent.entity).unwrap().clone();
         relaxed_camera_transform.set_translation(
             relaxed_camera_transform.translation()
