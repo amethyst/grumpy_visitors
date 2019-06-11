@@ -8,6 +8,7 @@ mod missiles_system;
 mod models;
 mod players_movement_system;
 mod systems;
+mod tags;
 mod utils;
 
 use amethyst::{
@@ -21,13 +22,18 @@ use amethyst::{
     input::InputBundle,
     prelude::*,
     renderer::{
-        Camera, DrawFlat, DrawFlat2D, Pipeline, PngFormat, PosTex, Projection, RenderBundle,
-        ScreenDimensions, SpriteRender, Stage, Texture, TextureHandle, TextureMetadata,
+        Camera, DrawFlat, DrawFlat2D, HideHierarchySystem, Pipeline, PngFormat, PosTex, Projection,
+        RenderBundle, ScreenDimensions, SpriteRender, Stage, Texture, TextureHandle,
+        TextureMetadata,
     },
+    ui::{DrawUi, FontAsset, FontHandle, TtfFormat, UiBundle},
+    utils::tag::Tag,
 };
 
 use animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
 
+use crate::factories::create_menu_screen;
+use crate::models::GameState;
 use crate::{
     application_settings::ApplicationSettings,
     components::*,
@@ -37,6 +43,7 @@ use crate::{
     models::{Count, SpawnAction, SpawnActions, SpawnType},
     players_movement_system::PlayersMovementSystem,
     systems::*,
+    tags::*,
     utils::animation,
 };
 
@@ -59,23 +66,35 @@ impl SimpleState for LoadingState {
         world.register::<WorldPosition>();
         world.register::<Missile>();
         world.register::<Player>();
+        world.register::<Tag<UiBackground>>();
 
         MissileGraphics::register(world);
         MonsterDefinitions::register(world);
         world.add_resource(SpawnActions(Vec::new()));
         world.add_resource(GameScene::default());
+        world.add_resource(GameState::Loading);
 
-        let landscape_handle = {
+        let (landscape_handle, ui_font_handle) = {
             let loader = world.read_resource::<Loader>();
             let texture_storage = world.read_resource::<AssetStorage<Texture>>();
+            let font_storage = world.read_resource::<AssetStorage<FontAsset>>();
 
-            loader.load(
+            let landscape_handle = loader.load(
                 "resources/levels/desert.png",
                 PngFormat,
                 TextureMetadata::srgb_scale(),
                 &mut self.progress_counter,
                 &texture_storage,
-            )
+            );
+            let font_handle = loader.load(
+                "resources/PT_Sans-Web-Regular.ttf",
+                TtfFormat,
+                (),
+                &mut self.progress_counter,
+                &font_storage,
+            );
+
+            (landscape_handle, font_handle)
         };
 
         let hero_prefab_handle = world.exec(
@@ -91,10 +110,12 @@ impl SimpleState for LoadingState {
 
         let player = create_player(world, hero_prefab_handle.clone());
         initialise_camera(world, player);
+        create_menu_screen(world, ui_font_handle.clone());
 
         world.add_resource(AssetsHandles {
-            hero_prefab_handle,
-            landscape_handle,
+            hero_prefab: hero_prefab_handle,
+            landscape: landscape_handle,
+            ui_font: ui_font_handle,
         });
     }
 
@@ -111,8 +132,9 @@ impl SimpleState for LoadingState {
 
 #[derive(Clone)]
 struct AssetsHandles {
-    hero_prefab_handle: Handle<Prefab<GameSpriteAnimationPrefab>>,
-    landscape_handle: TextureHandle,
+    hero_prefab: Handle<Prefab<GameSpriteAnimationPrefab>>,
+    landscape: TextureHandle,
+    ui_font: FontHandle,
 }
 
 #[derive(Default)]
@@ -124,6 +146,7 @@ type Vector3 = amethyst::core::math::Vector3<f32>;
 impl SimpleState for HelloAmethyst {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
         let world = data.world;
+        *world.write_resource::<GameState>() = GameState::Playing;
 
         {
             let mut spawn_actions = world.write_resource::<SpawnActions>();
@@ -145,11 +168,9 @@ impl SimpleState for HelloAmethyst {
             ]);
         }
 
-        let AssetsHandles {
-            landscape_handle, ..
-        } = world.read_resource::<AssetsHandles>().clone();
+        let AssetsHandles { landscape, .. } = world.read_resource::<AssetsHandles>().clone();
 
-        create_landscape(world, landscape_handle);
+        create_landscape(world, landscape);
         create_debug_scene_border(world);
     }
 
@@ -179,7 +200,8 @@ fn main() -> amethyst::Result<()> {
         Stage::with_backbuffer()
             .clear_target([0.0, 0.0, 0.0, 1.0], 1.0)
             .with_pass(DrawFlat::<PosTex>::new())
-            .with_pass(DrawFlat2D::new()),
+            .with_pass(DrawFlat2D::new())
+            .with_pass(DrawUi::new()),
     );
 
     let bindings = application_settings.bindings().clone();
@@ -219,10 +241,17 @@ fn main() -> amethyst::Result<()> {
             "animation_system",
             &["players_movement_system", "monster_movement_system"],
         )
+        .with(MenuSystem, "menu_system", &[])
         .with_bundle(
             TransformBundle::new()
                 .with_dep(&["players_movement_system", "monster_movement_system"]),
         )?
+        .with(
+            HideHierarchySystem::default(),
+            "",
+            &["parent_hierarchy_system"],
+        )
+        .with_bundle(UiBundle::<String, String>::new())?
         .with_bundle(
             RenderBundle::new(pipe, Some(display_config))
                 .with_sprite_sheet_processor()

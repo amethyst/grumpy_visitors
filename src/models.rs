@@ -4,6 +4,11 @@ use std::time::Duration;
 
 use crate::{data_resources::EntityGraphics, Vector2};
 
+pub enum GameState {
+    Loading,
+    Playing,
+}
+
 pub struct SpawnActions(pub Vec<SpawnAction>);
 
 pub struct SpawnAction {

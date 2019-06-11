@@ -1,3 +1,5 @@
+cargo-features = ["profile-overrides"]
+
 [package]
 name = "hello_amethyst"
 version = "0.1.0"
@@ -20,6 +22,9 @@ winit = "0.18"
 directories = "1.0.2"
 ron = "0.5.1"
 num = "0.2.0"
+
+[profile.dev.overrides."*"]
+opt-level = 2
 
 [patch.crates-io]
 amethyst = { git = "https://github.com/amethyst/amethyst.git", rev = "9590802" }
