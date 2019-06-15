@@ -1,6 +1,8 @@
 use amethyst::{
+    assets::Handle,
     prelude::World,
-    renderer::{Material, MeshHandle},
+    renderer::{Material, Mesh, palette::LinSrgba},
+    core::Float,
 };
 
 use std::collections::HashMap;
@@ -17,15 +19,15 @@ pub struct MissileGraphics(pub EntityGraphics);
 impl MissileGraphics {
     pub fn register(world: &mut World) {
         let mesh = create_mesh(world, generate_circle_vertices(5.0, 64));
-        let material = create_color_material(world, [1.0, 1.0, 1.0, 1.0]);
+        let material = create_color_material(world, LinSrgba::new(1.0, 1.0, 1.0, 1.0));
         world.add_resource(MissileGraphics(EntityGraphics { mesh, material }));
     }
 }
 
 #[derive(Clone)]
 pub struct EntityGraphics {
-    pub material: Material,
-    pub mesh: MeshHandle,
+    pub material: Handle<Material>,
+    pub mesh: Handle<Mesh>,
 }
 
 pub struct MonsterDefinitions(pub HashMap<String, MonsterDefinition>);
@@ -41,7 +43,7 @@ impl MonsterDefinitions {
                 base_speed: 400.0,
                 base_attack: 20.0,
                 graphics: {
-                    let color = [0.3, 0.3, 0.3, 1.0];
+                    let color = LinSrgba::new(0.3, 0.3, 0.3, 1.0);
                     let material = create_color_material(world, color);
                     let mesh = create_mesh(world, generate_circle_vertices(12.0, 64));
 
@@ -59,14 +61,14 @@ pub struct GameScene {
 
 impl GameScene {
     pub fn half_size(&self) -> Vector2 {
-        self.dimensions / 2.0
+        self.dimensions / Float::from_f32(2.0)
     }
 }
 
 impl Default for GameScene {
     fn default() -> Self {
         Self {
-            dimensions: Vector2::new(4096.0, 4096.0),
+            dimensions: Vector2::new(4096.0.into(), 4096.0.into()),
         }
     }
 }

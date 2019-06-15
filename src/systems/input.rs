@@ -1,9 +1,12 @@
 use amethyst::{
-    core::{math::Point2, GlobalTransform, Transform},
+    assets::Handle,
+    core::{math::Point2, Transform},
     ecs::{Entities, Join, ReadExpect, ReadStorage, System, WriteStorage},
-    input::InputHandler,
-    renderer::{Camera, Material, MeshHandle, MouseButton, ScreenDimensions},
+    input::{InputHandler, StringBindings},
+    renderer::{Camera, Material, Mesh},
+    window::ScreenDimensions,
 };
+use winit::MouseButton;
 
 use std::time::{Duration, Instant};
 
@@ -12,6 +15,7 @@ use crate::{
     data_resources::MissileGraphics,
     factories::create_missile,
     Vector2,
+    utils::camera,
 };
 
 pub struct InputSystem {
@@ -30,18 +34,17 @@ impl InputSystem {
 
 impl<'s> System<'s> for InputSystem {
     type SystemData = (
-        ReadExpect<'s, InputHandler<String, String>>,
+        ReadExpect<'s, InputHandler<StringBindings>>,
         ReadExpect<'s, ScreenDimensions>,
         Entities<'s>,
         ReadExpect<'s, MissileGraphics>,
         WriteStorage<'s, Transform>,
-        WriteStorage<'s, MeshHandle>,
-        WriteStorage<'s, Material>,
+        WriteStorage<'s, Handle<Mesh>>,
+        WriteStorage<'s, Handle<Material>>,
         WriteStorage<'s, WorldPosition>,
         WriteStorage<'s, Missile>,
         WriteStorage<'s, Player>,
         ReadStorage<'s, Camera>,
-        ReadStorage<'s, GlobalTransform>,
     );
 
     fn run(
@@ -58,7 +61,6 @@ impl<'s> System<'s> for InputSystem {
             mut missiles,
             mut players,
             cameras,
-            global_transforms,
         ): Self::SystemData,
     ) {
         let mouse_position = input.mouse_position();
@@ -67,15 +69,16 @@ impl<'s> System<'s> for InputSystem {
         }
         let (mouse_x, mouse_y) = mouse_position.unwrap();
 
-        let components = (&cameras, &global_transforms).join().next();
+        let components = (&cameras, &transforms).join().next();
         if components.is_none() {
             return;
         }
-        let (camera, camera_global_transform) = components.unwrap();
+        let (camera, camera_transform) = components.unwrap();
 
-        let position = camera.position_from_screen(
+        let position = camera::position_from_screen(
+            &camera,
             Point2::new(mouse_x as f32, mouse_y as f32),
-            camera_global_transform,
+            camera_transform,
             &screen_dimensions,
         );
 

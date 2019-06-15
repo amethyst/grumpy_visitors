@@ -1,6 +1,13 @@
-use amethyst::ecs::Entity;
+use amethyst::{
+    assets::{Handle, Prefab},
+    ecs::Entity,
+    renderer::Texture,
+    ui::FontHandle,
+};
 
 use std::time::Duration;
+
+use animation_prefabs::GameSpriteAnimationPrefab;
 
 use crate::{data_resources::EntityGraphics, Vector2};
 
@@ -76,4 +83,11 @@ pub enum AttackType {
     Melee,
     SlowMelee,
     Range,
+}
+
+#[derive(Clone)]
+pub struct AssetsHandles {
+    pub hero_prefab: Handle<Prefab<GameSpriteAnimationPrefab>>,
+    pub landscape: Handle<Texture>,
+    pub ui_font: FontHandle,
 }

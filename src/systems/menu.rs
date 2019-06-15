@@ -1,7 +1,8 @@
 use amethyst::{
-    core::Time,
+    assets::Handle,
+    core::{HiddenPropagate, Time},
     ecs::{Entities, Read, ReadExpect, ReadStorage, System, WriteStorage},
-    renderer::HiddenPropagate,
+    renderer::Material,
     ui::{UiFinder, UiText},
     utils::tag::{Tag, TagFinder},
 };
@@ -19,6 +20,7 @@ impl<'s> System<'s> for MenuSystem {
         ReadStorage<'s, Tag<UiBackground>>,
         WriteStorage<'s, UiText>,
         WriteStorage<'s, HiddenPropagate>,
+        WriteStorage<'s, Handle<Material>>,
     );
 
     fn run(
@@ -31,6 +33,7 @@ impl<'s> System<'s> for MenuSystem {
             ui_background_tags,
             mut ui_texts,
             mut hidden_propagates,
+            mut materials,
         ): Self::SystemData,
     ) {
         let ui_loading = ui_finder.find("ui_loading").unwrap();

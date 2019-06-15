@@ -50,10 +50,10 @@ impl<'s> System<'s> for AnimationSystem {
 
             // TODO: set rate depending on base speed.
             if let Some(player) = players.get(parent.entity) {
-                if player.velocity.norm_squared() > 0.0 {
-                    control_set.set_rate(AnimationId::Walk, 1.0)
+                if player.velocity.norm_squared() > 0.0.into() {
+                    control_set.set_rate(AnimationId::Walk, 1.0);
                 } else {
-                    control_set.set_rate(AnimationId::Walk, 0.0)
+                    control_set.set_rate(AnimationId::Walk, 0.0);
                 }
 
                 let direction = if named.name == "hero_legs" {
@@ -70,7 +70,7 @@ impl<'s> System<'s> for AnimationSystem {
                     )
                 };
                 // TODO: educate myself about quaternions and rewrite that?
-                transform.face_towards(Vector3::new(0.0, 0.0, 1.0), direction);
+                transform.face_towards(Vector3::new(0.0.into(), 0.0.into(), 1.0.into()), direction);
             }
         }
     }

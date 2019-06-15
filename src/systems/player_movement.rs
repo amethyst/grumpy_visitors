@@ -1,7 +1,7 @@
 use amethyst::{
-    core::{math::clamp, Time, Transform},
+    core::{math::clamp, Float, Time, Transform},
     ecs::{Join, Read, ReadExpect, System, WriteStorage},
-    input::InputHandler,
+    input::{InputHandler, StringBindings},
 };
 
 use crate::{
@@ -10,14 +10,14 @@ use crate::{
     Vector2, Vector3,
 };
 
-pub struct PlayersMovementSystem;
+pub struct PlayerMovementSystem;
 
-const PLAYER_SPEED: f32 = 500.0;
+const PLAYER_SPEED: Float = Float::from_f32(500.0);
 
-impl<'s> System<'s> for PlayersMovementSystem {
+impl<'s> System<'s> for PlayerMovementSystem {
     type SystemData = (
         Read<'s, Time>,
-        ReadExpect<'s, InputHandler<String, String>>,
+        ReadExpect<'s, InputHandler<StringBindings>>,
         ReadExpect<'s, GameScene>,
         WriteStorage<'s, Player>,
         WriteStorage<'s, Transform>,
@@ -38,21 +38,26 @@ impl<'s> System<'s> for PlayersMovementSystem {
 
         match (input.axis_value("horizontal"), input.axis_value("vertical")) {
             (Some(x), Some(y)) if x != 0.0 || y != 0.0 => {
-                player.velocity = Vector2::new(x as f32, y as f32).normalize() * PLAYER_SPEED;
+                player.velocity =
+                    Vector2::new(Float::from(x), Float::from(y)).normalize() * PLAYER_SPEED;
                 player.walking_direction = player.velocity;
 
                 let world_position = &mut world_position.position;
-                *world_position += player.velocity * time.delta_real_seconds();
+                *world_position += player.velocity * Float::from(time.delta_real_seconds());
 
-                let scene_half_size_x = game_scene.dimensions.x / 2.0;
-                let scene_half_size_y = game_scene.dimensions.y / 2.0;
+                let scene_half_size_x = game_scene.dimensions.x / 2.0.into();
+                let scene_half_size_y = game_scene.dimensions.y / 2.0.into();
                 world_position.x = clamp(world_position.x, -scene_half_size_x, scene_half_size_x);
                 world_position.y = clamp(world_position.y, -scene_half_size_y, scene_half_size_y);
 
-                transform.set_translation(Vector3::new(world_position.x, world_position.y, 0.0));
+                transform.set_translation(Vector3::new(
+                    world_position.x,
+                    world_position.y,
+                    0.0.into(),
+                ));
             }
             _ => {
-                player.velocity = Vector2::new(0.0, 0.0);
+                player.velocity = Vector2::new(0.0.into(), 0.0.into());
             }
         }
     }

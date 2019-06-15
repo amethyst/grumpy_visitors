@@ -1,7 +1,7 @@
 use amethyst::{
     core::{
         math::{clamp, Rotation2},
-        Time, Transform,
+        Float, Time, Transform,
     },
     ecs::{Entities, Join, Read, ReadStorage, System, WriteStorage},
 };
@@ -69,14 +69,17 @@ impl<'s> System<'s> for MissilesSystem {
             }
 
             let missile_position = &mut missile_position.position;
-            if (*missile_position - player_position).norm_squared() < player_radius * player_radius
+            if (*missile_position - player_position).norm_squared()
+                < (player_radius * player_radius).into()
             {
                 entities.delete(entity).unwrap();
                 continue;
             }
 
             let direction = player_position + player_velocity - *missile_position;
-            let needed_angle = Rotation2::rotation_between(&missile.velocity, &direction).angle();
+            let needed_angle = Rotation2::rotation_between(&missile.velocity, &direction)
+                .angle()
+                .as_f32();
             let angle = needed_angle.abs().min(MAX_ROTATION) * needed_angle.signum();
             let a = if needed_angle.abs() > angle.abs() {
                 -MISSILE_ACCELERATION
@@ -84,13 +87,22 @@ impl<'s> System<'s> for MissilesSystem {
                 MISSILE_ACCELERATION
             };
             let current_speed = missile.velocity.norm();
-            let speed = clamp(current_speed + a, MISSILE_MIN_SPEED, MISSILE_MAX_SPEED);
-            let new_direction = Rotation2::new(angle) * missile.velocity.normalize();
+            let speed = clamp(
+                current_speed + a.into(),
+                MISSILE_MIN_SPEED.into(),
+                MISSILE_MAX_SPEED.into(),
+            );
+            let new_direction =
+                Rotation2::new(Float::from_f32(angle)) * missile.velocity.normalize();
 
             missile.velocity = new_direction * speed;
 
-            *missile_position += missile.velocity * time.delta_real_seconds();
-            transform.set_translation(Vector3::new(missile_position.x, missile_position.y, 0.0));
+            *missile_position += missile.velocity * Float::from_f32(time.delta_real_seconds());
+            transform.set_translation(Vector3::new(
+                missile_position.x,
+                missile_position.y,
+                0.0.into(),
+            ));
         }
     }
 }

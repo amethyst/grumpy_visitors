@@ -1,9 +1,16 @@
 use amethyst::{
     assets::{Handle, Loader, Prefab},
-    core::Transform,
+    core::{Float, Transform},
     ecs::{world::EntityResBuilder, Entity, WriteStorage},
     prelude::{Builder, World},
-    renderer::{Material, MaterialDefaults, MeshHandle, PosTex, TextureHandle},
+    renderer::{
+        palette::LinSrgba,
+        rendy::{
+            mesh::{MeshBuilder, PosTex, Position, TexCoord},
+            texture::palette::load_from_linear_rgba,
+        },
+        Material, MaterialDefaults, Mesh, Texture,
+    },
     ui::{Anchor, FontHandle, UiText, UiTransform},
     utils::tag::Tag,
 };
@@ -27,8 +34,8 @@ pub fn create_missile(
     entity_builder: EntityResBuilder,
     missile_graphic: EntityGraphics,
     transforms: &mut WriteStorage<Transform>,
-    meshes: &mut WriteStorage<MeshHandle>,
-    materials: &mut WriteStorage<Material>,
+    meshes: &mut WriteStorage<Handle<Mesh>>,
+    materials: &mut WriteStorage<Handle<Material>>,
     world_positions: &mut WriteStorage<WorldPosition>,
     missiles: &mut WriteStorage<Missile>,
 ) {
@@ -55,7 +62,7 @@ pub fn create_player(
         .create_entity()
         .with(transform)
         .with(prefab_handle)
-        .with(WorldPosition::new(Vector2::new(0.0, 0.0)))
+        .with(WorldPosition::new(Vector2::new(0.0.into(), 0.0.into())))
         .with(Player::new())
         .build()
 }
@@ -66,8 +73,8 @@ pub fn create_monster(
     monster_definition: &MonsterDefinition,
     entity_builder: EntityResBuilder,
     transforms: &mut WriteStorage<Transform>,
-    meshes: &mut WriteStorage<MeshHandle>,
-    materials: &mut WriteStorage<Material>,
+    meshes: &mut WriteStorage<Handle<Mesh>>,
+    materials: &mut WriteStorage<Handle<Material>>,
     world_positions: &mut WriteStorage<WorldPosition>,
     monsters: &mut WriteStorage<Monster>,
 ) {
@@ -76,7 +83,7 @@ pub fn create_monster(
     let destination = if let MonsterActionType::Move(destination) = action.action_type {
         destination
     } else {
-        Vector2::new(0.0, 0.0)
+        Vector2::new(0.0.into(), 0.0.into())
     };
 
     let MonsterDefinition {
@@ -103,7 +110,7 @@ pub fn create_monster(
         .build();
 }
 
-pub fn create_landscape(world: &mut World, landscape_texture_handle: TextureHandle) {
+pub fn create_landscape(world: &mut World, landscape_texture_handle: Handle<Texture>) {
     let mut transform = Transform::default();
     transform.set_translation_z(-1.0);
 
@@ -115,13 +122,13 @@ pub fn create_landscape(world: &mut World, landscape_texture_handle: TextureHand
 }
 
 pub fn create_menu_screen(world: &mut World, font_handle: FontHandle) {
-    let some_big_number = 10000.0;
+    let some_big_number = Float::from_f32(10000.0);
     let ui_background_vertices = generate_rectangle_vertices(
-        Vector3::new(-some_big_number, -some_big_number, 0.9),
-        Vector3::new(some_big_number, some_big_number, 0.9),
+        Vector3::new(-some_big_number, -some_big_number, 0.9.into()),
+        Vector3::new(some_big_number, some_big_number, 0.9.into()),
     );
     let mesh = create_mesh(world, ui_background_vertices);
-    let color = [0.1, 0.1, 0.1, 1.0];
+    let color = LinSrgba::new(0.1, 0.1, 0.1, 1.0);
     let material = create_color_material(world, color);
     let transform = Transform::default();
     world
@@ -135,6 +142,7 @@ pub fn create_menu_screen(world: &mut World, font_handle: FontHandle) {
     let ui_transform = UiTransform::new(
         "ui_loading".to_owned(),
         Anchor::BottomMiddle,
+        Anchor::MiddleLeft,
         0.0,
         100.0,
         1.0,
@@ -155,37 +163,37 @@ pub fn create_menu_screen(world: &mut World, font_handle: FontHandle) {
 }
 
 pub fn create_debug_scene_border(world: &mut World) {
-    let border_width = 3.0;
+    let border_width = Float::from_f32(3.0);
 
     let screen_dimensions = world.read_resource::<GameScene>().dimensions;
-    let half_screen_width = screen_dimensions.x / 2.0;
-    let half_screen_height = screen_dimensions.y / 2.0;
+    let half_screen_width = screen_dimensions.x / Float::from_f32(2.0);
+    let half_screen_height = screen_dimensions.y / Float::from_f32(2.0);
 
     let generate_rectangle =
         |vertices: &mut Vec<PosTex>, left_bottom: Vector2, right_top: Vector2| {
             vertices.push(PosTex {
-                position: Vector3::new(left_bottom.x, right_top.y, 0.0),
-                tex_coord: Vector2::new(0.0, 1.0),
+                position: Position([left_bottom.x.as_f32(), right_top.y.as_f32(), 0.0]),
+                tex_coord: TexCoord([0.0, 1.0]),
             });
             vertices.push(PosTex {
-                position: Vector3::new(left_bottom.x, left_bottom.y, 0.0),
-                tex_coord: Vector2::new(0.0, 0.0),
+                position: Position([left_bottom.x.as_f32(), left_bottom.y.as_f32(), 0.0]),
+                tex_coord: TexCoord([0.0, 0.0]),
             });
             vertices.push(PosTex {
-                position: Vector3::new(right_top.x, left_bottom.y, 0.0),
-                tex_coord: Vector2::new(1.0, 0.0),
+                position: Position([right_top.x.as_f32(), left_bottom.y.as_f32(), 0.0]),
+                tex_coord: TexCoord([1.0, 0.0]),
             });
             vertices.push(PosTex {
-                position: Vector3::new(right_top.x, left_bottom.y, 0.0),
-                tex_coord: Vector2::new(1.0, 0.0),
+                position: Position([right_top.x.as_f32(), left_bottom.y.as_f32(), 0.0]),
+                tex_coord: TexCoord([1.0, 0.0]),
             });
             vertices.push(PosTex {
-                position: Vector3::new(right_top.x, right_top.y, 0.0),
-                tex_coord: Vector2::new(1.0, 1.0),
+                position: Position([right_top.x.as_f32(), right_top.y.as_f32(), 0.0]),
+                tex_coord: TexCoord([1.0, 1.0]),
             });
             vertices.push(PosTex {
-                position: Vector3::new(left_bottom.x, right_top.y, 0.0),
-                tex_coord: Vector2::new(0.0, 1.0),
+                position: Position([left_bottom.x.as_f32(), right_top.y.as_f32(), 0.0]),
+                tex_coord: TexCoord([0.0, 1.0]),
             });
         };
 
@@ -216,7 +224,7 @@ pub fn create_debug_scene_border(world: &mut World) {
     );
 
     let mesh = create_mesh(world, vertices);
-    let color = [0.0, 0.0, 1.0, 1.0];
+    let color = LinSrgba::new(0.0, 0.0, 1.0, 1.0);
     let material = create_color_material(world, color);
     let transform = Transform::default();
 
@@ -231,44 +239,52 @@ pub fn create_debug_scene_border(world: &mut World) {
 pub fn generate_rectangle_vertices(left_bottom: Vector3, right_top: Vector3) -> Vec<PosTex> {
     vec![
         PosTex {
-            position: Vector3::new(
-                left_bottom.x,
-                right_top.y,
-                left_bottom.z + (right_top.z - left_bottom.z) / 2.0,
-            ),
-            tex_coord: Vector2::new(0.0, 1.0),
+            position: Position([
+                left_bottom.x.as_f32(),
+                right_top.y.as_f32(),
+                left_bottom.z.as_f32() + (right_top.z - left_bottom.z).as_f32() / 2.0,
+            ]),
+            tex_coord: TexCoord([0.0, 1.0]),
         },
         PosTex {
-            position: Vector3::new(left_bottom.x, left_bottom.y, left_bottom.z),
-            tex_coord: Vector2::new(0.0, 0.0),
+            position: Position([
+                left_bottom.x.as_f32(),
+                left_bottom.y.as_f32(),
+                left_bottom.z.as_f32(),
+            ]),
+            tex_coord: TexCoord([0.0, 0.0]),
         },
         PosTex {
-            position: Vector3::new(
-                right_top.x,
-                left_bottom.y,
-                left_bottom.z + (right_top.z - left_bottom.z) / 2.0,
-            ),
-            tex_coord: Vector2::new(1.0, 0.0),
+            position: Position([
+                right_top.x.as_f32(),
+                left_bottom.y.as_f32(),
+                left_bottom.z.as_f32() + (right_top.z - left_bottom.z).as_f32() / 2.0,
+            ]),
+            tex_coord: TexCoord([1.0, 0.0]),
         },
         PosTex {
-            position: Vector3::new(
-                right_top.x,
-                left_bottom.y,
-                left_bottom.z + (right_top.z - left_bottom.z) / 2.0,
-            ),
-            tex_coord: Vector2::new(1.0, 0.0),
+            position: Position([
+                right_top.x.as_f32(),
+                left_bottom.y.as_f32(),
+                left_bottom.z.as_f32() + (right_top.z.as_f32() - left_bottom.z.as_f32()) / 2.0,
+            ]),
+            tex_coord: TexCoord([1.0, 0.0]),
         },
         PosTex {
-            position: Vector3::new(right_top.x, right_top.y, right_top.z),
-            tex_coord: Vector2::new(1.0, 1.0),
+            position: Position([
+                right_top.x.as_f32(),
+                right_top.y.as_f32(),
+                right_top.z.as_f32(),
+            ]),
+            tex_coord: TexCoord([1.0, 1.0]),
         },
         PosTex {
-            position: Vector3::new(
-                left_bottom.x,
-                right_top.y,
-                left_bottom.z + (right_top.z - left_bottom.z) / 2.0,
-            ),
-            tex_coord: Vector2::new(0.0, 1.0),
+            position: Position([
+                left_bottom.x.as_f32(),
+                right_top.y.as_f32(),
+                left_bottom.z.as_f32() + (right_top.z.as_f32() - left_bottom.z.as_f32()) / 2.0,
+            ]),
+            tex_coord: TexCoord([0.0, 1.0]),
         },
     ]
 }
@@ -284,15 +300,15 @@ pub fn generate_circle_vertices(radius: f32, resolution: usize) -> Vec<PosTex> {
         let x = angle.cos();
         let y = angle.sin();
         PosTex {
-            position: Vector3::new(x * radius, y * radius, 0.0),
-            tex_coord: Vector2::new(x, y),
+            position: Position([x * radius, y * radius, 0.0]),
+            tex_coord: TexCoord([x, y]),
         }
     };
 
     for index in 0..resolution {
         vertices.push(PosTex {
-            position: Vector3::new(0.0, 0.0, 0.0),
-            tex_coord: Vector2::new(0.0, 0.0),
+            position: Position([0.0, 0.0, 0.0]),
+            tex_coord: TexCoord([0.0, 0.0]),
         });
 
         vertices.push(generate_vertex(angle_offset * index as f32));
@@ -302,19 +318,31 @@ pub fn generate_circle_vertices(radius: f32, resolution: usize) -> Vec<PosTex> {
     vertices
 }
 
-pub fn create_mesh(world: &World, vertices: Vec<PosTex>) -> MeshHandle {
+pub fn create_mesh(world: &World, vertices: Vec<PosTex>) -> Handle<Mesh> {
     let loader = world.read_resource::<Loader>();
-    loader.load_from_data(vertices.into(), (), &world.read_resource())
+    loader.load_from_data(
+        MeshBuilder::new().with_vertices(vertices).into(),
+        (),
+        &world.read_resource(),
+    )
 }
 
-pub fn create_color_material(world: &World, colour: [f32; 4]) -> Material {
+pub fn create_color_material(world: &World, colour: LinSrgba) -> Handle<Material> {
     let mat_defaults = world.read_resource::<MaterialDefaults>();
     let loader = world.read_resource::<Loader>();
 
-    let albedo = loader.load_from_data(colour.into(), (), &world.read_resource());
+    let albedo = loader.load_from_data(
+        load_from_linear_rgba(colour).into(),
+        (),
+        &world.read_resource(),
+    );
 
-    Material {
-        albedo,
-        ..mat_defaults.0.clone()
-    }
+    loader.load_from_data(
+        Material {
+            albedo,
+            ..mat_defaults.0.clone()
+        },
+        (),
+        &world.read_resource(),
+    )
 }

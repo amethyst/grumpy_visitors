@@ -1,14 +1,16 @@
 use amethyst::{
     core::{
-        math::Point2,
-        transform::{GlobalTransform, Parent, Transform},
+        math::{Point2, Vector2, Vector3},
+        transform::{Parent, Transform},
+        Float,
     },
     ecs::{Entities, Join, ReadExpect, ReadStorage, System, WriteStorage},
-    renderer::{Camera, ScreenDimensions},
+    renderer::Camera,
+    window::ScreenDimensions,
 };
-use num::Float;
+use num;
 
-use crate::{data_resources::GameScene, Vector2, Vector3};
+use crate::{data_resources::GameScene, utils::camera};
 
 pub struct CameraTranslationSystem;
 
@@ -42,20 +44,22 @@ impl<'s> System<'s> for CameraTranslationSystem {
         relaxed_camera_transform.set_translation(
             relaxed_camera_transform.translation()
                 - Vector3::new(
-                    screen_dimensions.width() / 2.0,
-                    screen_dimensions.height() / 2.0,
-                    0.0,
-                ) / screen_dimensions.hidpi_factor() as f32,
+                    Float::from_f32(screen_dimensions.width() / 2.0),
+                    Float::from_f32(screen_dimensions.height() / 2.0),
+                    Float::from_f32(0.0),
+                ) / Float::from_f64(screen_dimensions.hidpi_factor()),
         );
-        let relaxed_camera_transform = GlobalTransform(relaxed_camera_transform.matrix());
+        let relaxed_camera_transform = Transform::from(relaxed_camera_transform);
 
-        let screen_left_bottom = camera.position_from_screen(
+        let screen_left_bottom = camera::position_from_screen(
+            &camera,
             Point2::new(0.0, screen_dimensions.height()),
             &relaxed_camera_transform,
             &screen_dimensions,
         );
         let screen_left_bottom = Vector2::new(screen_left_bottom.x, screen_left_bottom.y);
-        let screen_right_top = camera.position_from_screen(
+        let screen_right_top = camera::position_from_screen(
+            &camera,
             Point2::new(screen_dimensions.width(), 0.0),
             &relaxed_camera_transform,
             &screen_dimensions,
@@ -70,12 +74,12 @@ impl<'s> System<'s> for CameraTranslationSystem {
             screen_dimensions.height() / 2.0,
         ) / screen_dimensions.hidpi_factor() as f32
             + Vector2::new(
-                Float::max(0.0, left_bottom_distance.x),
-                Float::max(0.0, left_bottom_distance.y),
+                num::Float::max(0.0, left_bottom_distance.x.as_f32()),
+                num::Float::max(0.0, left_bottom_distance.y.as_f32()),
             )
             - Vector2::new(
-                Float::max(0.0, right_top_distance.x),
-                Float::max(0.0, right_top_distance.y),
+                num::Float::max(0.0, right_top_distance.x.as_f32()),
+                num::Float::max(0.0, right_top_distance.y.as_f32()),
             );
 
         transforms

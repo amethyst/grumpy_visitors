@@ -1,4 +1,8 @@
-use amethyst::{config::Config, input::Bindings, renderer::DisplayConfig};
+use amethyst::{
+    config::Config,
+    input::{Bindings, StringBindings},
+    window::DisplayConfig,
+};
 use directories::ProjectDirs;
 use ron::ser::PrettyConfig;
 
@@ -12,7 +16,7 @@ static DEFAULT_DISPLAY_CONFIG_BYTES: &'static [u8] =
 
 pub struct ApplicationSettings {
     project_dirs: ProjectDirs,
-    bindings: Bindings<String, String>,
+    bindings: Bindings<StringBindings>,
     display: DisplayConfig,
 }
 
@@ -24,7 +28,7 @@ impl ApplicationSettings {
 
         let bindings_config_path = bindings_config_path(&project_dirs);
         let bindings = Bindings::load_no_fallback(bindings_config_path.as_path()).or_else(
-            move |_| -> amethyst::Result<Bindings<String, String>> {
+            move |_| -> amethyst::Result<Bindings<StringBindings>> {
                 let bindings = Bindings::load_bytes(DEFAULT_BINDINGS_CONFIG_BYTES)?;
                 fs::write(
                     bindings_config_path,
@@ -53,7 +57,7 @@ impl ApplicationSettings {
         })
     }
 
-    pub fn bindings(&self) -> &Bindings {
+    pub fn bindings(&self) -> &Bindings<StringBindings> {
         &self.bindings
     }
 
@@ -68,7 +72,7 @@ impl ApplicationSettings {
     }
 
     pub fn save_fullscreen(&mut self, fullscreen: bool) -> amethyst::Result<()> {
-        self.display.fullscreen = fullscreen;
+//        self.display.fullscreen = fullscreen;
         self.save_display()
     }
 

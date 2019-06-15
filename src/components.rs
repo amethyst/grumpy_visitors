@@ -48,9 +48,9 @@ pub struct Player {
 impl Player {
     pub fn new() -> Self {
         Self {
-            velocity: Vector2::new(0.0, 0.0),
-            walking_direction: Vector2::new(0.0, 1.0),
-            looking_direction: Vector2::new(0.0, 1.0),
+            velocity: Vector2::new(0.0.into(), 0.0.into()),
+            walking_direction: Vector2::new(0.0.into(), 1.0.into()),
+            looking_direction: Vector2::new(0.0.into(), 1.0.into()),
             radius: 20.0,
         }
     }

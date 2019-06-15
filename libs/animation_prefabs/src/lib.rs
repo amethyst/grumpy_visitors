@@ -5,7 +5,7 @@ use amethyst::{
     derive::PrefabData,
     ecs::{Entity, WriteStorage},
     error::Error,
-    renderer::{SpriteRender, SpriteScenePrefab, Transparent},
+    renderer::{sprite::prefab::SpriteScenePrefab, SpriteRender, Transparent},
 };
 use serde_derive::{Deserialize, Serialize};
 
