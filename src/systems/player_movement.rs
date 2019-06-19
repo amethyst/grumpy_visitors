@@ -53,7 +53,7 @@ impl<'s> System<'s> for PlayerMovementSystem {
                 transform.set_translation(Vector3::new(
                     world_position.x,
                     world_position.y,
-                    0.0.into(),
+                    transform.translation().z,
                 ));
             }
             _ => {

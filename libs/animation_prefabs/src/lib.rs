@@ -16,7 +16,7 @@ pub enum AnimationId {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PrefabData)]
 pub struct GameSpriteAnimationPrefab {
-    pub name: Named,
+    pub name_tag: Named,
     pub sprite_scene: SpriteScenePrefab,
     pub animation_set: AnimationSetPrefab<AnimationId, SpriteRender>,
     #[serde(skip)]

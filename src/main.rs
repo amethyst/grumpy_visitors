@@ -13,17 +13,17 @@ mod utils;
 
 use amethyst::{
     animation::AnimationBundle,
-    assets::PrefabLoaderSystem,
-    core::{
-        transform::{Parent, Transform, TransformBundle},
-        Float, HideHierarchySystem,
-    },
-    ecs::{world::Builder, Entity, World},
+    assets::{PrefabLoaderSystem, Processor},
+    core::{transform::TransformBundle, Float, HideHierarchySystem},
     input::{InputBundle, StringBindings},
     prelude::{Application, GameDataBuilder},
-    renderer::{camera::Projection, types::DefaultBackend, Camera, RenderingSystem, SpriteRender},
+    renderer::{
+        sprite_visibility::SpriteVisibilitySortingSystem, types::DefaultBackend, RenderingSystem,
+        SpriteRender, SpriteSheet,
+    },
     ui::UiBundle,
-    window::{WindowBundle, ScreenDimensions},
+    window::WindowBundle,
+    LogLevelFilter, Logger,
 };
 
 use animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
@@ -37,7 +37,9 @@ type Vector2 = amethyst::core::math::Vector2<Float>;
 type Vector3 = amethyst::core::math::Vector3<Float>;
 
 fn main() -> amethyst::Result<()> {
-    amethyst::start_logger(Default::default());
+    Logger::from_config(Default::default())
+        .level_for("gfx_backend_vulkan", LogLevelFilter::Warn)
+        .start();
 
     let application_settings = ApplicationSettings::new()?;
     let display_config = application_settings.display().clone();
@@ -76,23 +78,36 @@ fn main() -> amethyst::Result<()> {
             &["mouse_system", "player_movement_system"],
         )
         .with(
+            CameraTranslationSystem,
+            "camera_translation_system",
+            &["player_movement_system"],
+        )
+        .with(
             AnimationSystem,
             "animation_system",
             &["player_movement_system", "monster_movement_system"],
         )
         .with(MenuSystem, "menu_system", &[])
         .with_bundle(
-            TransformBundle::new().with_dep(&["player_movement_system", "monster_movement_system"]),
+            TransformBundle::new()
+                .with_dep(&["camera_translation_system", "monster_movement_system"]),
         )?
         .with(
             HideHierarchySystem::default(),
             "",
             &["parent_hierarchy_system"],
         )
+        .with(
+            Processor::<SpriteSheet>::new(),
+            "sprite_sheet_processor",
+            &[],
+        )
+        .with(
+            SpriteVisibilitySortingSystem::new(),
+            "sprite_visibility_system",
+            &["transform_system"],
+        )
         .with_bundle(UiBundle::<DefaultBackend, StringBindings>::new())?
-        .with_thread_local(RenderingSystem::<DefaultBackend, _>::new(
-            RenderGraph::default(),
-        ))
         .with_bundle(
             AnimationBundle::<AnimationId, SpriteRender>::new(
                 "animation_control_system",
@@ -100,11 +115,9 @@ fn main() -> amethyst::Result<()> {
             )
             .with_dep(&["animation_system"]),
         )?
-        .with(
-            CameraTranslationSystem,
-            "camera_translation_system",
-            &["player_movement_system"],
-        );
+        .with_thread_local(RenderingSystem::<DefaultBackend, _>::new(
+            RenderGraph::default(),
+        ));
     let mut builder = Application::build("./", LoadingState::new())?;
     builder.world.add_resource(application_settings);
     let mut game = builder.build(game_data)?;

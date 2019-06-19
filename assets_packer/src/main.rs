@@ -218,7 +218,7 @@ fn create_prefab(
     transform: Option<Transform>,
 ) -> GameSpriteAnimationPrefab {
     GameSpriteAnimationPrefab {
-        name: Named::new(name),
+        name_tag: Named::new(name),
         sprite_scene: SpriteScenePrefab {
             sheet: sprite_sheet,
             // TODO: fix after https://github.com/amethyst/amethyst/issues/1585.

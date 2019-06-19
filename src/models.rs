@@ -1,7 +1,7 @@
 use amethyst::{
     assets::{Handle, Prefab},
     ecs::Entity,
-    renderer::Texture,
+    renderer::{SpriteSheet, Texture},
     ui::FontHandle,
 };
 
@@ -88,6 +88,6 @@ pub enum AttackType {
 #[derive(Clone)]
 pub struct AssetsHandles {
     pub hero_prefab: Handle<Prefab<GameSpriteAnimationPrefab>>,
-    pub landscape: Handle<Texture>,
+    pub landscape: Handle<SpriteSheet>,
     pub ui_font: FontHandle,
 }

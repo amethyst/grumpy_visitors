@@ -47,7 +47,7 @@ impl<'s> System<'s> for MonsterMovementSystem {
             transform.set_translation(Vector3::new(
                 world_position.position.x,
                 world_position.position.y,
-                0.0.into(),
+                transform.translation().z,
             ));
         }
     }

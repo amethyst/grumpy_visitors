@@ -1,8 +1,8 @@
 use amethyst::{
     assets::Handle,
-    prelude::World,
-    renderer::{Material, Mesh, palette::LinSrgba},
     core::Float,
+    prelude::World,
+    renderer::{palette::LinSrgba, Material, Mesh},
 };
 
 use std::collections::HashMap;
@@ -18,8 +18,9 @@ pub struct MissileGraphics(pub EntityGraphics);
 
 impl MissileGraphics {
     pub fn register(world: &mut World) {
-        let mesh = create_mesh(world, generate_circle_vertices(5.0, 64));
-        let material = create_color_material(world, LinSrgba::new(1.0, 1.0, 1.0, 1.0));
+        let (positions, tex_coords) = generate_circle_vertices(5.0, 64);
+        let mesh = create_mesh(world, positions, tex_coords);
+        let material = create_color_material(world, LinSrgba::new(1.0, 0.0, 0.0, 1.0));
         world.add_resource(MissileGraphics(EntityGraphics { mesh, material }));
     }
 }
@@ -45,8 +46,8 @@ impl MonsterDefinitions {
                 graphics: {
                     let color = LinSrgba::new(0.3, 0.3, 0.3, 1.0);
                     let material = create_color_material(world, color);
-                    let mesh = create_mesh(world, generate_circle_vertices(12.0, 64));
-
+                    let (positions, tex_coords) = generate_circle_vertices(12.0, 64);
+                    let mesh = create_mesh(world, positions, tex_coords);
                     EntityGraphics { material, mesh }
                 },
             },

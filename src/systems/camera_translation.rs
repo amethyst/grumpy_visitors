@@ -41,6 +41,7 @@ impl<'s> System<'s> for CameraTranslationSystem {
         }
         let (camera, camera_parent, camera_id) = components.unwrap();
         let mut relaxed_camera_transform = transforms.get(camera_parent.entity).unwrap().clone();
+//        dbg!(relaxed_camera_transform.translation());
         relaxed_camera_transform.set_translation(
             relaxed_camera_transform.translation()
                 - Vector3::new(
@@ -49,7 +50,7 @@ impl<'s> System<'s> for CameraTranslationSystem {
                     Float::from_f32(0.0),
                 ) / Float::from_f64(screen_dimensions.hidpi_factor()),
         );
-        let relaxed_camera_transform = Transform::from(relaxed_camera_transform);
+//        dbg!(relaxed_camera_transform.translation());
 
         let screen_left_bottom = camera::position_from_screen(
             &camera,
@@ -57,6 +58,7 @@ impl<'s> System<'s> for CameraTranslationSystem {
             &relaxed_camera_transform,
             &screen_dimensions,
         );
+//        dbg!(&screen_left_bottom);
         let screen_left_bottom = Vector2::new(screen_left_bottom.x, screen_left_bottom.y);
         let screen_right_top = camera::position_from_screen(
             &camera,
@@ -65,6 +67,7 @@ impl<'s> System<'s> for CameraTranslationSystem {
             &screen_dimensions,
         );
         let screen_right_top = Vector2::new(screen_right_top.x, screen_right_top.y);
+//        dbg!(&screen_right_top);
 
         let left_bottom_distance = -screen_left_bottom - game_scene.half_size();
         let right_top_distance = screen_right_top - game_scene.half_size();
@@ -81,14 +84,13 @@ impl<'s> System<'s> for CameraTranslationSystem {
                 num::Float::max(0.0, right_top_distance.x.as_f32()),
                 num::Float::max(0.0, right_top_distance.y.as_f32()),
             );
+//        dbg!(camera_translation);
 
-        transforms
-            .get_mut(camera_id)
-            .unwrap()
-            .set_translation(Vector3::new(
-                camera_translation.x,
-                camera_translation.y,
-                1.0,
-            ));
+        let mut camera_transform = transforms.get_mut(camera_id).unwrap();
+//        camera_transform.set_translation(Vector3::new(
+//            camera_translation.x,
+//            camera_translation.y,
+//            camera_transform.translation().z.as_f32(),
+//        ));
     }
 }

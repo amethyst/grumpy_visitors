@@ -1,13 +1,13 @@
 use amethyst::{
     ecs::{ReadExpect, Resources, SystemData},
     renderer::{
-        pass::DrawFlat2DDesc,
+        pass::{DrawFlat2DDesc, DrawFlatDesc, DrawFlat2DTransparentDesc},
         rendy::{
             graph::present::PresentNode,
             hal::command::{ClearDepthStencil, ClearValue},
         },
         types::DefaultBackend,
-        Factory, Format, GraphBuilder, GraphCreator, Kind, SubpassBuilder, RenderGroupDesc,
+        Factory, Format, GraphBuilder, GraphCreator, Kind, RenderGroupDesc, SubpassBuilder,
     },
     ui::DrawUiDesc,
     window::{ScreenDimensions, Window},
@@ -64,6 +64,8 @@ impl GraphCreator<DefaultBackend> for RenderGraph {
         let pass = graph_builder.add_node(
             SubpassBuilder::new()
                 .with_group(DrawFlat2DDesc::new().builder())
+                .with_group(DrawFlatDesc::new().builder())
+                .with_group(DrawFlat2DTransparentDesc::new().builder())
                 .with_group(DrawUiDesc::new().builder())
                 .with_color(color)
                 .with_depth_stencil(depth)

@@ -11,6 +11,7 @@ pub struct PlayingState;
 
 impl SimpleState for PlayingState {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
+        log::info!("PlayingState started");
         let world = data.world;
         *world.write_resource::<GameState>() = GameState::Playing;
 
@@ -51,6 +52,14 @@ impl SimpleState for PlayingState {
     }
 
     fn update(&mut self, _data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
+        let ref mut world = _data.world;
+        use amethyst::{ecs::ReadStorage, core::Transform, utils::tag::{Tag, TagFinder}};
+        use crate::tags::Landscape;
+        world.exec(|(transforms, tag_finder): (ReadStorage<'_, Transform>, TagFinder<'_, Landscape>)| {
+            let y = tag_finder.find().unwrap();
+            let t = transforms.get(y).unwrap();
+        });
+
         Trans::None
     }
 }

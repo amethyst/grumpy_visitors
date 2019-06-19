@@ -101,7 +101,7 @@ impl<'s> System<'s> for MissilesSystem {
             transform.set_translation(Vector3::new(
                 missile_position.x,
                 missile_position.y,
-                0.0.into(),
+                transform.translation().z,
             ));
         }
     }

@@ -1,10 +1,10 @@
 use amethyst::{
     core::{
         math::{convert, Matrix4, Point2, Point3},
-        Float, Transform, Parent,
+        Float, Parent, Transform,
     },
-    ecs::{Entity, World, world::Builder},
-    renderer::{Camera, camera::Projection},
+    ecs::{world::Builder, Entity, World},
+    renderer::{camera::Projection, Camera},
     window::ScreenDimensions,
 };
 
@@ -19,36 +19,31 @@ pub fn position_from_screen(
     let screen_x = 2.0 * screen_position.x / screen_dimensions.width() - 1.0;
     let screen_y = 1.0 - 2.0 * screen_position.y / screen_dimensions.height();
     let screen_point = Point3::new(screen_x.into(), screen_y.into(), 0.0.into()).to_homogeneous();
-    let vector = camera_transform.matrix()
+    let vector = camera_transform.global_matrix()
         * convert::<_, Matrix4<Float>>(
             camera
-                .projection()
                 .as_matrix()
                 .try_inverse()
                 .expect("Camera projection matrix is not invertible"),
         )
         * screen_point;
     Point3::from_homogeneous(vector).expect("Vector is not homogeneous")
-    //    Point3::new(0.0, 0.0, 0.0)
 }
 
 pub fn initialise_camera(world: &mut World, player: Entity) {
-    let transform = {
+    let (width, height) = {
         let screen_dimensions = world.read_resource::<ScreenDimensions>();
+        (screen_dimensions.width(), screen_dimensions.height())
+    };
+    let transform = {
         let mut transform = Transform::default();
-        transform.set_translation(Vector3::new(
-            (-screen_dimensions.width() / 2.0).into(),
-            (-screen_dimensions.height() / 2.0).into(),
-            1.0.into(),
-        ));
+        transform.set_translation_z(Float::from(100.0));
         transform
     };
 
     world
         .create_entity()
-        .with(Camera::from(Projection::orthographic(
-            0.0, 1024.0, 0.0, 768.0, -1000.0, 1000.0,
-        )))
+        .with(Camera::standard_2d(width, height))
         .with(transform)
         .with(Parent::new(player))
         .build();

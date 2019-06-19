@@ -1,7 +1,8 @@
 use amethyst::{
-    assets::{AssetStorage, Loader, PrefabLoader, ProgressCounter, RonFormat},
+    assets::{AssetStorage, Handle, Loader, PrefabLoader, ProgressCounter, RonFormat},
+    ecs::World,
     prelude::{GameData, SimpleState, SimpleTrans, StateData, Trans},
-    renderer::{ImageFormat, Texture},
+    renderer::{ImageFormat, SpriteSheet, SpriteSheetFormat, Texture},
     ui::{FontAsset, TtfFormat},
     utils::tag::Tag,
 };
@@ -13,10 +14,10 @@ use crate::{
     components::{Missile, Player, WorldPosition},
     data_resources::{GameScene, MissileGraphics, MonsterDefinitions},
     factories::{create_menu_screen, create_player},
-    utils::camera::initialise_camera,
     models::{AssetsHandles, GameState, SpawnActions},
     states::PlayingState,
-    tags::UiBackground,
+    tags::*,
+    utils::camera::initialise_camera,
 };
 
 pub struct LoadingState {
@@ -33,12 +34,14 @@ impl LoadingState {
 
 impl SimpleState for LoadingState {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
+        log::info!("LoadingState started");
         let world = data.world;
 
         world.register::<WorldPosition>();
         world.register::<Missile>();
         world.register::<Player>();
         world.register::<Tag<UiBackground>>();
+        world.register::<Tag<Landscape>>();
 
         MissileGraphics::register(world);
         MonsterDefinitions::register(world);
@@ -46,17 +49,11 @@ impl SimpleState for LoadingState {
         world.add_resource(GameScene::default());
         world.add_resource(GameState::Loading);
 
-        let (landscape_handle, ui_font_handle) = {
+        let ui_font_handle = {
             let loader = world.read_resource::<Loader>();
             let texture_storage = world.read_resource::<AssetStorage<Texture>>();
             let font_storage = world.read_resource::<AssetStorage<FontAsset>>();
 
-            let landscape_handle = loader.load(
-                "resources/levels/desert.png",
-                ImageFormat::default(),
-                &mut self.progress_counter,
-                &texture_storage,
-            );
             let font_handle = loader.load(
                 "resources/PT_Sans-Web-Regular.ttf",
                 TtfFormat,
@@ -64,8 +61,14 @@ impl SimpleState for LoadingState {
                 &font_storage,
             );
 
-            (landscape_handle, font_handle)
+            font_handle
         };
+
+        let landscape_handle = load_sprite_sheet(
+            world,
+            "resources/levels/desert.png",
+            "resources/levels/desert.ron",
+        );
 
         let hero_prefab_handle = world.exec(
             |prefab_loader: PrefabLoader<'_, GameSpriteAnimationPrefab>| {
@@ -97,4 +100,20 @@ impl SimpleState for LoadingState {
             Trans::None
         }
     }
+}
+
+fn load_sprite_sheet(world: &mut World, png_path: &str, ron_path: &str) -> Handle<SpriteSheet> {
+    let texture_handle = {
+        let loader = world.read_resource::<Loader>();
+        let texture_storage = world.read_resource::<AssetStorage<Texture>>();
+        loader.load(png_path, ImageFormat::default(), (), &texture_storage)
+    };
+    let loader = world.read_resource::<Loader>();
+    let sprite_sheet_store = world.read_resource::<AssetStorage<SpriteSheet>>();
+    loader.load(
+        ron_path,
+        SpriteSheetFormat(texture_handle),
+        (),
+        &sprite_sheet_store,
+    )
 }

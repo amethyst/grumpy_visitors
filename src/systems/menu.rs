@@ -33,7 +33,7 @@ impl<'s> System<'s> for MenuSystem {
             ui_background_tags,
             mut ui_texts,
             mut hidden_propagates,
-            mut materials,
+            mut _materials,
         ): Self::SystemData,
     ) {
         let ui_loading = ui_finder.find("ui_loading").unwrap();
