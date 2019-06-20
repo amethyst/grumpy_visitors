@@ -53,12 +53,18 @@ impl SimpleState for PlayingState {
 
     fn update(&mut self, _data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
         let ref mut world = _data.world;
-        use amethyst::{ecs::ReadStorage, core::Transform, utils::tag::{Tag, TagFinder}};
         use crate::tags::Landscape;
-        world.exec(|(transforms, tag_finder): (ReadStorage<'_, Transform>, TagFinder<'_, Landscape>)| {
-            let y = tag_finder.find().unwrap();
-            let t = transforms.get(y).unwrap();
-        });
+        use amethyst::{
+            core::Transform,
+            ecs::ReadStorage,
+            utils::tag::{Tag, TagFinder},
+        };
+        world.exec(
+            |(transforms, tag_finder): (ReadStorage<'_, Transform>, TagFinder<'_, Landscape>)| {
+                let y = tag_finder.find().unwrap();
+                let t = transforms.get(y).unwrap();
+            },
+        );
 
         Trans::None
     }

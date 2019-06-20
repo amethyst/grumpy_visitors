@@ -9,7 +9,7 @@ use amethyst::{
             mesh::{MeshBuilder, Position, TexCoord},
             texture::palette::load_from_linear_rgba,
         },
-        Material, MaterialDefaults, Mesh, SpriteSheet, Texture, Transparent, SpriteRender,
+        Material, MaterialDefaults, Mesh, SpriteRender, SpriteSheet, Texture, Transparent,
     },
     ui::{Anchor, FontHandle, UiText, UiTransform},
     utils::tag::Tag,

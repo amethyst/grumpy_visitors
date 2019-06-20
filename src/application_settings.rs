@@ -72,7 +72,7 @@ impl ApplicationSettings {
     }
 
     pub fn save_fullscreen(&mut self, fullscreen: bool) -> amethyst::Result<()> {
-//        self.display.fullscreen = fullscreen;
+        //        self.display.fullscreen = fullscreen;
         self.save_display()
     }
 

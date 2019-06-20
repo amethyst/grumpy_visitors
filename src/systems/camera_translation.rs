@@ -40,57 +40,39 @@ impl<'s> System<'s> for CameraTranslationSystem {
             return;
         }
         let (camera, camera_parent, camera_id) = components.unwrap();
-        let mut relaxed_camera_transform = transforms.get(camera_parent.entity).unwrap().clone();
-//        dbg!(relaxed_camera_transform.translation());
-        relaxed_camera_transform.set_translation(
-            relaxed_camera_transform.translation()
-                - Vector3::new(
-                    Float::from_f32(screen_dimensions.width() / 2.0),
-                    Float::from_f32(screen_dimensions.height() / 2.0),
-                    Float::from_f32(0.0),
-                ) / Float::from_f64(screen_dimensions.hidpi_factor()),
-        );
-//        dbg!(relaxed_camera_transform.translation());
+        let relaxed_camera_transform = transforms.get(camera_parent.entity).unwrap().clone();
 
-        let screen_left_bottom = camera::position_from_screen(
+        let screen_left_bottom = camera::screen_to_world_from_global_matrix(
             &camera,
             Point2::new(0.0, screen_dimensions.height()),
-            &relaxed_camera_transform,
+            &relaxed_camera_transform.matrix(),
             &screen_dimensions,
         );
-//        dbg!(&screen_left_bottom);
         let screen_left_bottom = Vector2::new(screen_left_bottom.x, screen_left_bottom.y);
-        let screen_right_top = camera::position_from_screen(
+        let screen_right_top = camera::screen_to_world_from_global_matrix(
             &camera,
             Point2::new(screen_dimensions.width(), 0.0),
-            &relaxed_camera_transform,
+            &relaxed_camera_transform.matrix(),
             &screen_dimensions,
         );
         let screen_right_top = Vector2::new(screen_right_top.x, screen_right_top.y);
-//        dbg!(&screen_right_top);
 
         let left_bottom_distance = -screen_left_bottom - game_scene.half_size();
         let right_top_distance = screen_right_top - game_scene.half_size();
 
-        let camera_translation = -Vector2::new(
-            screen_dimensions.width() / 2.0,
-            screen_dimensions.height() / 2.0,
-        ) / screen_dimensions.hidpi_factor() as f32
-            + Vector2::new(
-                num::Float::max(0.0, left_bottom_distance.x.as_f32()),
-                num::Float::max(0.0, left_bottom_distance.y.as_f32()),
-            )
-            - Vector2::new(
-                num::Float::max(0.0, right_top_distance.x.as_f32()),
-                num::Float::max(0.0, right_top_distance.y.as_f32()),
-            );
-//        dbg!(camera_translation);
+        let camera_translation = Vector2::new(
+            num::Float::max(0.0, left_bottom_distance.x.as_f32()),
+            num::Float::max(0.0, left_bottom_distance.y.as_f32()),
+        ) - Vector2::new(
+            num::Float::max(0.0, right_top_distance.x.as_f32()),
+            num::Float::max(0.0, right_top_distance.y.as_f32()),
+        );
 
         let mut camera_transform = transforms.get_mut(camera_id).unwrap();
-//        camera_transform.set_translation(Vector3::new(
-//            camera_translation.x,
-//            camera_translation.y,
-//            camera_transform.translation().z.as_f32(),
-//        ));
+        camera_transform.set_translation(Vector3::new(
+            camera_translation.x,
+            camera_translation.y,
+            camera_transform.translation().z.as_f32(),
+        ));
     }
 }

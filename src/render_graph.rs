@@ -1,7 +1,7 @@
 use amethyst::{
     ecs::{ReadExpect, Resources, SystemData},
     renderer::{
-        pass::{DrawFlat2DDesc, DrawFlatDesc, DrawFlat2DTransparentDesc},
+        pass::{DrawFlat2DDesc, DrawFlat2DTransparentDesc, DrawFlatDesc},
         rendy::{
             graph::present::PresentNode,
             hal::command::{ClearDepthStencil, ClearValue},
@@ -52,7 +52,7 @@ impl GraphCreator<DefaultBackend> for RenderGraph {
             window_kind,
             1,
             surface_format,
-            Some(ClearValue::Color([1.0, 1.0, 1.0, 1.0].into())),
+            Some(ClearValue::Color([0.0, 0.0, 0.0, 1.0].into())),
         );
         let depth = graph_builder.create_image(
             window_kind,

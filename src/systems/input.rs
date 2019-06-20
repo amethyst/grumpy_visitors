@@ -75,7 +75,7 @@ impl<'s> System<'s> for InputSystem {
         }
         let (camera, camera_transform) = components.unwrap();
 
-        let position = camera::position_from_screen(
+        let position = camera::screen_to_world(
             &camera,
             Point2::new(mouse_x as f32, mouse_y as f32),
             camera_transform,
@@ -87,11 +87,8 @@ impl<'s> System<'s> for InputSystem {
             Vector2::new(position.x.into(), position.y.into()) - player_position.position;
 
         if input.mouse_button_is_down(MouseButton::Left) {
-            dbg!((mouse_x, mouse_y));
             let screen_x = 2.0 * mouse_x as f32 / screen_dimensions.width() - 1.0;
             let screen_y = 1.0 - 2.0 * mouse_y as f32 / screen_dimensions.height();
-            dbg!((screen_x, screen_y));
-            dbg!(position);
             let now = Instant::now();
             if now.duration_since(self.last_spawned) > SPAWN_COOLDOWN {
                 create_missile(
