@@ -24,9 +24,9 @@ pub struct RenderGraph {
 impl GraphCreator<DefaultBackend> for RenderGraph {
     fn rebuild(&mut self, res: &Resources) -> bool {
         let new_dimensions = res.try_fetch::<ScreenDimensions>();
-        if self.dimensions.as_ref() != new_dimensions.as_ref().map(|d| d.deref()) {
+        if self.dimensions.as_ref() != new_dimensions.as_ref().map(std::ops::Deref::deref) {
             self.dirty = true;
-            self.dimensions = new_dimensions.map(|d| d.clone());
+            self.dimensions = new_dimensions.map(|d| d.deref().clone());
             false
         } else {
             self.dirty

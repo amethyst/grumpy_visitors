@@ -2,7 +2,6 @@ use amethyst::{
     core::{
         math::{Point2, Vector2, Vector3},
         transform::{Parent, Transform},
-        Float,
     },
     ecs::{Entities, Join, ReadExpect, ReadStorage, System, WriteStorage},
     renderer::Camera,
@@ -68,7 +67,7 @@ impl<'s> System<'s> for CameraTranslationSystem {
             num::Float::max(0.0, right_top_distance.y.as_f32()),
         );
 
-        let mut camera_transform = transforms.get_mut(camera_id).unwrap();
+        let camera_transform = transforms.get_mut(camera_id).unwrap();
         camera_transform.set_translation(Vector3::new(
             camera_translation.x,
             camera_translation.y,

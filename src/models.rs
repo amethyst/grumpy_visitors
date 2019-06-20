@@ -1,7 +1,7 @@
 use amethyst::{
     assets::{Handle, Prefab},
     ecs::Entity,
-    renderer::{SpriteSheet, Texture},
+    renderer::SpriteSheet,
     ui::FontHandle,
 };
 

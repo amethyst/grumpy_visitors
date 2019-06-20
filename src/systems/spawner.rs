@@ -106,7 +106,7 @@ impl<'s> System<'s> for SpawnerSystem {
                     let monsters_to_spawn =
                         num::Float::max(d.x.as_f32().abs(), d.y.as_f32().abs()).round() as u8;
                     let spawn_distance =
-                        (side_end - side_start) / Float::from(monsters_to_spawn as f32);
+                        (side_end - side_start) / Float::from(f32::from(monsters_to_spawn));
 
                     let mut position = side_start;
                     for _ in 0..monsters_to_spawn {

@@ -4,11 +4,9 @@ use amethyst::{
         Float, Parent, Transform,
     },
     ecs::{world::Builder, Entity, World},
-    renderer::{camera::Projection, Camera},
+    renderer::Camera,
     window::ScreenDimensions,
 };
-
-use crate::Vector3;
 
 pub fn screen_to_world(
     camera: &Camera,

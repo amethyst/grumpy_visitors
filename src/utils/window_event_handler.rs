@@ -57,7 +57,7 @@ pub fn handle_window_event(world: &World, event: &StateEvent) -> Option<SimpleTr
             } => {
                 let mut cameras = world.write_storage::<Camera>();
                 let mut transforms = world.write_storage::<Transform>();
-                let (mut camera, camera_transform) =
+                let (camera, camera_transform) =
                     (&mut cameras, &mut transforms).join().next().unwrap();
                 let (screen_width, screen_height) = (size.width as f32, size.height as f32);
 

@@ -83,12 +83,9 @@ impl<'s> System<'s> for InputSystem {
         );
 
         let (mut player, player_position) = (&mut players, &world_positions).join().next().unwrap();
-        player.looking_direction =
-            Vector2::new(position.x.into(), position.y.into()) - player_position.position;
+        player.looking_direction = Vector2::new(position.x, position.y) - player_position.position;
 
         if input.mouse_button_is_down(MouseButton::Left) {
-            let screen_x = 2.0 * mouse_x as f32 / screen_dimensions.width() - 1.0;
-            let screen_y = 1.0 - 2.0 * mouse_y as f32 / screen_dimensions.height();
             let now = Instant::now();
             if now.duration_since(self.last_spawned) > SPAWN_COOLDOWN {
                 create_missile(

@@ -51,17 +51,14 @@ impl SimpleState for LoadingState {
 
         let ui_font_handle = {
             let loader = world.read_resource::<Loader>();
-            let texture_storage = world.read_resource::<AssetStorage<Texture>>();
             let font_storage = world.read_resource::<AssetStorage<FontAsset>>();
 
-            let font_handle = loader.load(
+            loader.load(
                 "resources/PT_Sans-Web-Regular.ttf",
                 TtfFormat,
                 &mut self.progress_counter,
                 &font_storage,
-            );
-
-            font_handle
+            )
         };
 
         let landscape_handle = load_sprite_sheet(
