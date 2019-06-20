@@ -1,5 +1,4 @@
 use amethyst::{
-    core::{math::Vector3, transform::Transform},
     ecs::{Join, World},
     input::is_close_requested,
     prelude::{SimpleTrans, StateEvent, Trans},
@@ -57,23 +56,16 @@ pub fn handle_window_event(world: &World, event: &StateEvent) -> Option<SimpleTr
                 ..
             } => {
                 let mut cameras = world.write_storage::<Camera>();
-                let mut transforms = world.write_storage::<Transform>();
-                let (camera, camera_transform) =
-                    (&mut cameras, &mut transforms).join().next().unwrap();
+                let camera = (&mut cameras).join().next().unwrap();
                 let (screen_width, screen_height) = (size.width as f32, size.height as f32);
 
                 camera.set_projection(Projection::orthographic(
-                    0.0,
-                    screen_width,
-                    0.0,
-                    screen_height,
+                    -screen_width / 2.0,
+                    screen_width / 2.0,
+                    -screen_height / 2.0,
+                    screen_height / 2.0,
                     0.1,
                     2000.0,
-                ));
-                camera_transform.set_translation(Vector3::new(
-                    -screen_width / 2.0,
-                    -screen_height / 2.0,
-                    1.0,
                 ));
             }
 
