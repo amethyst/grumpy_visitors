@@ -4,7 +4,7 @@ use amethyst::{
     input::is_close_requested,
     prelude::{SimpleTrans, StateEvent, Trans},
     renderer::{camera::Projection, Camera},
-    window::ScreenDimensions,
+    window::{MonitorIdent, ScreenDimensions, Window},
 };
 use winit::{ElementState, VirtualKeyCode};
 
@@ -25,20 +25,21 @@ pub fn handle_window_event(world: &World, event: &StateEvent) -> Option<SimpleTr
                 ..
             } if input.state == ElementState::Released => match input.virtual_keycode {
                 Some(VirtualKeyCode::F11) => {
-                    //                    let mut window_messages = world.write_resource::<WindowMessages>();
-                    //                    let is_fullscreen = display.fullscreen;
-                    //                    application_settings
-                    //                        .save_fullscreen(!is_fullscreen)
-                    //                        .expect("Failed to save settings");
-                    //
-                    //                    window_messages.send_command(move |window| {
-                    //                        let monitor_id = if is_fullscreen {
-                    //                            None
-                    //                        } else {
-                    //                            window.get_available_monitors().next()
-                    //                        };
-                    //                        window.set_fullscreen(monitor_id);
-                    //                    });
+                    let window = world.write_resource::<Window>();
+
+                    let monitor_id = if display.fullscreen.is_some() {
+                        None
+                    } else {
+                        Some(window.get_current_monitor())
+                    };
+
+                    let fullscreen_monitor_ident = monitor_id
+                        .clone()
+                        .and_then(|id| MonitorIdent::from_monitor_id(&*window, id));
+                    application_settings
+                        .save_fullscreen(fullscreen_monitor_ident)
+                        .expect("Failed to save settings");
+                    window.set_fullscreen(monitor_id);
                 }
                 Some(VirtualKeyCode::F10) => {
                     let screen_dimensions = world.read_resource::<ScreenDimensions>();

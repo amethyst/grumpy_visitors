@@ -1,7 +1,7 @@
 use amethyst::{
     config::Config,
     input::{Bindings, StringBindings},
-    window::DisplayConfig,
+    window::{DisplayConfig, MonitorIdent},
 };
 use directories::ProjectDirs;
 use ron::ser::PrettyConfig;
@@ -71,8 +71,8 @@ impl ApplicationSettings {
         self.save_display()
     }
 
-    pub fn save_fullscreen(&mut self, fullscreen: bool) -> amethyst::Result<()> {
-        //        self.display.fullscreen = fullscreen;
+    pub fn save_fullscreen(&mut self, fullscreen: Option<MonitorIdent>) -> amethyst::Result<()> {
+        self.display.fullscreen = fullscreen;
         self.save_display()
     }
 
