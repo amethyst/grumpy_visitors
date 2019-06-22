@@ -1,6 +1,6 @@
 use amethyst::{
     assets::Handle,
-    core::{math::Point2, Transform},
+    core::{math::Point2, Time, Transform},
     ecs::{Entities, Join, ReadExpect, ReadStorage, System, WriteStorage},
     input::{InputHandler, StringBindings},
     renderer::{Camera, Material, Mesh},
@@ -8,18 +8,19 @@ use amethyst::{
 };
 use winit::MouseButton;
 
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use crate::{
     components::{Missile, Player, WorldPosition},
     data_resources::MissileGraphics,
     factories::create_missile,
+    models::GameState,
     utils::camera,
     Vector2,
 };
 
 pub struct InputSystem {
-    last_spawned: Instant,
+    last_spawned: Duration,
 }
 
 const SPAWN_COOLDOWN: Duration = Duration::from_millis(500);
@@ -27,7 +28,7 @@ const SPAWN_COOLDOWN: Duration = Duration::from_millis(500);
 impl InputSystem {
     pub fn new() -> Self {
         Self {
-            last_spawned: Instant::now() - SPAWN_COOLDOWN,
+            last_spawned: Duration::new(0, 0),
         }
     }
 }
@@ -36,7 +37,9 @@ impl<'s> System<'s> for InputSystem {
     type SystemData = (
         ReadExpect<'s, InputHandler<StringBindings>>,
         ReadExpect<'s, ScreenDimensions>,
+        ReadExpect<'s, Time>,
         Entities<'s>,
+        ReadExpect<'s, GameState>,
         ReadExpect<'s, MissileGraphics>,
         WriteStorage<'s, Transform>,
         WriteStorage<'s, Handle<Mesh>>,
@@ -52,7 +55,9 @@ impl<'s> System<'s> for InputSystem {
         (
             input,
             screen_dimensions,
+            time,
             entities,
+            game_state,
             missile_graphics,
             mut transforms,
             mut meshes,
@@ -82,15 +87,20 @@ impl<'s> System<'s> for InputSystem {
             &screen_dimensions,
         );
 
+        if let GameState::Playing = *game_state {
+        } else {
+            return;
+        }
+
         let (mut player, player_position) = (&mut players, &world_positions).join().next().unwrap();
-        player.looking_direction = Vector2::new(position.x, position.y) - player_position.position;
+        player.looking_direction = Vector2::new(position.x, position.y) - **player_position;
 
         if input.mouse_button_is_down(MouseButton::Left) {
-            let now = Instant::now();
-            if now.duration_since(self.last_spawned) > SPAWN_COOLDOWN {
+            let now = time.absolute_time();
+            if now - self.last_spawned > SPAWN_COOLDOWN {
                 create_missile(
                     Vector2::new(position.x, position.y),
-                    player_position.position,
+                    **player_position,
                     now,
                     entities.build_entity(),
                     missile_graphics.0.clone(),

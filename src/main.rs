@@ -78,19 +78,24 @@ fn main() -> amethyst::Result<()> {
             &["mouse_system", "player_movement_system"],
         )
         .with(
+            WorldPositionTransformSystem,
+            "world_position_transform_system",
+            &["missiles_system", "player_movement_system", "monster_movement_system"],
+        )
+        .with(
             CameraTranslationSystem,
             "camera_translation_system",
-            &["player_movement_system"],
+            &["world_position_transform_system"],
         )
         .with(
             AnimationSystem,
             "animation_system",
-            &["player_movement_system", "monster_movement_system"],
+            &["world_position_transform_system"],
         )
         .with(MenuSystem, "menu_system", &[])
         .with_bundle(
             TransformBundle::new()
-                .with_dep(&["camera_translation_system", "monster_movement_system"]),
+                .with_dep(&["camera_translation_system"]),
         )?
         .with(
             HideHierarchySystem::default(),

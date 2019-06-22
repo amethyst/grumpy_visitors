@@ -1,17 +1,14 @@
 use amethyst::{
     core::{
         math::{clamp, Rotation2},
-        Float, Time, Transform,
+        Float, Time,
     },
     ecs::{Entities, Join, Read, ReadStorage, System, WriteStorage},
 };
 
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-use crate::{
-    components::{Missile, Player, WorldPosition},
-    Vector3,
-};
+use crate::components::{Missile, Player, WorldPosition};
 
 pub struct MissilesSystem;
 
@@ -31,16 +28,15 @@ impl<'s> System<'s> for MissilesSystem {
         Read<'s, Time>,
         Entities<'s>,
         WriteStorage<'s, Missile>,
-        WriteStorage<'s, Transform>,
         WriteStorage<'s, WorldPosition>,
         ReadStorage<'s, Player>,
     );
 
     fn run(
         &mut self,
-        (time, entities, mut missiles, mut transforms, mut world_positions, players): Self::SystemData,
+        (time, entities, mut missiles, mut world_positions, players): Self::SystemData,
     ) {
-        let now = Instant::now();
+        let now = time.absolute_time();
 
         let components = (&players, &world_positions).join().next();
         if components.is_none() {
@@ -53,22 +49,17 @@ impl<'s> System<'s> for MissilesSystem {
             radius: player_radius,
             ..
         } = player;
-        let player_position = player_position.position;
+        let player_position = **player_position;
 
-        for (entity, mut missile, transform, missile_position) in (
-            &entities,
-            &mut missiles,
-            &mut transforms,
-            &mut world_positions,
-        )
-            .join()
+        for (entity, mut missile, missile_position) in
+            (&entities, &mut missiles, &mut world_positions).join()
         {
             if now > missile.time_spawned + Duration::from_secs(MISSILE_LIFESPAN_SECS) {
                 entities.delete(entity).unwrap();
                 continue;
             }
 
-            let missile_position = &mut missile_position.position;
+            let missile_position = &mut **missile_position;
             if (*missile_position - player_position).norm_squared()
                 < (player_radius * player_radius).into()
             {
@@ -98,11 +89,6 @@ impl<'s> System<'s> for MissilesSystem {
             missile.velocity = new_direction * speed;
 
             *missile_position += missile.velocity * Float::from_f32(time.delta_real_seconds());
-            transform.set_translation(Vector3::new(
-                missile_position.x,
-                missile_position.y,
-                transform.translation().z,
-            ));
         }
     }
 }
