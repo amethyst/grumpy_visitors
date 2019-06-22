@@ -20,6 +20,7 @@ num = "0.2.0"
 rand = "0.6.5"
 ron = "0.5.1"
 winit = "0.19"
+shrinkwraprs = "0.2.1"
 
 [dependencies.animation_prefabs]
 path = "libs/animation_prefabs"

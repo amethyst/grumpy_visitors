@@ -46,7 +46,7 @@ impl<'s> System<'s> for MonsterActionSystem {
                 MonsterActionType::Idle => {
                     if let Some((entity, _player_position)) = find_player_in_radius(
                         (&entities, &players, &world_positions).join(),
-                        monster_position.position,
+                        **monster_position,
                         200.0,
                     ) {
                         Some(MonsterActionType::Chase(entity))
@@ -76,11 +76,11 @@ impl<'s> System<'s> for MonsterActionSystem {
                 MonsterActionType::Move(destination) => {
                     if let Some((entity, _player_position)) = find_player_in_radius(
                         (&entities, &players, &world_positions).join(),
-                        monster_position.position,
+                        **monster_position,
                         200.0,
                     ) {
                         Some(MonsterActionType::Chase(entity))
-                    } else if (monster_position.position - destination).norm_squared() < 0.01.into()
+                    } else if (**monster_position - destination).norm_squared() < 0.01.into()
                     {
                         Some(MonsterActionType::Idle)
                     } else {
@@ -94,17 +94,17 @@ impl<'s> System<'s> for MonsterActionSystem {
                 match new_action_type {
                     MonsterActionType::Move(position) => Some(*position),
                     MonsterActionType::Chase(entity) => {
-                        Some(world_positions.get(*entity).unwrap().position)
+                        Some(**world_positions.get(*entity).unwrap())
                     }
                     MonsterActionType::Attack(AttackAction { target, .. }) => {
-                        Some(world_positions.get(*target).unwrap().position)
+                        Some(**world_positions.get(*target).unwrap())
                     }
                     _ => None,
                 }
             } else {
                 match monster.action.action_type {
                     MonsterActionType::Chase(entity) => {
-                        Some(world_positions.get(entity).unwrap().position)
+                        Some(**world_positions.get(entity).unwrap())
                     }
                     _ => None,
                 }
@@ -132,7 +132,7 @@ fn find_player_in_radius<'a>(
     let radius_squared = radius * radius;
     players
         .find(|(_, _, player_position)| {
-            (position - player_position.position).norm_squared() < radius_squared.into()
+            (position - ***player_position).norm_squared() < radius_squared.into()
         })
         .map(|(entity, _, player_position)| (entity, player_position))
 }

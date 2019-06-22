@@ -30,7 +30,7 @@ impl<'s> System<'s> for MonsterMovementSystem {
         {
             let monster_definition = monster_definitions.0.get(&monster.name).unwrap();
 
-            let monster_position = &mut world_position.position;
+            let monster_position = &mut **world_position;
             let monster_speed = monster_definition.base_speed;
             let time = time.delta_real_seconds();
             let travel_distance_squared = monster_speed * monster_speed * time * time;
@@ -45,8 +45,8 @@ impl<'s> System<'s> for MonsterMovementSystem {
             };
 
             transform.set_translation(Vector3::new(
-                world_position.position.x,
-                world_position.position.y,
+                world_position.x,
+                world_position.y,
                 transform.translation().z,
             ));
         }

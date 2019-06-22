@@ -1,10 +1,14 @@
 use amethyst::ecs::prelude::{Component, DenseVecStorage, VecStorage};
+use shrinkwraprs::Shrinkwrap;
 
 use std::time::Instant;
 
 use crate::{models::MonsterAction, Vector2};
 
+#[derive(Shrinkwrap)]
+#[shrinkwrap(mutable)]
 pub struct WorldPosition {
+    #[shrinkwrap(main_field)]
     pub position: Vector2,
 }
 

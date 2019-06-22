@@ -42,7 +42,7 @@ impl<'s> System<'s> for PlayerMovementSystem {
                     Vector2::new(Float::from(x), Float::from(y)).normalize() * PLAYER_SPEED;
                 player.walking_direction = player.velocity;
 
-                let world_position = &mut world_position.position;
+                let world_position = &mut **world_position;
                 *world_position += player.velocity * Float::from(time.delta_real_seconds());
 
                 let scene_half_size_x = game_scene.dimensions.x / 2.0.into();

@@ -53,7 +53,7 @@ impl<'s> System<'s> for MissilesSystem {
             radius: player_radius,
             ..
         } = player;
-        let player_position = player_position.position;
+        let player_position = **player_position;
 
         for (entity, mut missile, transform, missile_position) in (
             &entities,
@@ -68,7 +68,7 @@ impl<'s> System<'s> for MissilesSystem {
                 continue;
             }
 
-            let missile_position = &mut missile_position.position;
+            let missile_position = &mut **missile_position;
             if (*missile_position - player_position).norm_squared()
                 < (player_radius * player_radius).into()
             {
