@@ -14,6 +14,7 @@ use crate::{
     components::{Missile, Player, WorldPosition},
     data_resources::MissileGraphics,
     factories::create_missile,
+    models::GameState,
     utils::camera,
     Vector2,
 };
@@ -37,6 +38,7 @@ impl<'s> System<'s> for InputSystem {
         ReadExpect<'s, InputHandler<StringBindings>>,
         ReadExpect<'s, ScreenDimensions>,
         Entities<'s>,
+        ReadExpect<'s, GameState>,
         ReadExpect<'s, MissileGraphics>,
         WriteStorage<'s, Transform>,
         WriteStorage<'s, Handle<Mesh>>,
@@ -53,6 +55,7 @@ impl<'s> System<'s> for InputSystem {
             input,
             screen_dimensions,
             entities,
+            game_state,
             missile_graphics,
             mut transforms,
             mut meshes,
@@ -81,6 +84,11 @@ impl<'s> System<'s> for InputSystem {
             camera_transform,
             &screen_dimensions,
         );
+
+        if let GameState::Playing = *game_state {
+        } else {
+            return;
+        }
 
         let (mut player, player_position) = (&mut players, &world_positions).join().next().unwrap();
         player.looking_direction = Vector2::new(position.x, position.y) - player_position.position;
