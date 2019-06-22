@@ -26,6 +26,7 @@ pub struct Missile {
     pub velocity: Vector2,
     pub acceleration: f32,
     pub time_spawned: Duration,
+    pub damage: f32,
 }
 
 impl Missile {
@@ -34,6 +35,7 @@ impl Missile {
             velocity: direction,
             acceleration: 10.0,
             time_spawned,
+            damage: 50.0,
         }
     }
 }
