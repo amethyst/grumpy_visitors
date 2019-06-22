@@ -56,8 +56,16 @@ impl<'s> System<'s> for MonsterActionSystem {
                             Duration::from_millis((IDLE_TIME_SEC as f32 * 1000.0).round() as u64);
                         if time_being_idle > max_idle_duration {
                             let pos = Vector2::new(
-                                rng.gen_range(-game_scene.half_size().x, game_scene.half_size().x),
-                                rng.gen_range(-game_scene.half_size().y, game_scene.half_size().y),
+                                rng.gen_range(
+                                    -game_scene.half_size().x.as_f32(),
+                                    game_scene.half_size().x.as_f32(),
+                                )
+                                .into(),
+                                rng.gen_range(
+                                    -game_scene.half_size().y.as_f32(),
+                                    game_scene.half_size().y.as_f32(),
+                                )
+                                .into(),
                             );
                             Some(MonsterActionType::Move(pos))
                         } else {
@@ -72,7 +80,8 @@ impl<'s> System<'s> for MonsterActionSystem {
                         200.0,
                     ) {
                         Some(MonsterActionType::Chase(entity))
-                    } else if (monster_position.position - destination).norm_squared() < 0.01 {
+                    } else if (monster_position.position - destination).norm_squared() < 0.01.into()
+                    {
                         Some(MonsterActionType::Idle)
                     } else {
                         None
@@ -123,7 +132,7 @@ fn find_player_in_radius<'a>(
     let radius_squared = radius * radius;
     players
         .find(|(_, _, player_position)| {
-            (position - player_position.position).norm_squared() < radius_squared
+            (position - player_position.position).norm_squared() < radius_squared.into()
         })
         .map(|(entity, _, player_position)| (entity, player_position))
 }

@@ -4,3 +4,6 @@ target
 # Generated game assets
 output
 assets_packer/input
+
+# RenderDoc
+*.cap

@@ -6,8 +6,12 @@ use amethyst::{
     assets::Prefab,
     core::{transform::Transform, Named},
     renderer::{
-        SpriteList, SpritePosition, SpriteScenePrefab, SpriteSheetPrefab, Sprites, TextureFormat,
-        TextureMetadata, TexturePrefab, Transparent,
+        formats::texture::ImageFormat,
+        sprite::{
+            prefab::{SpriteScenePrefab, SpriteSheetPrefab},
+            SpriteList, SpritePosition, Sprites,
+        },
+        TexturePrefab, Transparent,
     },
 };
 use failure;
@@ -172,6 +176,8 @@ fn construct_sprite_scene(
             width: frame.frame.w,
             height: frame.frame.h,
             offsets,
+            flip_horizontal: false,
+            flip_vertical: false,
         });
 
         let number = &filename[filename.len() - 8..filename.len() - 4];
@@ -190,8 +196,7 @@ fn construct_sprite_scene(
         sprite_sheet: SpriteSheetPrefab::Sheet {
             texture: TexturePrefab::File(
                 output_file_path.as_ref().to_str().unwrap().to_owned(),
-                TextureFormat::Png,
-                TextureMetadata::srgb(),
+                Box::new(ImageFormat::default()),
             ),
             sprites: vec![Sprites::List(SpriteList {
                 texture_width: atlas_width,
@@ -213,11 +218,11 @@ fn create_prefab(
     transform: Option<Transform>,
 ) -> GameSpriteAnimationPrefab {
     GameSpriteAnimationPrefab {
-        name: Named::new(name),
+        name_tag: Named::new(name),
         sprite_scene: SpriteScenePrefab {
             sheet: sprite_sheet,
             // TODO: fix after https://github.com/amethyst/amethyst/issues/1585.
-            render: from_str("Some((sheet: 0, sprite_number: 0))").unwrap(),
+            render: from_str("Some((sheet: Some(0), sprite_number: 0))").unwrap(),
             transform: transform.or_else(|| Some(Transform::default())),
         },
         animation_set: AnimationSetPrefab {
