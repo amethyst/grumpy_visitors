@@ -1,7 +1,7 @@
 use amethyst::{
     core::Float,
     core::Time,
-    ecs::{Join, Read, ReadExpect, System, WriteStorage},
+    ecs::{Join, ReadExpect, System, WriteStorage},
 };
 
 use crate::{
@@ -13,7 +13,7 @@ pub struct MonsterMovementSystem;
 
 impl<'s> System<'s> for MonsterMovementSystem {
     type SystemData = (
-        Read<'s, Time>,
+        ReadExpect<'s, Time>,
         ReadExpect<'s, MonsterDefinitions>,
         WriteStorage<'s, Monster>,
         WriteStorage<'s, WorldPosition>,

@@ -6,7 +6,7 @@ use amethyst::{
     ecs::{Entities, Join, Read, ReadStorage, System, WriteStorage},
 };
 
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use crate::components::{Missile, Player, WorldPosition};
 
@@ -36,7 +36,7 @@ impl<'s> System<'s> for MissilesSystem {
         &mut self,
         (time, entities, mut missiles, mut world_positions, players): Self::SystemData,
     ) {
-        let now = Instant::now();
+        let now = time.absolute_time();
 
         let components = (&players, &world_positions).join().next();
         if components.is_none() {

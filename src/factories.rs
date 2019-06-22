@@ -15,7 +15,7 @@ use amethyst::{
     utils::tag::Tag,
 };
 
-use std::time::Instant;
+use std::time::Duration;
 
 use animation_prefabs::GameSpriteAnimationPrefab;
 
@@ -30,7 +30,7 @@ use crate::{
 pub fn create_missile(
     position: Vector2,
     direction: Vector2,
-    time_spawned: Instant,
+    time_spawned: Duration,
     entity_builder: EntityResBuilder,
     missile_graphic: EntityGraphics,
     transforms: &mut WriteStorage<Transform>,

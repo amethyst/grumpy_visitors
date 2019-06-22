@@ -1,7 +1,7 @@
 use amethyst::ecs::prelude::{Component, DenseVecStorage, VecStorage};
 use shrinkwraprs::Shrinkwrap;
 
-use std::time::Instant;
+use std::time::Duration;
 
 use crate::{models::MonsterAction, Vector2};
 
@@ -25,11 +25,11 @@ impl Component for WorldPosition {
 pub struct Missile {
     pub velocity: Vector2,
     pub acceleration: f32,
-    pub time_spawned: Instant,
+    pub time_spawned: Duration,
 }
 
 impl Missile {
-    pub fn new(direction: Vector2, time_spawned: Instant) -> Self {
+    pub fn new(direction: Vector2, time_spawned: Duration) -> Self {
         Self {
             velocity: direction,
             acceleration: 10.0,

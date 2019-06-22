@@ -1,6 +1,6 @@
 use amethyst::{
     assets::Handle,
-    core::{math::Point2, Transform},
+    core::{math::Point2, Time, Transform},
     ecs::{Entities, Join, ReadExpect, ReadStorage, System, WriteStorage},
     input::{InputHandler, StringBindings},
     renderer::{Camera, Material, Mesh},
@@ -8,7 +8,7 @@ use amethyst::{
 };
 use winit::MouseButton;
 
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use crate::{
     components::{Missile, Player, WorldPosition},
@@ -20,7 +20,7 @@ use crate::{
 };
 
 pub struct InputSystem {
-    last_spawned: Instant,
+    last_spawned: Duration,
 }
 
 const SPAWN_COOLDOWN: Duration = Duration::from_millis(500);
@@ -28,7 +28,7 @@ const SPAWN_COOLDOWN: Duration = Duration::from_millis(500);
 impl InputSystem {
     pub fn new() -> Self {
         Self {
-            last_spawned: Instant::now() - SPAWN_COOLDOWN,
+            last_spawned: Duration::new(0, 0),
         }
     }
 }
@@ -37,6 +37,7 @@ impl<'s> System<'s> for InputSystem {
     type SystemData = (
         ReadExpect<'s, InputHandler<StringBindings>>,
         ReadExpect<'s, ScreenDimensions>,
+        ReadExpect<'s, Time>,
         Entities<'s>,
         ReadExpect<'s, GameState>,
         ReadExpect<'s, MissileGraphics>,
@@ -54,6 +55,7 @@ impl<'s> System<'s> for InputSystem {
         (
             input,
             screen_dimensions,
+            time,
             entities,
             game_state,
             missile_graphics,
@@ -94,8 +96,8 @@ impl<'s> System<'s> for InputSystem {
         player.looking_direction = Vector2::new(position.x, position.y) - **player_position;
 
         if input.mouse_button_is_down(MouseButton::Left) {
-            let now = Instant::now();
-            if now.duration_since(self.last_spawned) > SPAWN_COOLDOWN {
+            let now = time.absolute_time();
+            if now - self.last_spawned > SPAWN_COOLDOWN {
                 create_missile(
                     Vector2::new(position.x, position.y),
                     **player_position,
