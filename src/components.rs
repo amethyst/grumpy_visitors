@@ -3,7 +3,11 @@ use shrinkwraprs::Shrinkwrap;
 
 use std::time::Duration;
 
-use crate::{models::MonsterAction, Vector2};
+use crate::{
+    models::mob_actions::MobAction,
+    models::{common::MissileTarget, player_actions::*},
+    Vector2, ZeroVector,
+};
 
 #[derive(Shrinkwrap)]
 #[shrinkwrap(mutable)]
@@ -23,6 +27,7 @@ impl Component for WorldPosition {
 }
 
 pub struct Missile {
+    pub target: MissileTarget,
     pub velocity: Vector2,
     pub acceleration: f32,
     pub time_spawned: Duration,
@@ -30,8 +35,9 @@ pub struct Missile {
 }
 
 impl Missile {
-    pub fn new(direction: Vector2, time_spawned: Duration) -> Self {
+    pub fn new(target: MissileTarget, direction: Vector2, time_spawned: Duration) -> Self {
         Self {
+            target,
             velocity: direction,
             acceleration: 10.0,
             time_spawned,
@@ -54,7 +60,7 @@ pub struct Player {
 impl Player {
     pub fn new() -> Self {
         Self {
-            velocity: Vector2::new(0.0.into(), 0.0.into()),
+            velocity: Vector2::zero(),
             walking_direction: Vector2::new(0.0.into(), 1.0.into()),
             looking_direction: Vector2::new(0.0.into(), 1.0.into()),
             radius: 20.0,
@@ -66,11 +72,35 @@ impl Component for Player {
     type Storage = DenseVecStorage<Self>;
 }
 
+pub struct PlayerActions {
+    pub walk_actions: Vec<PlayerWalkAction>,
+    pub look_actions: Vec<PlayerLookAction>,
+    pub cast_actions: Vec<PlayerCastAction>,
+    pub last_spell_cast: Duration,
+}
+
+impl PlayerActions {
+    pub fn new() -> Self {
+        Self {
+            walk_actions: Vec::new(),
+            look_actions: Vec::new(),
+            cast_actions: Vec::new(),
+            last_spell_cast: Duration::new(0, 0),
+        }
+    }
+}
+
+impl Component for PlayerActions {
+    type Storage = DenseVecStorage<Self>;
+}
+
 pub struct Monster {
     pub health: f32,
     pub destination: Vector2,
+    pub velocity: Vector2,
+    pub action: MobAction,
     pub name: String,
-    pub action: MonsterAction,
+    pub radius: f32,
 }
 
 impl Component for Monster {

@@ -2,7 +2,10 @@ use amethyst::prelude::{GameData, SimpleState, SimpleTrans, StateData, StateEven
 
 use crate::{
     factories::{create_debug_scene_border, create_landscape},
-    models::{AssetsHandles, Count, GameState, SpawnAction, SpawnActions, SpawnType},
+    models::{
+        common::{AssetsHandles, GameState},
+        monster_spawn::{Count, SpawnAction, SpawnActions, SpawnType},
+    },
     utils,
 };
 

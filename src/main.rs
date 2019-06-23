@@ -11,10 +11,12 @@ mod systems;
 mod tags;
 mod utils;
 
+pub use crate::utils::math::{Vector2, Vector3, ZeroVector};
+
 use amethyst::{
     animation::AnimationBundle,
     assets::{PrefabLoaderSystem, Processor},
-    core::{transform::TransformBundle, Float, HideHierarchySystem},
+    core::{transform::TransformBundle, HideHierarchySystem},
     input::{InputBundle, StringBindings},
     prelude::{Application, GameDataBuilder},
     renderer::{
@@ -32,9 +34,6 @@ use crate::{
     application_settings::ApplicationSettings, render_graph::RenderGraph, states::LoadingState,
     systems::*, utils::animation,
 };
-
-type Vector2 = amethyst::core::math::Vector2<Float>;
-type Vector3 = amethyst::core::math::Vector3<Float>;
 
 fn main() -> amethyst::Result<()> {
     Logger::from_config(Default::default())
@@ -73,14 +72,23 @@ fn main() -> amethyst::Result<()> {
             &["monster_action_system"],
         )
         .with(
-            MissilesSystem,
-            "missiles_system",
-            &["mouse_system", "player_movement_system"],
+            MissileSpawnerSystem,
+            "missile_spawner_system",
+            &["input_system"],
+        )
+        .with(
+            MissileSystem,
+            "missile_system",
+            &["missile_spawner_system", "player_movement_system"],
         )
         .with(
             WorldPositionTransformSystem,
             "world_position_transform_system",
-            &["missiles_system", "player_movement_system", "monster_movement_system"],
+            &[
+                "missile_system",
+                "player_movement_system",
+                "monster_movement_system",
+            ],
         )
         .with(
             CameraTranslationSystem,
@@ -93,10 +101,7 @@ fn main() -> amethyst::Result<()> {
             &["world_position_transform_system"],
         )
         .with(MenuSystem, "menu_system", &[])
-        .with_bundle(
-            TransformBundle::new()
-                .with_dep(&["camera_translation_system"]),
-        )?
+        .with_bundle(TransformBundle::new().with_dep(&["camera_translation_system"]))?
         .with(
             HideHierarchySystem::default(),
             "",

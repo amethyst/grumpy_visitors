@@ -9,7 +9,7 @@ use std::collections::HashMap;
 
 use crate::{
     factories::{create_color_material, create_mesh, generate_circle_vertices},
-    models::MonsterDefinition,
+    models::common::MonsterDefinition,
     Vector2,
 };
 
@@ -41,7 +41,7 @@ impl MonsterDefinitions {
             MonsterDefinition {
                 name: "Ghoul".to_owned(),
                 base_health: 100.0,
-                base_speed: 400.0,
+                base_speed: 180.0,
                 base_attack: 20.0,
                 graphics: {
                     let color = LinSrgba::new(0.3, 0.3, 0.3, 1.0);
@@ -50,6 +50,7 @@ impl MonsterDefinitions {
                     let mesh = create_mesh(world, positions, tex_coords);
                     EntityGraphics { material, mesh }
                 },
+                radius: 12.0,
             },
         );
         world.add_resource(Self(map))

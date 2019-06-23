@@ -7,7 +7,7 @@ use amethyst::{
     utils::tag::{Tag, TagFinder},
 };
 
-use crate::{models::GameState, tags::UiBackground};
+use crate::{models::common::GameState, tags::UiBackground};
 
 pub struct MenuSystem;
 

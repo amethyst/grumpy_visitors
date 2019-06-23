@@ -14,7 +14,10 @@ use crate::{
     components::{Missile, Player, WorldPosition},
     data_resources::{GameScene, MissileGraphics, MonsterDefinitions},
     factories::{create_menu_screen, create_player},
-    models::{AssetsHandles, GameState, SpawnActions},
+    models::{
+        common::{AssetsHandles, GameState},
+        monster_spawn::SpawnActions,
+    },
     states::PlayingState,
     tags::*,
     utils::camera::initialise_camera,

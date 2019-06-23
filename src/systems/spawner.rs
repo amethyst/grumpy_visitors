@@ -10,12 +10,15 @@ use rand::{
     Rng,
 };
 
-use crate::models::{MonsterAction, MonsterActionType};
 use crate::{
     components::{Monster, WorldPosition},
     data_resources::{GameScene, MonsterDefinitions},
     factories::create_monster,
-    models::{MonsterDefinition, SpawnActions, SpawnType},
+    models::{
+        common::MonsterDefinition,
+        mob_actions::{MobAction, MobActionType},
+        monster_spawn::{SpawnActions, SpawnType},
+    },
     Vector2,
 };
 
@@ -60,7 +63,7 @@ impl<'s> System<'s> for SpawnerSystem {
 
             let mut spawn_monster =
                 |position: Vector2,
-                 spawn_action: MonsterAction,
+                 spawn_action: MobAction,
                  monster_definition: &MonsterDefinition| {
                     create_monster(
                         position,
@@ -95,7 +98,7 @@ impl<'s> System<'s> for SpawnerSystem {
                             },
                         );
                         let position = side_start + random_displacement;
-                        spawn_monster(position, MonsterAction::idle(time.absolute_time()), ghoul);
+                        spawn_monster(position, MobAction::idle(time.absolute_time()), ghoul);
                     }
                 }
                 SpawnType::Borderline => {
@@ -110,9 +113,9 @@ impl<'s> System<'s> for SpawnerSystem {
 
                     let mut position = side_start;
                     for _ in 0..monsters_to_spawn {
-                        let action = MonsterAction {
+                        let action = MobAction {
                             started_at: time.absolute_time(),
-                            action_type: MonsterActionType::Move(position + destination),
+                            action_type: MobActionType::Move(position + destination),
                         };
                         spawn_monster(position, action, ghoul);
                         position += spawn_distance;

@@ -1,35 +1,25 @@
 use amethyst::{
-    assets::Handle,
-    core::{math::Point2, Time, Transform},
-    ecs::{Entities, Join, ReadExpect, ReadStorage, System, WriteStorage},
+    core::{math::Point2, Float, Transform},
+    ecs::{Join, ReadExpect, ReadStorage, System, WriteStorage},
     input::{InputHandler, StringBindings},
-    renderer::{Camera, Material, Mesh},
+    renderer::Camera,
     window::ScreenDimensions,
 };
 use winit::MouseButton;
 
-use std::time::Duration;
-
+use crate::models::player_actions::{PlayerCastAction, PlayerLookAction, PlayerWalkAction};
 use crate::{
-    components::{Missile, Player, WorldPosition},
-    data_resources::MissileGraphics,
-    factories::create_missile,
-    models::GameState,
+    components::{PlayerActions, WorldPosition},
+    models::common::GameState,
     utils::camera,
     Vector2,
 };
 
-pub struct InputSystem {
-    last_spawned: Duration,
-}
-
-const SPAWN_COOLDOWN: Duration = Duration::from_millis(500);
+pub struct InputSystem;
 
 impl InputSystem {
     pub fn new() -> Self {
-        Self {
-            last_spawned: Duration::new(0, 0),
-        }
+        Self
     }
 }
 
@@ -37,17 +27,11 @@ impl<'s> System<'s> for InputSystem {
     type SystemData = (
         ReadExpect<'s, InputHandler<StringBindings>>,
         ReadExpect<'s, ScreenDimensions>,
-        ReadExpect<'s, Time>,
-        Entities<'s>,
         ReadExpect<'s, GameState>,
-        ReadExpect<'s, MissileGraphics>,
-        WriteStorage<'s, Transform>,
-        WriteStorage<'s, Handle<Mesh>>,
-        WriteStorage<'s, Handle<Material>>,
-        WriteStorage<'s, WorldPosition>,
-        WriteStorage<'s, Missile>,
-        WriteStorage<'s, Player>,
         ReadStorage<'s, Camera>,
+        ReadStorage<'s, Transform>,
+        ReadStorage<'s, WorldPosition>,
+        WriteStorage<'s, PlayerActions>,
     );
 
     fn run(
@@ -55,63 +39,87 @@ impl<'s> System<'s> for InputSystem {
         (
             input,
             screen_dimensions,
-            time,
-            entities,
             game_state,
-            missile_graphics,
-            mut transforms,
-            mut meshes,
-            mut materials,
-            mut world_positions,
-            mut missiles,
-            mut players,
             cameras,
+            transforms,
+            world_positions,
+            mut player_actions,
         ): Self::SystemData,
     ) {
-        let mouse_position = input.mouse_position();
-        if mouse_position.is_none() {
-            return;
-        }
-        let (mouse_x, mouse_y) = mouse_position.unwrap();
-
-        let components = (&cameras, &transforms).join().next();
-        if components.is_none() {
-            return;
-        }
-        let (camera, camera_transform) = components.unwrap();
-
-        let position = camera::screen_to_world(
-            &camera,
-            Point2::new(mouse_x as f32, mouse_y as f32),
-            camera_transform,
-            &screen_dimensions,
-        );
-
         if let GameState::Playing = *game_state {
         } else {
             return;
         }
 
-        let (mut player, player_position) = (&mut players, &world_positions).join().next().unwrap();
-        player.looking_direction = Vector2::new(position.x, position.y) - **player_position;
+        let (player_actions, player_position) = (&mut player_actions, &world_positions)
+            .join()
+            .next()
+            .unwrap();
+        self.process_mouse_input(
+            &screen_dimensions,
+            &*input,
+            &cameras,
+            &transforms,
+            &mut *player_actions,
+            **player_position,
+        );
+        self.process_keyboard_input(&*input, &mut *player_actions);
+    }
+}
+
+impl InputSystem {
+    fn process_mouse_input(
+        &mut self,
+        screen_dimensions: &ScreenDimensions,
+        input: &InputHandler<StringBindings>,
+        cameras: &ReadStorage<'_, Camera>,
+        transforms: &ReadStorage<'_, Transform>,
+        player_actions: &mut PlayerActions,
+        player_position: Vector2,
+    ) {
+        let mouse_world_position = {
+            let mouse_position = input.mouse_position();
+            if mouse_position.is_none() {
+                return;
+            }
+            let (mouse_x, mouse_y) = mouse_position.unwrap();
+
+            let components = (cameras, transforms).join().next();
+            if components.is_none() {
+                return;
+            }
+            let (camera, camera_transform) = components.unwrap();
+
+            let position = camera::screen_to_world(
+                &camera,
+                Point2::new(mouse_x as f32, mouse_y as f32),
+                camera_transform,
+                &screen_dimensions,
+            );
+            Vector2::new(position.x, position.y)
+        };
+
+        player_actions.look_actions.push(PlayerLookAction {
+            direction: mouse_world_position - player_position,
+        });
 
         if input.mouse_button_is_down(MouseButton::Left) {
-            let now = time.absolute_time();
-            if now - self.last_spawned > SPAWN_COOLDOWN {
-                create_missile(
-                    Vector2::new(position.x, position.y),
-                    **player_position,
-                    now,
-                    entities.build_entity(),
-                    missile_graphics.0.clone(),
-                    &mut transforms,
-                    &mut meshes,
-                    &mut materials,
-                    &mut world_positions,
-                    &mut missiles,
-                );
-                self.last_spawned = now;
-            }
+            player_actions.cast_actions.push(PlayerCastAction {
+                cast_position: player_position,
+                target_position: mouse_world_position,
+            });
+        }
+    }
+
+    fn process_keyboard_input(
+        &mut self,
+        input: &InputHandler<StringBindings>,
+        player_actions: &mut PlayerActions,
+    ) {
+        if let (Some(x), Some(y)) = (input.axis_value("horizontal"), input.axis_value("vertical")) {
+            player_actions.walk_actions.push(PlayerWalkAction {
+                direction: Vector2::new(Float::from(x), Float::from(y)),
+            });
         }
     }
 }

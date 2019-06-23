@@ -15,42 +15,18 @@ use amethyst::{
     utils::tag::Tag,
 };
 
-use std::time::Duration;
-
 use animation_prefabs::GameSpriteAnimationPrefab;
 
 use crate::{
     components::*,
     data_resources::{EntityGraphics, GameScene},
-    models::{MonsterAction, MonsterActionType, MonsterDefinition},
+    models::{
+        common::MonsterDefinition,
+        mob_actions::{MobAction, MobActionType},
+    },
     tags::*,
-    Vector2, Vector3,
+    Vector2, Vector3, ZeroVector,
 };
-
-pub fn create_missile(
-    position: Vector2,
-    direction: Vector2,
-    time_spawned: Duration,
-    entity_builder: EntityResBuilder,
-    missile_graphic: EntityGraphics,
-    transforms: &mut WriteStorage<Transform>,
-    meshes: &mut WriteStorage<Handle<Mesh>>,
-    materials: &mut WriteStorage<Handle<Material>>,
-    world_positions: &mut WriteStorage<WorldPosition>,
-    missiles: &mut WriteStorage<Missile>,
-) {
-    let EntityGraphics { mesh, material } = missile_graphic;
-    let mut transform = Transform::default();
-    transform.set_translation_xyz(position.x, position.y, 0.0);
-
-    entity_builder
-        .with(mesh, meshes)
-        .with(material, materials)
-        .with(transform, transforms)
-        .with(WorldPosition::new(position), world_positions)
-        .with(Missile::new(direction - position, time_spawned), missiles)
-        .build();
-}
 
 pub fn create_player(
     world: &mut World,
@@ -63,14 +39,15 @@ pub fn create_player(
         .create_entity()
         .with(transform)
         .with(prefab_handle)
-        .with(WorldPosition::new(Vector2::new(0.0.into(), 0.0.into())))
+        .with(PlayerActions::new())
+        .with(WorldPosition::new(Vector2::zero()))
         .with(Player::new())
         .build()
 }
 
 pub fn create_monster(
     position: Vector2,
-    action: MonsterAction,
+    action: MobAction,
     monster_definition: &MonsterDefinition,
     entity_builder: EntityResBuilder,
     transforms: &mut WriteStorage<Transform>,
@@ -81,10 +58,10 @@ pub fn create_monster(
 ) {
     let mut transform = Transform::default();
     transform.set_translation_xyz(position.x, position.y, 11.0);
-    let destination = if let MonsterActionType::Move(destination) = action.action_type {
+    let destination = if let MobActionType::Move(destination) = action.action_type {
         destination
     } else {
-        Vector2::new(0.0.into(), 0.0.into())
+        Vector2::zero()
     };
 
     let MonsterDefinition {
@@ -93,6 +70,7 @@ pub fn create_monster(
         base_speed: _base_speed,
         base_attack: _base_attack,
         graphics: EntityGraphics { mesh, material },
+        radius,
     } = monster_definition.clone();
     entity_builder
         .with(mesh, meshes)
@@ -103,8 +81,10 @@ pub fn create_monster(
             Monster {
                 health: base_health,
                 destination,
-                name,
+                velocity: Vector2::zero(),
                 action,
+                name,
+                radius,
             },
             monsters,
         )

@@ -2,14 +2,14 @@ use amethyst::{
     core::Time,
     ecs::{Entities, Entity, Join, ReadExpect, ReadStorage, System, WriteStorage},
 };
-use rand::{self, Rng};
 
 use std::time::Duration;
 
 use crate::{
     components::{Monster, Player, WorldPosition},
     data_resources::{GameScene, MonsterDefinitions},
-    models::{AttackAction, MonsterAction, MonsterActionType},
+    models::mob_actions::{MobAction, MobActionType, MobAttackAction},
+    utils::world::random_scene_position,
     Vector2,
 };
 
@@ -40,49 +40,35 @@ impl<'s> System<'s> for MonsterActionSystem {
             mut monsters,
         ): Self::SystemData,
     ) {
-        let mut rng = rand::thread_rng();
         for (mut monster, monster_position) in (&mut monsters, &world_positions).join() {
             let new_action_type = match monster.action.action_type {
-                MonsterActionType::Idle => {
+                MobActionType::Idle => {
                     if let Some((entity, _player_position)) = find_player_in_radius(
                         (&entities, &players, &world_positions).join(),
                         **monster_position,
                         200.0,
                     ) {
-                        Some(MonsterActionType::Chase(entity))
+                        Some(MobActionType::Chase(entity))
                     } else {
                         let time_being_idle = time.absolute_time() - monster.action.started_at;
                         let max_idle_duration =
                             Duration::from_millis((IDLE_TIME_SEC as f32 * 1000.0).round() as u64);
                         if time_being_idle > max_idle_duration {
-                            let pos = Vector2::new(
-                                rng.gen_range(
-                                    -game_scene.half_size().x.as_f32(),
-                                    game_scene.half_size().x.as_f32(),
-                                )
-                                .into(),
-                                rng.gen_range(
-                                    -game_scene.half_size().y.as_f32(),
-                                    game_scene.half_size().y.as_f32(),
-                                )
-                                .into(),
-                            );
-                            Some(MonsterActionType::Move(pos))
+                            Some(MobActionType::Move(random_scene_position(&*game_scene)))
                         } else {
                             None
                         }
                     }
                 }
-                MonsterActionType::Move(destination) => {
+                MobActionType::Move(destination) => {
                     if let Some((entity, _player_position)) = find_player_in_radius(
                         (&entities, &players, &world_positions).join(),
                         **monster_position,
                         200.0,
                     ) {
-                        Some(MonsterActionType::Chase(entity))
-                    } else if (**monster_position - destination).norm_squared() < 0.01.into()
-                    {
-                        Some(MonsterActionType::Idle)
+                        Some(MobActionType::Chase(entity))
+                    } else if (**monster_position - destination).norm_squared() < 0.01.into() {
+                        Some(MobActionType::Idle)
                     } else {
                         None
                     }
@@ -92,18 +78,18 @@ impl<'s> System<'s> for MonsterActionSystem {
 
             let new_destination = if let Some(ref new_action_type) = new_action_type {
                 match new_action_type {
-                    MonsterActionType::Move(position) => Some(*position),
-                    MonsterActionType::Chase(entity) => {
+                    MobActionType::Move(position) => Some(*position),
+                    MobActionType::Chase(entity) => {
                         Some(**world_positions.get(*entity).unwrap())
                     }
-                    MonsterActionType::Attack(AttackAction { target, .. }) => {
+                    MobActionType::Attack(MobAttackAction { target, .. }) => {
                         Some(**world_positions.get(*target).unwrap())
                     }
                     _ => None,
                 }
             } else {
                 match monster.action.action_type {
-                    MonsterActionType::Chase(entity) => {
+                    MobActionType::Chase(entity) => {
                         Some(**world_positions.get(entity).unwrap())
                     }
                     _ => None,
@@ -115,7 +101,7 @@ impl<'s> System<'s> for MonsterActionSystem {
             }
 
             if let Some(action_type) = new_action_type {
-                monster.action = MonsterAction {
+                monster.action = MobAction {
                     started_at: time.absolute_time(),
                     action_type,
                 }
