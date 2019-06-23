@@ -1,5 +1,10 @@
-use amethyst::ecs::{Entities, Entity, Join, ReadStorage, WriteStorage};
+use amethyst::ecs::{
+    storage::{MaskedStorage, Storage},
+    Entities, Entity, Join,
+};
 use rand::{self, Rng};
+
+use std::ops::Deref;
 
 use crate::{
     components::{Monster, WorldPosition},
@@ -7,12 +12,16 @@ use crate::{
     Vector2,
 };
 
-pub fn closest_monster(
+pub fn closest_monster<DW, DM>(
     missile_position: Vector2,
-    world_positions: &WriteStorage<'_, WorldPosition>,
+    world_positions: &Storage<'_, WorldPosition, DW>,
     entities: &Entities<'_>,
-    monsters: &ReadStorage<'_, Monster>,
-) -> Option<(Entity, Vector2)> {
+    monsters: &Storage<'_, Monster, DM>,
+) -> Option<(Entity, Vector2)>
+where
+    DW: Deref<Target = MaskedStorage<WorldPosition>>,
+    DM: Deref<Target = MaskedStorage<Monster>>,
+{
     (world_positions, entities, monsters).join().fold(
         None,
         |res, (monster_position, monster, _)| {

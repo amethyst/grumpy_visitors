@@ -3,7 +3,7 @@ use amethyst::{
         math::{clamp, Rotation2},
         Float, Time,
     },
-    ecs::{Entities, Join, ReadExpect, ReadStorage, System, WriteStorage},
+    ecs::{Entities, Join, ReadExpect, System, WriteStorage},
 };
 
 use std::time::Duration;
@@ -34,7 +34,7 @@ impl<'s> System<'s> for MissileSystem {
         ReadExpect<'s, Time>,
         ReadExpect<'s, GameScene>,
         Entities<'s>,
-        ReadStorage<'s, Monster>,
+        WriteStorage<'s, Monster>,
         WriteStorage<'s, Missile>,
         WriteStorage<'s, WorldPosition>,
     );
@@ -45,10 +45,12 @@ impl<'s> System<'s> for MissileSystem {
     ) {
         let now = time.absolute_time();
 
-        for (entity, mut missile) in (&entities, &mut missiles).join() {
-            let missile_position = **world_positions.get(entity).expect("Expected a missile");
+        for (missile_entity, mut missile) in (&entities, &mut missiles).join() {
+            let missile_position = **world_positions
+                .get(missile_entity)
+                .expect("Expected a missile");
             if now > missile.time_spawned + Duration::from_secs(MISSILE_LIFESPAN_SECS) {
-                entities.delete(entity).unwrap();
+                entities.delete(missile_entity).unwrap();
                 continue;
             }
 
@@ -95,7 +97,7 @@ impl<'s> System<'s> for MissileSystem {
                 if (missile_position - destination).norm_squared()
                     < (monster.radius * monster.radius).into()
                 {
-                    entities.delete(entity).unwrap();
+                    entities.delete(missile_entity).unwrap();
                     continue;
                 }
 
@@ -123,7 +125,9 @@ impl<'s> System<'s> for MissileSystem {
 
             missile.velocity = new_direction * speed;
 
-            let missile_position = world_positions.get_mut(entity).expect("Expected a Missile");
+            let missile_position = world_positions
+                .get_mut(missile_entity)
+                .expect("Expected a Missile");
             **missile_position += missile.velocity * Float::from_f32(time.delta_seconds());
         }
     }
