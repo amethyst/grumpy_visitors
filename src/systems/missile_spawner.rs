@@ -91,7 +91,7 @@ impl<'s> System<'s> for MissileSpawnerSystem {
                         WorldPosition::new(cast_action.cast_position),
                         &mut world_positions,
                     )
-                    .with(Missile::new(target, direction, now), &mut missiles)
+                    .with(Missile::new(5.0, target, direction, now), &mut missiles)
                     .build();
             }
         }

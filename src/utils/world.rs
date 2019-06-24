@@ -40,6 +40,27 @@ where
     )
 }
 
+pub fn find_first_hit_monster<
+    DT: Deref<Target = MaskedStorage<Monster>>,
+    DP: Deref<Target = MaskedStorage<WorldPosition>>,
+>(
+    object_position: Vector2,
+    object_radius: f32,
+    targets: &Storage<'_, Monster, DT>,
+    target_positions: &Storage<'_, WorldPosition, DP>,
+    entities: &Entities<'_>,
+) -> Option<Entity> {
+    (target_positions, entities, targets)
+        .join()
+        .find(|(target_position, _, target)| {
+            let distance_squared = (object_position - ***target_position).norm_squared();
+            let impact_distance = object_radius + target.radius;
+            let impact_distance_squared = impact_distance * impact_distance;
+            distance_squared <= impact_distance_squared.into()
+        })
+        .map(|result| result.1)
+}
+
 pub fn random_scene_position(game_scene: &GameScene) -> Vector2 {
     let mut rng = rand::thread_rng();
     Vector2::new(

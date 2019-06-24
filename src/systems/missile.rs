@@ -14,7 +14,7 @@ use crate::{
     components::{DamageHistory, Missile, Monster, WorldPosition},
     data_resources::GameScene,
     models::common::MissileTarget,
-    utils::world::random_scene_position,
+    utils::world::{find_first_hit_monster, random_scene_position},
 };
 
 const MS_PER_FRAME: f32 = 1000.0 / 60.0;
@@ -103,12 +103,15 @@ impl<'s> System<'s> for MissileSystem {
             }
 
             let direction = if let MissileTarget::Target(target) = missile.target {
-                let monster = monsters.get(target).expect("Expected a monster");
-                if (missile_position - destination).norm_squared()
-                    < (monster.radius * monster.radius).into()
-                {
+                if let Some(hit_monster) = find_first_hit_monster(
+                    missile_position,
+                    missile.radius,
+                    &monsters,
+                    &world_positions,
+                    &entities,
+                ) {
                     damage_histories
-                        .get_mut(target)
+                        .get_mut(hit_monster)
                         .expect("Expected a DamageHistory")
                         .add_entry(
                             now,
@@ -119,7 +122,7 @@ impl<'s> System<'s> for MissileSystem {
                     entities.delete(missile_entity).unwrap();
                     continue;
                 }
-
+                let monster = monsters.get(target).expect("Expected a targeted Monster");
                 destination + monster.velocity - missile_position
             } else {
                 destination

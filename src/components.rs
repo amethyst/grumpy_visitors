@@ -30,6 +30,7 @@ impl Component for WorldPosition {
 }
 
 pub struct Missile {
+    pub radius: f32,
     pub target: MissileTarget,
     pub velocity: Vector2,
     pub acceleration: f32,
@@ -38,8 +39,14 @@ pub struct Missile {
 }
 
 impl Missile {
-    pub fn new(target: MissileTarget, direction: Vector2, time_spawned: Duration) -> Self {
+    pub fn new(
+        radius: f32,
+        target: MissileTarget,
+        direction: Vector2,
+        time_spawned: Duration,
+    ) -> Self {
         Self {
+            radius,
             target,
             velocity: direction,
             acceleration: 10.0,
