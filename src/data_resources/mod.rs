@@ -44,7 +44,7 @@ impl MonsterDefinitions {
                 base_speed: 180.0,
                 base_attack: 20.0,
                 graphics: {
-                    let color = LinSrgba::new(0.3, 0.3, 0.3, 1.0);
+                    let color = LinSrgba::new(0.21, 0.06, 0.11, 1.0);
                     let material = create_color_material(world, color);
                     let (positions, tex_coords) = generate_circle_vertices(12.0, 64);
                     let mesh = create_mesh(world, positions, tex_coords);
