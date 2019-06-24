@@ -8,9 +8,10 @@ use amethyst::{
 
 use std::time::Duration;
 
+use crate::models::common::DamageHistoryEntry;
 use crate::utils::world::closest_monster;
 use crate::{
-    components::{Missile, Monster, WorldPosition},
+    components::{DamageHistory, Missile, Monster, WorldPosition},
     data_resources::GameScene,
     models::common::MissileTarget,
     utils::world::random_scene_position,
@@ -36,12 +37,21 @@ impl<'s> System<'s> for MissileSystem {
         Entities<'s>,
         WriteStorage<'s, Monster>,
         WriteStorage<'s, Missile>,
+        WriteStorage<'s, DamageHistory>,
         WriteStorage<'s, WorldPosition>,
     );
 
     fn run(
         &mut self,
-        (time, game_scene, entities, monsters, mut missiles, mut world_positions): Self::SystemData,
+        (
+            time,
+            game_scene,
+            entities,
+            monsters,
+            mut missiles,
+            mut damage_histories,
+            mut world_positions,
+        ): Self::SystemData,
     ) {
         let now = time.absolute_time();
 
@@ -97,6 +107,15 @@ impl<'s> System<'s> for MissileSystem {
                 if (missile_position - destination).norm_squared()
                     < (monster.radius * monster.radius).into()
                 {
+                    damage_histories
+                        .get_mut(target)
+                        .expect("Expected a DamageHistory")
+                        .add_entry(
+                            now,
+                            DamageHistoryEntry {
+                                damage: missile.damage,
+                            },
+                        );
                     entities.delete(missile_entity).unwrap();
                     continue;
                 }

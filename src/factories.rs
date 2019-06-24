@@ -1,7 +1,7 @@
 use amethyst::{
     assets::{Handle, Loader, Prefab},
     core::{Float, Transform},
-    ecs::{world::EntityResBuilder, Entity, WriteStorage},
+    ecs::Entity,
     prelude::{Builder, World},
     renderer::{
         palette::LinSrgba,
@@ -17,16 +17,7 @@ use amethyst::{
 
 use animation_prefabs::GameSpriteAnimationPrefab;
 
-use crate::{
-    components::*,
-    data_resources::{EntityGraphics, GameScene},
-    models::{
-        common::MonsterDefinition,
-        mob_actions::{MobAction, MobActionType},
-    },
-    tags::*,
-    Vector2, Vector3, ZeroVector,
-};
+use crate::{components::*, data_resources::GameScene, tags::*, Vector2, Vector3, ZeroVector};
 
 pub fn create_player(
     world: &mut World,
@@ -42,53 +33,8 @@ pub fn create_player(
         .with(PlayerActions::new())
         .with(WorldPosition::new(Vector2::zero()))
         .with(Player::new())
+        .with(DamageHistory::new())
         .build()
-}
-
-pub fn create_monster(
-    position: Vector2,
-    action: MobAction,
-    monster_definition: &MonsterDefinition,
-    entity_builder: EntityResBuilder,
-    transforms: &mut WriteStorage<Transform>,
-    meshes: &mut WriteStorage<Handle<Mesh>>,
-    materials: &mut WriteStorage<Handle<Material>>,
-    world_positions: &mut WriteStorage<WorldPosition>,
-    monsters: &mut WriteStorage<Monster>,
-) {
-    let mut transform = Transform::default();
-    transform.set_translation_xyz(position.x, position.y, 11.0);
-    let destination = if let MobActionType::Move(destination) = action.action_type {
-        destination
-    } else {
-        Vector2::zero()
-    };
-
-    let MonsterDefinition {
-        name,
-        base_health,
-        base_speed: _base_speed,
-        base_attack: _base_attack,
-        graphics: EntityGraphics { mesh, material },
-        radius,
-    } = monster_definition.clone();
-    entity_builder
-        .with(mesh, meshes)
-        .with(material, materials)
-        .with(transform, transforms)
-        .with(WorldPosition::new(position), world_positions)
-        .with(
-            Monster {
-                health: base_health,
-                destination,
-                velocity: Vector2::zero(),
-                action,
-                name,
-                radius,
-            },
-            monsters,
-        )
-        .build();
 }
 
 pub fn create_landscape(world: &mut World, landscape_texture_handle: Handle<SpriteSheet>) {

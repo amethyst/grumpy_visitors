@@ -79,9 +79,7 @@ impl<'s> System<'s> for MonsterActionSystem {
             let new_destination = if let Some(ref new_action_type) = new_action_type {
                 match new_action_type {
                     MobActionType::Move(position) => Some(*position),
-                    MobActionType::Chase(entity) => {
-                        Some(**world_positions.get(*entity).unwrap())
-                    }
+                    MobActionType::Chase(entity) => Some(**world_positions.get(*entity).unwrap()),
                     MobActionType::Attack(MobAttackAction { target, .. }) => {
                         Some(**world_positions.get(*target).unwrap())
                     }
@@ -89,9 +87,7 @@ impl<'s> System<'s> for MonsterActionSystem {
                 }
             } else {
                 match monster.action.action_type {
-                    MobActionType::Chase(entity) => {
-                        Some(**world_positions.get(entity).unwrap())
-                    }
+                    MobActionType::Chase(entity) => Some(**world_positions.get(entity).unwrap()),
                     _ => None,
                 }
             };

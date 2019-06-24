@@ -31,8 +31,8 @@ use amethyst::{
 use animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
 
 use crate::{
-    application_settings::ApplicationSettings, render_graph::RenderGraph, states::LoadingState,
-    systems::*, utils::animation,
+    application_settings::ApplicationSettings, components::DamageHistory,
+    render_graph::RenderGraph, states::LoadingState, systems::*, utils::animation,
 };
 
 fn main() -> amethyst::Result<()> {
@@ -46,6 +46,13 @@ fn main() -> amethyst::Result<()> {
     let bindings = application_settings.bindings().clone();
     let input_bundle = InputBundle::<StringBindings>::new().with_bindings(bindings);
 
+    let mut builder = Application::build("./", LoadingState::new())?;
+    builder.world.add_resource(application_settings);
+    builder.world.register::<DamageHistory>();
+    let damage_history_reader = builder
+        .world
+        .write_storage::<DamageHistory>()
+        .register_reader();
     let game_data = GameDataBuilder::default()
         .with(
             PrefabLoaderSystem::<GameSpriteAnimationPrefab>::default(),
@@ -80,6 +87,11 @@ fn main() -> amethyst::Result<()> {
             MissileSystem,
             "missile_system",
             &["missile_spawner_system", "player_movement_system"],
+        )
+        .with(
+            MonsterDyingSystem::new(damage_history_reader),
+            "monster_dying_system",
+            &["missile_system"],
         )
         .with(
             WorldPositionTransformSystem,
@@ -128,8 +140,6 @@ fn main() -> amethyst::Result<()> {
         .with_thread_local(RenderingSystem::<DefaultBackend, _>::new(
             RenderGraph::default(),
         ));
-    let mut builder = Application::build("./", LoadingState::new())?;
-    builder.world.add_resource(application_settings);
     let mut game = builder.build(game_data)?;
 
     game.run();

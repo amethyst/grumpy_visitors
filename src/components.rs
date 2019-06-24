@@ -1,11 +1,14 @@
-use amethyst::ecs::prelude::{Component, DenseVecStorage, VecStorage};
+use amethyst::ecs::prelude::{Component, DenseVecStorage, FlaggedStorage, VecStorage};
 use shrinkwraprs::Shrinkwrap;
 
 use std::time::Duration;
 
 use crate::{
     models::mob_actions::MobAction,
-    models::{common::MissileTarget, player_actions::*},
+    models::{
+        common::{DamageHistoryEntries, DamageHistoryEntry, MissileTarget},
+        player_actions::*,
+    },
     Vector2, ZeroVector,
 };
 
@@ -105,4 +108,41 @@ pub struct Monster {
 
 impl Component for Monster {
     type Storage = DenseVecStorage<Self>;
+}
+
+pub struct DamageHistory {
+    history: Vec<DamageHistoryEntries>,
+}
+
+impl Component for DamageHistory {
+    type Storage = FlaggedStorage<Self, DenseVecStorage<Self>>;
+}
+
+impl DamageHistory {
+    pub fn new() -> Self {
+        Self {
+            history: Vec::new(),
+        }
+    }
+
+    pub fn add_entry(&mut self, time: Duration, entry: DamageHistoryEntry) {
+        let last_entries = &mut self.history.last_mut();
+        if let Some(last_entries) = last_entries {
+            if last_entries.time > time {
+                panic!(
+                    "Adding timed out entries is not supported (at least not before multiplayer)"
+                )
+            } else if last_entries.time == time {
+                last_entries.entries.push(entry);
+            }
+        } else {
+            let mut last_entries = DamageHistoryEntries::new(time);
+            last_entries.entries.push(entry);
+            self.history.push(last_entries);
+        }
+    }
+
+    pub fn last_entries(&self) -> &DamageHistoryEntries {
+        self.history.last().expect("Expected filled DamageHistory")
+    }
 }

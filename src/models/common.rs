@@ -7,6 +7,8 @@ use amethyst::{
 
 use animation_prefabs::GameSpriteAnimationPrefab;
 
+use std::time::Duration;
+
 use crate::{data_resources::EntityGraphics, Vector2};
 
 pub enum GameState {
@@ -35,4 +37,22 @@ pub struct AssetsHandles {
 pub enum MissileTarget {
     Target(Entity),
     Destination(Vector2),
+}
+
+pub struct DamageHistoryEntries {
+    pub time: Duration,
+    pub entries: Vec<DamageHistoryEntry>,
+}
+
+impl DamageHistoryEntries {
+    pub fn new(time: Duration) -> Self {
+        Self {
+            time,
+            entries: Vec::new(),
+        }
+    }
+}
+
+pub struct DamageHistoryEntry {
+    pub damage: f32,
 }

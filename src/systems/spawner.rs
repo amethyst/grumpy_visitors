@@ -11,15 +11,14 @@ use rand::{
 };
 
 use crate::{
-    components::{Monster, WorldPosition},
-    data_resources::{GameScene, MonsterDefinitions},
-    factories::create_monster,
+    components::{DamageHistory, Monster, WorldPosition},
+    data_resources::{EntityGraphics, GameScene, MonsterDefinitions},
     models::{
         common::MonsterDefinition,
         mob_actions::{MobAction, MobActionType},
         monster_spawn::{SpawnActions, SpawnType},
     },
-    Vector2,
+    Vector2, ZeroVector,
 };
 
 pub struct SpawnerSystem;
@@ -35,6 +34,7 @@ impl<'s> System<'s> for SpawnerSystem {
         WriteStorage<'s, Handle<Mesh>>,
         WriteStorage<'s, Handle<Material>>,
         WriteStorage<'s, Monster>,
+        WriteStorage<'s, DamageHistory>,
         WriteStorage<'s, WorldPosition>,
     );
 
@@ -50,6 +50,7 @@ impl<'s> System<'s> for SpawnerSystem {
             mut meshes,
             mut materials,
             mut monsters,
+            mut damage_histories,
             mut world_positions,
         ): Self::SystemData,
     ) {
@@ -62,20 +63,42 @@ impl<'s> System<'s> for SpawnerSystem {
                 .expect("Failed to get Ghoul monster definition");
 
             let mut spawn_monster =
-                |position: Vector2,
-                 spawn_action: MobAction,
-                 monster_definition: &MonsterDefinition| {
-                    create_monster(
-                        position,
-                        spawn_action,
-                        monster_definition,
-                        entities.build_entity(),
-                        &mut transforms,
-                        &mut meshes,
-                        &mut materials,
-                        &mut world_positions,
-                        &mut monsters,
-                    )
+                |position: Vector2, action: MobAction, monster_definition: &MonsterDefinition| {
+                    let mut transform = Transform::default();
+                    transform.set_translation_xyz(position.x, position.y, 11.0);
+                    let destination = if let MobActionType::Move(destination) = action.action_type {
+                        destination
+                    } else {
+                        Vector2::zero()
+                    };
+
+                    let MonsterDefinition {
+                        name,
+                        base_health,
+                        base_speed: _base_speed,
+                        base_attack: _base_attack,
+                        graphics: EntityGraphics { mesh, material },
+                        radius,
+                    } = monster_definition.clone();
+                    entities
+                        .build_entity()
+                        .with(mesh, &mut meshes)
+                        .with(material, &mut materials)
+                        .with(transform, &mut transforms)
+                        .with(WorldPosition::new(position), &mut world_positions)
+                        .with(
+                            Monster {
+                                health: base_health,
+                                destination,
+                                velocity: Vector2::zero(),
+                                action,
+                                name,
+                                radius,
+                            },
+                            &mut monsters,
+                        )
+                        .with(DamageHistory::new(), &mut damage_histories)
+                        .build();
                 };
 
             match spawn_action.spawn_type {
