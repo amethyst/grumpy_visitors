@@ -56,7 +56,7 @@ pub fn find_first_hit_monster<
             let distance_squared = (object_position - ***target_position).norm_squared();
             let impact_distance = object_radius + target.radius;
             let impact_distance_squared = impact_distance * impact_distance;
-            distance_squared <= impact_distance_squared.into()
+            distance_squared <= impact_distance_squared
         })
         .map(|result| result.1)
 }
@@ -64,15 +64,7 @@ pub fn find_first_hit_monster<
 pub fn random_scene_position(game_scene: &GameScene) -> Vector2 {
     let mut rng = rand::thread_rng();
     Vector2::new(
-        rng.gen_range(
-            -game_scene.half_size().x.as_f32(),
-            game_scene.half_size().x.as_f32(),
-        )
-        .into(),
-        rng.gen_range(
-            -game_scene.half_size().y.as_f32(),
-            game_scene.half_size().y.as_f32(),
-        )
-        .into(),
+        rng.gen_range(-game_scene.half_size().x, game_scene.half_size().x),
+        rng.gen_range(-game_scene.half_size().y, game_scene.half_size().y),
     )
 }

@@ -1,6 +1,5 @@
 use amethyst::{
     assets::Handle,
-    core::Float,
     prelude::World,
     renderer::{palette::LinSrgba, Material, Mesh},
 };
@@ -63,14 +62,14 @@ pub struct GameScene {
 
 impl GameScene {
     pub fn half_size(&self) -> Vector2 {
-        self.dimensions / Float::from_f32(2.0)
+        self.dimensions / 2.0
     }
 }
 
 impl Default for GameScene {
     fn default() -> Self {
         Self {
-            dimensions: Vector2::new(4096.0.into(), 4096.0.into()),
+            dimensions: Vector2::new(4096.0, 4096.0),
         }
     }
 }

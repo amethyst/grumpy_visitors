@@ -1,5 +1,5 @@
 use amethyst::{
-    core::{math::clamp, Float, Time},
+    core::{math::clamp, Time},
     ecs::{Join, Read, ReadExpect, System, WriteStorage},
 };
 
@@ -11,7 +11,7 @@ use crate::{
 
 pub struct PlayerMovementSystem;
 
-const PLAYER_SPEED: Float = Float::from_f32(200.0);
+const PLAYER_SPEED: f32 = 200.0;
 
 impl<'s> System<'s> for PlayerMovementSystem {
     type SystemData = (
@@ -40,10 +40,10 @@ impl<'s> System<'s> for PlayerMovementSystem {
                         Vector2::zero()
                     }
                 }
-                **player_position += player.velocity * Float::from(time.delta_seconds());
+                **player_position += player.velocity * time.delta_seconds();
 
-                let scene_half_size_x = game_scene.dimensions.x / 2.0.into();
-                let scene_half_size_y = game_scene.dimensions.y / 2.0.into();
+                let scene_half_size_x = game_scene.dimensions.x / 2.0;
+                let scene_half_size_y = game_scene.dimensions.y / 2.0;
                 player_position.x = clamp(player_position.x, -scene_half_size_x, scene_half_size_x);
                 player_position.y = clamp(player_position.y, -scene_half_size_y, scene_half_size_y);
             }

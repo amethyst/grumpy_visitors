@@ -67,7 +67,7 @@ impl<'s> System<'s> for MonsterActionSystem {
                         200.0,
                     ) {
                         Some(MobActionType::Chase(entity))
-                    } else if (**monster_position - destination).norm_squared() < 0.01.into() {
+                    } else if (**monster_position - destination).norm_squared() < 0.01 {
                         Some(MobActionType::Idle)
                     } else {
                         None
@@ -114,7 +114,7 @@ fn find_player_in_radius<'a>(
     let radius_squared = radius * radius;
     players
         .find(|(_, _, player_position)| {
-            (position - ***player_position).norm_squared() < radius_squared.into()
+            (position - ***player_position).norm_squared() < radius_squared
         })
         .map(|(entity, _, player_position)| (entity, player_position))
 }

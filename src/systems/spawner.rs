@@ -1,6 +1,6 @@
 use amethyst::{
     assets::Handle,
-    core::{Float, Time, Transform},
+    core::{Time, Transform},
     ecs::{Entities, ReadExpect, System, WriteExpect, WriteStorage},
     renderer::{Material, Mesh},
 };
@@ -107,17 +107,15 @@ impl<'s> System<'s> for SpawnerSystem {
                         let (side_start, side_end, _) = spawning_side(rand::random(), &game_scene);
                         let d = side_start - side_end;
                         let random_displacement = Vector2::new(
-                            if d.x == 0.0.into() {
-                                0.0.into()
+                            if d.x == 0.0 {
+                                0.0
                             } else {
-                                (rng.gen_range(0.0, d.x.as_f32().abs()) * d.x.as_f32().signum())
-                                    .into()
+                                rng.gen_range(0.0, d.x.abs()) * d.x.signum()
                             },
-                            if d.y == 0.0.into() {
-                                0.0.into()
+                            if d.y == 0.0 {
+                                0.0
                             } else {
-                                (rng.gen_range(0.0, d.y.as_f32().abs()) * d.y.as_f32().signum())
-                                    .into()
+                                rng.gen_range(0.0, d.y.abs()) * d.y.signum()
                             },
                         );
                         let position = side_start + random_displacement;
@@ -125,14 +123,12 @@ impl<'s> System<'s> for SpawnerSystem {
                     }
                 }
                 SpawnType::Borderline => {
-                    let spawn_margin = Float::from(50.0);
+                    let spawn_margin = 50.0;
                     let (side_start, side_end, destination) =
                         spawning_side(rand::random(), &game_scene);
                     let d = (side_start - side_end) / spawn_margin;
-                    let monsters_to_spawn =
-                        num::Float::max(d.x.as_f32().abs(), d.y.as_f32().abs()).round() as u8;
-                    let spawn_distance =
-                        (side_end - side_start) / Float::from(f32::from(monsters_to_spawn));
+                    let monsters_to_spawn = num::Float::max(d.x.abs(), d.y.abs()).round() as u8;
+                    let spawn_distance = (side_end - side_start) / f32::from(monsters_to_spawn);
 
                     let mut position = side_start;
                     for _ in 0..monsters_to_spawn {
@@ -150,9 +146,9 @@ impl<'s> System<'s> for SpawnerSystem {
 }
 
 fn spawning_side(side: Side, game_scene: &GameScene) -> (Vector2, Vector2, Vector2) {
-    let scene_halfsize = game_scene.dimensions / Float::from(2.0);
-    let border_distance = Float::from(100.0);
-    let padding = Float::from(25.0);
+    let scene_halfsize = game_scene.dimensions / 2.0;
+    let border_distance = 100.0;
+    let padding = 25.0;
     match side {
         Side::Top => (
             Vector2::new(
@@ -163,7 +159,7 @@ fn spawning_side(side: Side, game_scene: &GameScene) -> (Vector2, Vector2, Vecto
                 scene_halfsize.x - padding,
                 scene_halfsize.y + border_distance,
             ),
-            Vector2::new(0.0.into(), -game_scene.dimensions.y + border_distance),
+            Vector2::new(0.0, -game_scene.dimensions.y + border_distance),
         ),
         Side::Right => (
             Vector2::new(
@@ -174,7 +170,7 @@ fn spawning_side(side: Side, game_scene: &GameScene) -> (Vector2, Vector2, Vecto
                 scene_halfsize.x + border_distance,
                 -scene_halfsize.y + padding,
             ),
-            Vector2::new(-game_scene.dimensions.x + border_distance, 0.0.into()),
+            Vector2::new(-game_scene.dimensions.x + border_distance, 0.0),
         ),
         Side::Bottom => (
             Vector2::new(
@@ -185,7 +181,7 @@ fn spawning_side(side: Side, game_scene: &GameScene) -> (Vector2, Vector2, Vecto
                 -scene_halfsize.x + padding,
                 -scene_halfsize.y - border_distance,
             ),
-            Vector2::new(0.0.into(), game_scene.dimensions.y - border_distance),
+            Vector2::new(0.0, game_scene.dimensions.y - border_distance),
         ),
         Side::Left => (
             Vector2::new(
@@ -196,7 +192,7 @@ fn spawning_side(side: Side, game_scene: &GameScene) -> (Vector2, Vector2, Vecto
                 -scene_halfsize.x - border_distance,
                 scene_halfsize.y - padding,
             ),
-            Vector2::new(game_scene.dimensions.x - border_distance, 0.0.into()),
+            Vector2::new(game_scene.dimensions.x - border_distance, 0.0),
         ),
     }
 }

@@ -1,7 +1,7 @@
 use amethyst::{
     core::{
         math::{clamp, Rotation2},
-        Float, Time,
+        Time,
     },
     ecs::{Entities, Join, ReadExpect, System, WriteStorage},
 };
@@ -127,9 +127,7 @@ impl<'s> System<'s> for MissileSystem {
             } else {
                 destination
             };
-            let needed_angle = Rotation2::rotation_between(&missile.velocity, &direction)
-                .angle()
-                .as_f32();
+            let needed_angle = Rotation2::rotation_between(&missile.velocity, &direction).angle();
             let angle = needed_angle.abs().min(MAX_ROTATION) * needed_angle.signum();
             let a = if needed_angle.abs() > angle.abs() {
                 -MISSILE_ACCELERATION
@@ -137,20 +135,15 @@ impl<'s> System<'s> for MissileSystem {
                 MISSILE_ACCELERATION
             };
             let current_speed = missile.velocity.norm();
-            let speed = clamp(
-                current_speed + a.into(),
-                MISSILE_MIN_SPEED.into(),
-                MISSILE_MAX_SPEED.into(),
-            );
-            let new_direction =
-                Rotation2::new(Float::from_f32(angle)) * missile.velocity.normalize();
+            let speed = clamp(current_speed + a, MISSILE_MIN_SPEED, MISSILE_MAX_SPEED);
+            let new_direction = Rotation2::new(angle) * missile.velocity.normalize();
 
             missile.velocity = new_direction * speed;
 
             let missile_position = world_positions
                 .get_mut(missile_entity)
                 .expect("Expected a Missile");
-            **missile_position += missile.velocity * Float::from_f32(time.delta_seconds());
+            **missile_position += missile.velocity * time.delta_seconds();
         }
     }
 }

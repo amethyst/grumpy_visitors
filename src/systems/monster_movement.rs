@@ -1,5 +1,4 @@
 use amethyst::{
-    core::Float,
     core::Time,
     ecs::{Join, ReadExpect, System, WriteStorage},
 };
@@ -33,13 +32,11 @@ impl<'s> System<'s> for MonsterMovementSystem {
             let travel_distance_squared = monster_speed * monster_speed * time * time;
 
             let displacement = monster.destination - *monster_position;
-            *monster_position = if displacement.norm_squared() - travel_distance_squared.into()
-                < 0.01.into()
-            {
+            *monster_position = if displacement.norm_squared() - travel_distance_squared < 0.01 {
                 monster.velocity = Vector2::zero();
                 monster.destination
             } else {
-                monster.velocity = displacement.normalize() * Float::from_f32(monster_speed * time);
+                monster.velocity = displacement.normalize() * monster_speed * time;
                 *monster_position + monster.velocity
             };
         }

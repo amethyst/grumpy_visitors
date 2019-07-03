@@ -1,5 +1,5 @@
 use amethyst::{
-    core::{math::Point2, Float, Transform},
+    core::{math::Point2, Transform},
     ecs::{Join, ReadExpect, ReadStorage, System, WriteStorage},
     input::{InputHandler, StringBindings},
     renderer::Camera,
@@ -11,7 +11,6 @@ use crate::models::player_actions::{PlayerCastAction, PlayerLookAction, PlayerWa
 use crate::{
     components::{PlayerActions, WorldPosition},
     models::common::GameState,
-    utils::camera,
     Vector2,
 };
 
@@ -90,11 +89,10 @@ impl InputSystem {
             }
             let (camera, camera_transform) = components.unwrap();
 
-            let position = camera::screen_to_world(
-                &camera,
+            let position = camera.projection().screen_to_world(
                 Point2::new(mouse_x as f32, mouse_y as f32),
-                camera_transform,
                 &screen_dimensions,
+                camera_transform,
             );
             Vector2::new(position.x, position.y)
         };
@@ -118,7 +116,7 @@ impl InputSystem {
     ) {
         if let (Some(x), Some(y)) = (input.axis_value("horizontal"), input.axis_value("vertical")) {
             player_actions.walk_actions.push(PlayerWalkAction {
-                direction: Vector2::new(Float::from(x), Float::from(y)),
+                direction: Vector2::new(x, y),
             });
         }
     }

@@ -71,8 +71,8 @@ impl Player {
     pub fn new() -> Self {
         Self {
             velocity: Vector2::zero(),
-            walking_direction: Vector2::new(0.0.into(), 1.0.into()),
-            looking_direction: Vector2::new(0.0.into(), 1.0.into()),
+            walking_direction: Vector2::new(0.0, 1.0),
+            looking_direction: Vector2::new(0.0, 1.0),
             radius: 20.0,
         }
     }
