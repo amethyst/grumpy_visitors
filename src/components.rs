@@ -33,7 +33,6 @@ pub struct Missile {
     pub radius: f32,
     pub target: MissileTarget,
     pub velocity: Vector2,
-    pub acceleration: f32,
     pub time_spawned: Duration,
     pub damage: f32,
 }
@@ -42,14 +41,13 @@ impl Missile {
     pub fn new(
         radius: f32,
         target: MissileTarget,
-        direction: Vector2,
+        velocity: Vector2,
         time_spawned: Duration,
     ) -> Self {
         Self {
             radius,
             target,
-            velocity: direction,
-            acceleration: 10.0,
+            velocity,
             time_spawned,
             damage: 50.0,
         }

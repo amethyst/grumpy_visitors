@@ -17,10 +17,11 @@ use crate::{
     utils::world::{find_first_hit_monster, random_scene_position},
 };
 
+pub const MISSILE_MAX_SPEED: f32 = 300.0;
+
 const MS_PER_FRAME: f32 = 1000.0 / 60.0;
 
 const MISSILE_LIFESPAN_SECS: u64 = 5;
-const MISSILE_MAX_SPEED: f32 = 300.0;
 const MISSILE_MIN_SPEED: f32 = 80.0;
 const TIME_TO_ACCELERATE: f32 = 2000.0;
 const MISSILE_ACCELERATION: f32 =

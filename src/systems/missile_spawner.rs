@@ -12,6 +12,7 @@ use crate::{
     data_resources::{EntityGraphics, MissileGraphics},
     models::common::MissileTarget,
     utils::world::closest_monster,
+    systems::missile::MISSILE_MAX_SPEED,
 };
 
 pub struct MissileSpawnerSystem;
@@ -70,17 +71,13 @@ impl<'s> System<'s> for MissileSpawnerSystem {
                     &monsters,
                 );
 
-                let (target, direction) = if let Some((monster, monster_position)) = search_result {
-                    (
-                        MissileTarget::Target(monster),
-                        monster_position - cast_action.cast_position,
-                    )
+                let target = if let Some((monster, _)) = search_result {
+                    MissileTarget::Target(monster)
                 } else {
-                    (
-                        MissileTarget::Destination(cast_action.target_position),
-                        cast_action.target_position - cast_action.cast_position,
-                    )
+                    MissileTarget::Destination(cast_action.target_position)
                 };
+                let direction = cast_action.target_position - cast_action.cast_position;
+                let velocity = direction.normalize() * MISSILE_MAX_SPEED;
 
                 entities
                     .build_entity()
@@ -91,7 +88,7 @@ impl<'s> System<'s> for MissileSpawnerSystem {
                         WorldPosition::new(cast_action.cast_position),
                         &mut world_positions,
                     )
-                    .with(Missile::new(5.0, target, direction, now), &mut missiles)
+                    .with(Missile::new(5.0, target, velocity, now), &mut missiles)
                     .build();
             }
         }
