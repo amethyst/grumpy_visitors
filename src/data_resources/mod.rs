@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use crate::{
     factories::{create_color_material, create_mesh, generate_circle_vertices},
-    models::common::MonsterDefinition,
+    models::{common::MonsterDefinition, mob_actions::MobAttackType},
     Vector2,
 };
 
@@ -41,7 +41,8 @@ impl MonsterDefinitions {
                 name: "Ghoul".to_owned(),
                 base_health: 100.0,
                 base_speed: 180.0,
-                base_attack: 20.0,
+                base_attack_damage: 15.0,
+                attack_type: MobAttackType::SlowMelee,
                 graphics: {
                     let color = LinSrgba::new(0.21, 0.06, 0.11, 1.0);
                     let material = create_color_material(world, color);

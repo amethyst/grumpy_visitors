@@ -11,8 +11,8 @@ use crate::{
     components::{Missile, Monster, PlayerActions, WorldPosition},
     data_resources::{EntityGraphics, MissileGraphics},
     models::common::MissileTarget,
-    utils::world::closest_monster,
     systems::missile::MISSILE_MAX_SPEED,
+    utils::world::closest_monster,
 };
 
 pub struct MissileSpawnerSystem;

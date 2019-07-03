@@ -9,7 +9,7 @@ use animation_prefabs::GameSpriteAnimationPrefab;
 
 use std::time::Duration;
 
-use crate::{data_resources::EntityGraphics, Vector2};
+use crate::{data_resources::EntityGraphics, models::mob_actions::MobAttackType, Vector2};
 
 pub enum GameState {
     Loading,
@@ -21,7 +21,8 @@ pub struct MonsterDefinition {
     pub name: String,
     pub base_health: f32,
     pub base_speed: f32,
-    pub base_attack: f32,
+    pub base_attack_damage: f32,
+    pub attack_type: MobAttackType,
     pub graphics: EntityGraphics,
     pub radius: f32,
 }

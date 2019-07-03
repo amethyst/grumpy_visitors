@@ -59,6 +59,7 @@ impl Component for Missile {
 }
 
 pub struct Player {
+    pub health: f32,
     pub velocity: Vector2,
     pub walking_direction: Vector2,
     pub looking_direction: Vector2,
@@ -68,6 +69,7 @@ pub struct Player {
 impl Player {
     pub fn new() -> Self {
         Self {
+            health: 100.0,
             velocity: Vector2::zero(),
             walking_direction: Vector2::new(0.0, 1.0),
             looking_direction: Vector2::new(0.0, 1.0),
@@ -104,6 +106,7 @@ impl Component for PlayerActions {
 
 pub struct Monster {
     pub health: f32,
+    pub attack_damage: f32,
     pub destination: Vector2,
     pub velocity: Vector2,
     pub action: MobAction,

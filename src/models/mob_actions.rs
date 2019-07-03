@@ -27,11 +27,10 @@ pub enum MobActionType {
     Move(Vector2),
     /// Chasing an entity with the specified id.
     Chase(Entity),
-    #[allow(dead_code)]
+    /// Attacking a target.
     Attack(MobAttackAction),
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct MobAttackAction {
     /// Entity id.
@@ -39,10 +38,11 @@ pub struct MobAttackAction {
     pub attack_type: MobAttackType,
 }
 
-#[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum MobAttackType {
+    #[allow(dead_code)]
     Melee,
     SlowMelee,
+    #[allow(dead_code)]
     Range,
 }

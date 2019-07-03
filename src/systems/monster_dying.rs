@@ -37,13 +37,13 @@ impl<'s> System<'s> for MonsterDyingSystem {
                 let damage_history = damage_histories
                     .get(entity)
                     .expect("Expected a DamageHistory");
-                let monster = monsters
-                    .get_mut(entity)
-                    .expect("Expected a damaged Monster");
-                for entry in &damage_history.last_entries().entries {
-                    monster.health -= entry.damage;
+                let monster = monsters.get_mut(entity);
+                if let Some(monster) = monster {
+                    for entry in &damage_history.last_entries().entries {
+                        monster.health -= entry.damage;
+                    }
+                    self.monsters_hit.add(*index);
                 }
-                self.monsters_hit.add(*index);
             }
         }
 

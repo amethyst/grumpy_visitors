@@ -74,11 +74,12 @@ impl<'s> System<'s> for SpawnerSystem {
 
                     let MonsterDefinition {
                         name,
-                        base_health,
+                        base_health: health,
                         base_speed: _base_speed,
-                        base_attack: _base_attack,
+                        base_attack_damage: attack_damage,
                         graphics: EntityGraphics { mesh, material },
                         radius,
+                        ..
                     } = monster_definition.clone();
                     entities
                         .build_entity()
@@ -88,7 +89,8 @@ impl<'s> System<'s> for SpawnerSystem {
                         .with(WorldPosition::new(position), &mut world_positions)
                         .with(
                             Monster {
-                                health: base_health,
+                                health,
+                                attack_damage,
                                 destination,
                                 velocity: Vector2::zero(),
                                 action,
