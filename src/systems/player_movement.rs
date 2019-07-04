@@ -1,10 +1,10 @@
 use amethyst::{
     core::{math::clamp, Time},
-    ecs::{Join, Read, ReadExpect, System, WriteStorage},
+    ecs::{Join, Read, ReadExpect, ReadStorage, System, WriteStorage},
 };
 
 use crate::{
-    components::{Player, PlayerActions, WorldPosition},
+    components::{Dead, Player, PlayerActions, WorldPosition},
     data_resources::GameScene,
     Vector2, ZeroVector,
 };
@@ -17,6 +17,7 @@ impl<'s> System<'s> for PlayerMovementSystem {
     type SystemData = (
         Read<'s, Time>,
         ReadExpect<'s, GameScene>,
+        ReadStorage<'s, Dead>,
         WriteStorage<'s, Player>,
         WriteStorage<'s, PlayerActions>,
         WriteStorage<'s, WorldPosition>,
@@ -24,10 +25,15 @@ impl<'s> System<'s> for PlayerMovementSystem {
 
     fn run(
         &mut self,
-        (time, game_scene, mut players, mut player_actions, mut world_positions): Self::SystemData,
+        (time, game_scene, dead, mut players, mut player_actions, mut world_positions): Self::SystemData,
     ) {
-        for (player, player_position, player_actions) in
-            (&mut players, &mut world_positions, &mut player_actions).join()
+        for (player, player_position, player_actions, _) in (
+            &mut players,
+            &mut world_positions,
+            &mut player_actions,
+            !&dead,
+        )
+            .join()
         {
             if player_actions.walk_actions.is_empty() {
                 player.velocity = Vector2::zero();

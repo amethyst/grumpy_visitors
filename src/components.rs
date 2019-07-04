@@ -1,4 +1,4 @@
-use amethyst::ecs::prelude::{Component, DenseVecStorage, FlaggedStorage, VecStorage};
+use amethyst::ecs::prelude::{Component, DenseVecStorage, FlaggedStorage, NullStorage, VecStorage};
 use shrinkwraprs::Shrinkwrap;
 
 use std::time::Duration;
@@ -153,4 +153,11 @@ impl DamageHistory {
     pub fn last_entries(&self) -> &DamageHistoryEntries {
         self.history.last().expect("Expected filled DamageHistory")
     }
+}
+
+#[derive(Default)]
+pub struct Dead;
+
+impl Component for Dead {
+    type Storage = FlaggedStorage<Self, NullStorage<Self>>;
 }

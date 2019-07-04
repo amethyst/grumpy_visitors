@@ -8,7 +8,7 @@ use amethyst::{
 use std::time::Duration;
 
 use crate::{
-    components::{Missile, Monster, PlayerActions, WorldPosition},
+    components::{Dead, Missile, Monster, PlayerActions, WorldPosition},
     data_resources::{EntityGraphics, MissileGraphics},
     models::common::MissileTarget,
     systems::missile::MISSILE_MAX_SPEED,
@@ -25,6 +25,7 @@ impl<'s> System<'s> for MissileSpawnerSystem {
         ReadExpect<'s, MissileGraphics>,
         Entities<'s>,
         ReadStorage<'s, Monster>,
+        ReadStorage<'s, Dead>,
         WriteStorage<'s, PlayerActions>,
         WriteStorage<'s, Transform>,
         WriteStorage<'s, Handle<Mesh>>,
@@ -40,6 +41,7 @@ impl<'s> System<'s> for MissileSpawnerSystem {
             missile_graphic,
             entities,
             monsters,
+            dead,
             mut player_actions,
             mut transforms,
             mut meshes,
@@ -51,7 +53,7 @@ impl<'s> System<'s> for MissileSpawnerSystem {
         let now = time.absolute_time();
         let EntityGraphics { mesh, material } = missile_graphic.0.clone();
 
-        for player_actions in (&mut player_actions).join() {
+        for (player_actions, _) in (&mut player_actions, !&dead).join() {
             for cast_action in player_actions.cast_actions.drain(..) {
                 if player_actions.last_spell_cast + SPELL_CAST_COOLDOWN > now {
                     continue;
