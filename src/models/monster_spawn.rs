@@ -12,5 +12,13 @@ pub struct Count<T> {
 
 pub enum SpawnType {
     Random,
+
+    /// Ah
+    /// Gone a little far
+    /// Gone a little far this time for somethin'
+    /// How was I to know?
+    /// How was I to know this high came rushing?
+    ///
+    /// These monsters will come def sooner than the new Tame Impala album.
     Borderline,
 }

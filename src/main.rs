@@ -58,7 +58,8 @@ fn main() -> amethyst::Result<()> {
         )
         .with_bundle(WindowBundle::from_config(display_config))?
         .with_bundle(input_bundle)?
-        .with(SpawnerSystem, "spawner_system", &[])
+        .with(LevelSystem::new(), "level_system", &[])
+        .with(SpawnerSystem, "spawner_system", &["level_system"])
         .with(InputSystem::new(), "mouse_system", &["input_system"])
         .with(
             PlayerMovementSystem,
