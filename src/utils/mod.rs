@@ -1,5 +1,7 @@
 pub mod animation;
 pub mod camera;
+pub mod math;
+pub mod world;
 
 mod window_event_handler;
 

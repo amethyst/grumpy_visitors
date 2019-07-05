@@ -60,18 +60,18 @@ impl<'s> System<'s> for CameraTranslationSystem {
         let right_top_distance = screen_right_top - game_scene.half_size();
 
         let camera_translation = Vector2::new(
-            num::Float::max(0.0, left_bottom_distance.x.as_f32()),
-            num::Float::max(0.0, left_bottom_distance.y.as_f32()),
+            num::Float::max(0.0, left_bottom_distance.x),
+            num::Float::max(0.0, left_bottom_distance.y),
         ) - Vector2::new(
-            num::Float::max(0.0, right_top_distance.x.as_f32()),
-            num::Float::max(0.0, right_top_distance.y.as_f32()),
+            num::Float::max(0.0, right_top_distance.x),
+            num::Float::max(0.0, right_top_distance.y),
         );
 
         let camera_transform = transforms.get_mut(camera_id).unwrap();
         camera_transform.set_translation(Vector3::new(
             camera_translation.x,
             camera_translation.y,
-            camera_transform.translation().z.as_f32(),
+            camera_transform.translation().z,
         ));
     }
 }

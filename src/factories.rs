@@ -1,7 +1,7 @@
 use amethyst::{
     assets::{Handle, Loader, Prefab},
-    core::{Float, Transform},
-    ecs::{world::EntityResBuilder, Entity, WriteStorage},
+    core::Transform,
+    ecs::Entity,
     prelude::{Builder, World},
     renderer::{
         palette::LinSrgba,
@@ -15,42 +15,9 @@ use amethyst::{
     utils::tag::Tag,
 };
 
-use std::time::Duration;
-
 use animation_prefabs::GameSpriteAnimationPrefab;
 
-use crate::{
-    components::*,
-    data_resources::{EntityGraphics, GameScene},
-    models::{MonsterAction, MonsterActionType, MonsterDefinition},
-    tags::*,
-    Vector2, Vector3,
-};
-
-pub fn create_missile(
-    position: Vector2,
-    direction: Vector2,
-    time_spawned: Duration,
-    entity_builder: EntityResBuilder,
-    missile_graphic: EntityGraphics,
-    transforms: &mut WriteStorage<Transform>,
-    meshes: &mut WriteStorage<Handle<Mesh>>,
-    materials: &mut WriteStorage<Handle<Material>>,
-    world_positions: &mut WriteStorage<WorldPosition>,
-    missiles: &mut WriteStorage<Missile>,
-) {
-    let EntityGraphics { mesh, material } = missile_graphic;
-    let mut transform = Transform::default();
-    transform.set_translation_xyz(position.x, position.y, 0.0);
-
-    entity_builder
-        .with(mesh, meshes)
-        .with(material, materials)
-        .with(transform, transforms)
-        .with(WorldPosition::new(position), world_positions)
-        .with(Missile::new(direction - position, time_spawned), missiles)
-        .build();
-}
+use crate::{components::*, data_resources::GameScene, tags::*, Vector2, Vector3, ZeroVector};
 
 pub fn create_player(
     world: &mut World,
@@ -63,52 +30,11 @@ pub fn create_player(
         .create_entity()
         .with(transform)
         .with(prefab_handle)
-        .with(WorldPosition::new(Vector2::new(0.0.into(), 0.0.into())))
+        .with(PlayerActions::new())
+        .with(WorldPosition::new(Vector2::zero()))
         .with(Player::new())
+        .with(DamageHistory::new())
         .build()
-}
-
-pub fn create_monster(
-    position: Vector2,
-    action: MonsterAction,
-    monster_definition: &MonsterDefinition,
-    entity_builder: EntityResBuilder,
-    transforms: &mut WriteStorage<Transform>,
-    meshes: &mut WriteStorage<Handle<Mesh>>,
-    materials: &mut WriteStorage<Handle<Material>>,
-    world_positions: &mut WriteStorage<WorldPosition>,
-    monsters: &mut WriteStorage<Monster>,
-) {
-    let mut transform = Transform::default();
-    transform.set_translation_xyz(position.x, position.y, 11.0);
-    let destination = if let MonsterActionType::Move(destination) = action.action_type {
-        destination
-    } else {
-        Vector2::new(0.0.into(), 0.0.into())
-    };
-
-    let MonsterDefinition {
-        name,
-        base_health,
-        base_speed: _base_speed,
-        base_attack: _base_attack,
-        graphics: EntityGraphics { mesh, material },
-    } = monster_definition.clone();
-    entity_builder
-        .with(mesh, meshes)
-        .with(material, materials)
-        .with(transform, transforms)
-        .with(WorldPosition::new(position), world_positions)
-        .with(
-            Monster {
-                health: base_health,
-                destination,
-                name,
-                action,
-            },
-            monsters,
-        )
-        .build();
 }
 
 pub fn create_landscape(world: &mut World, landscape_texture_handle: Handle<SpriteSheet>) {
@@ -127,10 +53,10 @@ pub fn create_landscape(world: &mut World, landscape_texture_handle: Handle<Spri
 }
 
 pub fn create_menu_screen(world: &mut World, font_handle: FontHandle) {
-    let some_big_number = Float::from_f32(10000.0);
+    let some_big_number = 10000.0;
     let (bg_positions, bg_tex_coords) = generate_rectangle_vertices(
-        Vector3::new(-some_big_number, -some_big_number, 0.9.into()),
-        Vector3::new(some_big_number, some_big_number, 0.9.into()),
+        Vector3::new(-some_big_number, -some_big_number, 0.9),
+        Vector3::new(some_big_number, some_big_number, 0.9),
     );
     let mesh = create_mesh(world, bg_positions, bg_tex_coords);
     let color = LinSrgba::new(0.1, 0.1, 0.1, 1.0);
@@ -169,47 +95,27 @@ pub fn create_menu_screen(world: &mut World, font_handle: FontHandle) {
 }
 
 pub fn create_debug_scene_border(world: &mut World) {
-    let border_width = Float::from_f32(3.0);
+    let border_width = 3.0;
 
     let screen_dimensions = world.read_resource::<GameScene>().dimensions;
-    let half_screen_width = screen_dimensions.x / Float::from_f32(2.0);
-    let half_screen_height = screen_dimensions.y / Float::from_f32(2.0);
+    let half_screen_width = screen_dimensions.x / 2.0;
+    let half_screen_height = screen_dimensions.y / 2.0;
 
     let generate_rectangle = |positions: &mut Vec<Position>,
                               tex_coords: &mut Vec<TexCoord>,
                               left_bottom: Vector2,
                               right_top: Vector2| {
-        positions.push(Position([
-            left_bottom.x.as_f32(),
-            right_top.y.as_f32(),
-            0.0,
-        ]));
+        positions.push(Position([left_bottom.x, right_top.y, 0.0]));
         tex_coords.push(TexCoord([0.0, 1.0]));
-        positions.push(Position([
-            left_bottom.x.as_f32(),
-            left_bottom.y.as_f32(),
-            0.0,
-        ]));
+        positions.push(Position([left_bottom.x, left_bottom.y, 0.0]));
         tex_coords.push(TexCoord([0.0, 0.0]));
-        positions.push(Position([
-            right_top.x.as_f32(),
-            left_bottom.y.as_f32(),
-            0.0,
-        ]));
+        positions.push(Position([right_top.x, left_bottom.y, 0.0]));
         tex_coords.push(TexCoord([1.0, 0.0]));
-        positions.push(Position([
-            right_top.x.as_f32(),
-            left_bottom.y.as_f32(),
-            0.0,
-        ]));
+        positions.push(Position([right_top.x, left_bottom.y, 0.0]));
         tex_coords.push(TexCoord([1.0, 0.0]));
-        positions.push(Position([right_top.x.as_f32(), right_top.y.as_f32(), 0.0]));
+        positions.push(Position([right_top.x, right_top.y, 0.0]));
         tex_coords.push(TexCoord([1.0, 1.0]));
-        positions.push(Position([
-            left_bottom.x.as_f32(),
-            right_top.y.as_f32(),
-            0.0,
-        ]));
+        positions.push(Position([left_bottom.x, right_top.y, 0.0]));
         tex_coords.push(TexCoord([0.0, 1.0]));
     };
 
@@ -264,34 +170,26 @@ pub fn generate_rectangle_vertices(
     (
         vec![
             Position([
-                left_bottom.x.as_f32(),
-                right_top.y.as_f32(),
-                left_bottom.z.as_f32() + (right_top.z - left_bottom.z).as_f32() / 2.0,
+                left_bottom.x,
+                right_top.y,
+                left_bottom.z + (right_top.z - left_bottom.z) / 2.0,
+            ]),
+            Position([left_bottom.x, left_bottom.y, left_bottom.z]),
+            Position([
+                right_top.x,
+                left_bottom.y,
+                left_bottom.z + (right_top.z - left_bottom.z) / 2.0,
             ]),
             Position([
-                left_bottom.x.as_f32(),
-                left_bottom.y.as_f32(),
-                left_bottom.z.as_f32(),
+                right_top.x,
+                left_bottom.y,
+                left_bottom.z + (right_top.z - left_bottom.z) / 2.0,
             ]),
+            Position([right_top.x, right_top.y, right_top.z]),
             Position([
-                right_top.x.as_f32(),
-                left_bottom.y.as_f32(),
-                left_bottom.z.as_f32() + (right_top.z - left_bottom.z).as_f32() / 2.0,
-            ]),
-            Position([
-                right_top.x.as_f32(),
-                left_bottom.y.as_f32(),
-                left_bottom.z.as_f32() + (right_top.z.as_f32() - left_bottom.z.as_f32()) / 2.0,
-            ]),
-            Position([
-                right_top.x.as_f32(),
-                right_top.y.as_f32(),
-                right_top.z.as_f32(),
-            ]),
-            Position([
-                left_bottom.x.as_f32(),
-                right_top.y.as_f32(),
-                left_bottom.z.as_f32() + (right_top.z.as_f32() - left_bottom.z.as_f32()) / 2.0,
+                left_bottom.x,
+                right_top.y,
+                left_bottom.z + (right_top.z - left_bottom.z) / 2.0,
             ]),
         ],
         vec![
