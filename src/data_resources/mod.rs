@@ -42,7 +42,7 @@ impl MonsterDefinitions {
                 base_health: 100.0,
                 base_speed: 180.0,
                 base_attack_damage: 15.0,
-                attack_type: MobAttackType::SlowMelee,
+                attack_type: MobAttackType::SlowMelee { cooldown: 0.75 },
                 graphics: {
                     let color = LinSrgba::new(0.21, 0.06, 0.11, 1.0);
                     let material = create_color_material(world, color);

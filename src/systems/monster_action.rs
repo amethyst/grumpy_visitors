@@ -18,7 +18,6 @@ use crate::{
 };
 
 const IDLE_TIME_SEC: f32 = 0.5;
-const ATTACK_COOLDOWN_MS: f32 = 1.0;
 
 pub struct MonsterActionSystem;
 
@@ -102,27 +101,32 @@ impl<'s> System<'s> for MonsterActionSystem {
                         );
                         Some(MobActionType::Attack(MobAttackAction {
                             target,
-                            attack_type: monster_definition.attack_type,
+                            attack_type: monster_definition.attack_type.randomize_params(0.2),
                         }))
                     } else {
                         None
                     }
                 }
                 MobActionType::Attack(ref attack_action) => {
-                    let is_cooling_down = time.absolute_time() - monster.action.started_at
-                        < Duration::from_millis((ATTACK_COOLDOWN_MS as f32 * 1000.0).round() as u64);
+                    let is_cooling_down = match attack_action.attack_type {
+                        MobAttackType::SlowMelee { cooldown } => {
+                            time.absolute_time() - monster.action.started_at
+                                < Duration::from_millis((cooldown as f32 * 1000.0).round() as u64)
+                        }
+                        _ => false,
+                    };
                     let player_in_radius = find_player_in_radius(
                         (&entities, &players, &world_positions).join(),
                         **monster_position,
                         monster.radius,
                     );
-                    match (attack_action.attack_type, player_in_radius) {
+                    match (&attack_action.attack_type, player_in_radius) {
                         // TODO: implement cooling down for other attacks as well.
-                        (MobAttackType::SlowMelee, _) if is_cooling_down => None,
+                        (MobAttackType::SlowMelee { .. }, _) if is_cooling_down => None,
                         (_, Some((target, _player_position))) => {
                             Some(MobActionType::Attack(MobAttackAction {
                                 target,
-                                attack_type: monster_definition.attack_type,
+                                attack_type: monster_definition.attack_type.randomize_params(0.2),
                             }))
                         }
                         (_, None) => Some(MobActionType::Idle),

@@ -3,6 +3,7 @@ use amethyst::ecs::Entity;
 use std::time::Duration;
 
 use crate::Vector2;
+use rand::Rng;
 
 #[derive(Debug)]
 pub struct MobAction {
@@ -38,11 +39,26 @@ pub struct MobAttackAction {
     pub attack_type: MobAttackType,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum MobAttackType {
     #[allow(dead_code)]
     Melee,
-    SlowMelee,
+    SlowMelee {
+        cooldown: f32,
+    },
     #[allow(dead_code)]
     Range,
+}
+
+impl MobAttackType {
+    pub fn randomize_params(&self, factor: f32) -> Self {
+        let mut rng = rand::thread_rng();
+        match self {
+            MobAttackType::SlowMelee { cooldown } => {
+                let cooldown = rng.gen_range(cooldown * (1.0 - factor), cooldown * (1.0 + factor));
+                MobAttackType::SlowMelee { cooldown }
+            }
+            other => other.clone(),
+        }
+    }
 }
