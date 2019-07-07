@@ -7,3 +7,6 @@ assets_packer/input
 
 # RenderDoc
 *.cap
+
+# MacOS
+.DS_Store

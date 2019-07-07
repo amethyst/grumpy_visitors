@@ -7,8 +7,17 @@ edition = "2018"
 [dependencies.animation_prefabs]
 path = "../libs/animation_prefabs"
 
+[dependencies.amethyst]
+git = "https://github.com/amethyst/amethyst.git"
+rev = "7abfcfc"
+features = ["nightly"]
+
+[target.'cfg(target_os = "macos")'.dependencies.amethyst]
+git = "https://github.com/amethyst/amethyst.git"
+rev = "7abfcfc"
+features = ["metal"]
+
 [dependencies]
-amethyst = { git = "https://github.com/amethyst/amethyst.git", rev = "7abfcfc", features = ["nightly", "vulkan"] }
 texture_packer = "0.16.0"
 image = "0.21.1"
 ron = "0.5.1"
