@@ -1,12 +1,14 @@
 use amethyst::prelude::{GameData, SimpleState, SimpleTrans, StateData, StateEvent, Trans};
 
 use crate::{
+    animation,
+    factories::create_player,
     factories::{create_debug_scene_border, create_landscape},
     models::{
         common::{AssetsHandles, GameState},
         monster_spawn::{Count, SpawnAction, SpawnActions, SpawnType},
     },
-    utils,
+    utils::{self, camera::initialise_camera},
 };
 
 #[derive(Default)]
@@ -17,6 +19,11 @@ impl SimpleState for PlayingState {
         log::info!("PlayingState started");
         let world = data.world;
         *world.write_resource::<GameState>() = GameState::Playing;
+
+        let AssetsHandles { hero_prefab, .. } = world.read_resource::<AssetsHandles>().clone();
+
+        let player = create_player(world, hero_prefab);
+        initialise_camera(world, player);
 
         {
             let mut spawn_actions = world.write_resource::<SpawnActions>();
@@ -54,7 +61,8 @@ impl SimpleState for PlayingState {
         Trans::None
     }
 
-    fn update(&mut self, _data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
+    fn update(&mut self, data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
+        animation::start_hero_animations(data.world);
         Trans::None
     }
 }

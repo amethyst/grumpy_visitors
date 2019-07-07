@@ -1,13 +1,12 @@
 use amethyst::{
     assets::Handle,
     core::{HiddenPropagate, Time},
-    ecs::{Entities, Read, ReadExpect, ReadStorage, System, WriteStorage},
+    ecs::{Read, ReadExpect, System, WriteStorage},
     renderer::Material,
     ui::{UiFinder, UiText},
-    utils::tag::{Tag, TagFinder},
 };
 
-use crate::{models::common::GameState, tags::UiBackground};
+use crate::models::common::GameState;
 
 pub struct MenuSystem;
 
@@ -16,8 +15,6 @@ impl<'s> System<'s> for MenuSystem {
         Read<'s, Time>,
         UiFinder<'s>,
         ReadExpect<'s, GameState>,
-        Entities<'s>,
-        ReadStorage<'s, Tag<UiBackground>>,
         WriteStorage<'s, UiText>,
         WriteStorage<'s, HiddenPropagate>,
         WriteStorage<'s, Handle<Material>>,
@@ -29,8 +26,6 @@ impl<'s> System<'s> for MenuSystem {
             time,
             ui_finder,
             game_state,
-            entities,
-            ui_background_tags,
             mut ui_texts,
             mut hidden_propagates,
             mut _materials,
@@ -44,11 +39,7 @@ impl<'s> System<'s> for MenuSystem {
             let ui_loading_text = ui_texts.get_mut(ui_loading).unwrap();
             ui_loading_text.text = "Loading".to_owned() + &dots;
         } else {
-            let tag_finder = TagFinder {
-                entities,
-                tags: ui_background_tags,
-            };
-            let ui_background = tag_finder.find().unwrap();
+            let ui_background = ui_finder.find("ui_background").unwrap();
             if !hidden_propagates.contains(ui_background) {
                 hidden_propagates
                     .insert(ui_background, HiddenPropagate)

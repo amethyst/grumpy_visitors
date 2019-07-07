@@ -11,7 +11,7 @@ use amethyst::{
         },
         Material, MaterialDefaults, Mesh, SpriteRender, SpriteSheet,
     },
-    ui::{Anchor, FontHandle, UiText, UiTransform},
+    ui::{Anchor, FontHandle, UiImage, UiText, UiTransform},
     utils::tag::Tag,
 };
 
@@ -54,20 +54,21 @@ pub fn create_landscape(world: &mut World, landscape_texture_handle: Handle<Spri
 
 pub fn create_menu_screen(world: &mut World, font_handle: FontHandle) {
     let some_big_number = 10000.0;
-    let (bg_positions, bg_tex_coords) = generate_rectangle_vertices(
-        Vector3::new(-some_big_number, -some_big_number, 0.9),
-        Vector3::new(some_big_number, some_big_number, 0.9),
+    let ui_transform = UiTransform::new(
+        "ui_background".to_owned(),
+        Anchor::Middle,
+        Anchor::Middle,
+        0.0,
+        0.0,
+        100.0,
+        some_big_number,
+        some_big_number,
     );
-    let mesh = create_mesh(world, bg_positions, bg_tex_coords);
-    let color = LinSrgba::new(0.1, 0.1, 0.1, 1.0);
-    let material = create_color_material(world, color);
-    let transform = Transform::default();
+    let ui_image = UiImage::SolidColor([0.05, 0.05, 0.05, 1.0]);
     world
         .create_entity()
-        .with(Tag::<UiBackground>::default())
-        .with(mesh)
-        .with(material)
-        .with(transform)
+        .with(ui_image)
+        .with(ui_transform)
         .build();
 
     let ui_transform = UiTransform::new(
@@ -76,7 +77,7 @@ pub fn create_menu_screen(world: &mut World, font_handle: FontHandle) {
         Anchor::Middle,
         0.0,
         100.0,
-        1.0,
+        101.0,
         125.0,
         75.0,
     );
@@ -163,6 +164,7 @@ pub fn create_debug_scene_border(world: &mut World) {
         .build();
 }
 
+#[allow(dead_code)]
 pub fn generate_rectangle_vertices(
     left_bottom: Vector3,
     right_top: Vector3,

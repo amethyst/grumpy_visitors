@@ -25,8 +25,8 @@ shrinkwraprs = "0.2.1"
 [dependencies.animation_prefabs]
 path = "libs/animation_prefabs"
 
-[profile.dev.overrides."*"]
-opt-level = 2
+#[profile.dev.overrides."*"]
+#opt-level = 2
 
 #[patch."https://github.com/amethyst/amethyst.git"]
 #amethyst = { path = "../amethyst" }
