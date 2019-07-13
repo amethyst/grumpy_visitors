@@ -11,7 +11,6 @@ use amethyst::{
         },
         Material, MaterialDefaults, Mesh, SpriteRender, SpriteSheet,
     },
-    ui::{Anchor, FontHandle, UiImage, UiText, UiTransform},
     utils::tag::Tag,
 };
 
@@ -49,49 +48,6 @@ pub fn create_landscape(world: &mut World, landscape_texture_handle: Handle<Spri
             sprite_sheet: landscape_texture_handle.clone(),
             sprite_number: 0,
         })
-        .build();
-}
-
-pub fn create_menu_screen(world: &mut World, font_handle: FontHandle) {
-    let some_big_number = 10000.0;
-    let ui_transform = UiTransform::new(
-        "ui_background".to_owned(),
-        Anchor::Middle,
-        Anchor::Middle,
-        0.0,
-        0.0,
-        100.0,
-        some_big_number,
-        some_big_number,
-    );
-    let ui_image = UiImage::SolidColor([0.05, 0.05, 0.05, 1.0]);
-    world
-        .create_entity()
-        .with(ui_image)
-        .with(ui_transform)
-        .build();
-
-    let ui_transform = UiTransform::new(
-        "ui_loading".to_owned(),
-        Anchor::BottomMiddle,
-        Anchor::Middle,
-        0.0,
-        100.0,
-        101.0,
-        125.0,
-        75.0,
-    );
-    let mut ui_text = UiText::new(
-        font_handle,
-        "Loading...".to_owned(),
-        [0.9, 0.9, 0.9, 1.0],
-        38.0,
-    );
-    ui_text.align = Anchor::MiddleLeft;
-    world
-        .create_entity()
-        .with(ui_transform)
-        .with(ui_text)
         .build();
 }
 

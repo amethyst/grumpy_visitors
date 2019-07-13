@@ -12,7 +12,7 @@
                 ),
                 sprite_scene: (
                     sheet: Some(Sheet(
-                        texture: File("resources\\atlas.png", ("IMAGE", (
+                        texture: File("resources/atlas.png", ("IMAGE", (
                             format: None,
                             repr: Srgb,
                             kind: D2,

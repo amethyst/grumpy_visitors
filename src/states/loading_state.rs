@@ -3,7 +3,7 @@ use amethyst::{
     ecs::World,
     prelude::{GameData, SimpleState, SimpleTrans, StateData, Trans},
     renderer::{ImageFormat, SpriteSheet, SpriteSheetFormat, Texture},
-    ui::{FontAsset, TtfFormat},
+    ui::{FontAsset, TtfFormat, UiCreator},
     utils::tag::Tag,
 };
 
@@ -12,7 +12,6 @@ use animation_prefabs::GameSpriteAnimationPrefab;
 use crate::{
     components::{Missile, Player, WorldPosition},
     data_resources::{GameScene, MissileGraphics, MonsterDefinitions},
-    factories::create_menu_screen,
     models::{
         common::{AssetsHandles, GameState},
         monster_spawn::SpawnActions,
@@ -78,7 +77,8 @@ impl SimpleState for LoadingState {
             },
         );
 
-        create_menu_screen(world, ui_font_handle.clone());
+        let _ui_handle =
+            world.exec(|mut creator: UiCreator| creator.create("resources/ui/loading.ron", ()));
 
         world.add_resource(AssetsHandles {
             hero_prefab: hero_prefab_handle,
