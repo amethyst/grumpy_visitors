@@ -11,15 +11,12 @@ members = [
     "assets_packer",
 ]
 
-[dependencies.amethyst]
-git = "https://github.com/amethyst/amethyst.git"
-rev = "7abfcfc"
-features = ["nightly"]
+# Bad news: https://github.com/rust-lang/cargo/issues/1197
 
-[target.'cfg(target_os = "macos")'.dependencies.amethyst]
-git = "https://github.com/amethyst/amethyst.git"
-rev = "7abfcfc"
-features = ["metal"]
+#[target.'cfg(target_os = "macos")'.dependencies.amethyst]
+#git = "https://github.com/amethyst/amethyst.git"
+#rev = "7abfcfc"
+#features = ["metal"]
 
 [dependencies]
 directories = "1.0.2"
@@ -29,10 +26,22 @@ num = "0.2.0"
 rand = "0.6.5"
 ron = "0.5.1"
 winit = "0.19"
+shred = "0.7"
+shred-derive = "0.5"
 shrinkwraprs = "0.2.1"
+
+[dependencies.amethyst]
+git = "https://github.com/amethyst/amethyst.git"
+rev = "7abfcfc"
+features = ["nightly"]
 
 [dependencies.animation_prefabs]
 path = "libs/animation_prefabs"
+
+[target.'cfg(not(target_os = "macos"))'.dependencies.amethyst]
+git = "https://github.com/amethyst/amethyst.git"
+rev = "7abfcfc"
+features = ["vulkan"]
 
 #[profile.dev.overrides."*"]
 #opt-level = 2
