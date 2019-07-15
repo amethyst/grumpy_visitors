@@ -15,6 +15,8 @@ use amethyst::{
 
 use std::ops::Deref;
 
+use crate::render_groups::DrawHealthUiDesc;
+
 #[derive(Default)]
 pub struct RenderGraph {
     dimensions: Option<ScreenDimensions>,
@@ -65,6 +67,7 @@ impl GraphCreator<DefaultBackend> for RenderGraph {
             SubpassBuilder::new()
                 .with_group(DrawFlat2DDesc::new().builder())
                 .with_group(DrawFlatDesc::new().builder())
+                .with_group(DrawHealthUiDesc::new().builder())
                 .with_group(DrawFlat2DTransparentDesc::new().builder())
                 .with_group(DrawUiDesc::new().builder())
                 .with_color(color)

@@ -65,7 +65,7 @@ impl<'s> System<'s> for SpawnerSystem {
             let mut spawn_monster =
                 |position: Vector2, action: MobAction, monster_definition: &MonsterDefinition| {
                     let mut transform = Transform::default();
-                    transform.set_translation_xyz(position.x, position.y, 11.0);
+                    transform.set_translation_xyz(position.x, position.y, 5.0);
                     let destination = if let MobActionType::Move(destination) = action.action_type {
                         destination
                     } else {

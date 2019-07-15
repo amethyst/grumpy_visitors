@@ -12,18 +12,32 @@ use amethyst::{
         Material, MaterialDefaults, Mesh, SpriteRender, SpriteSheet,
     },
     utils::tag::Tag,
+    window::ScreenDimensions,
 };
 
 use animation_prefabs::GameSpriteAnimationPrefab;
 
-use crate::{components::*, data_resources::GameScene, tags::*, Vector2, Vector3, ZeroVector};
+use crate::{
+    components::*,
+    data_resources::{GameScene, HEALTH_UI_SCREEN_PADDING},
+    tags::*,
+    Vector2, Vector3, ZeroVector,
+};
 
 pub fn create_player(
     world: &mut World,
     prefab_handle: Handle<Prefab<GameSpriteAnimationPrefab>>,
 ) -> Entity {
     let mut transform = Transform::default();
-    transform.set_translation_z(22.0);
+    transform.set_translation_z(10.0);
+
+    let (half_screen_width, half_screen_height) = {
+        let screen_dimensions = world.read_resource::<ScreenDimensions>();
+        (
+            screen_dimensions.width() / 2.0,
+            screen_dimensions.height() / 2.0,
+        )
+    };
 
     world
         .create_entity()
@@ -33,6 +47,14 @@ pub fn create_player(
         .with(WorldPosition::new(Vector2::zero()))
         .with(Player::new())
         .with(DamageHistory::new())
+        .with(HealthUiGraphics {
+            screen_position: Vector2::new(
+                -half_screen_width + HEALTH_UI_SCREEN_PADDING,
+                -half_screen_height + HEALTH_UI_SCREEN_PADDING,
+            ),
+            scale_ratio: 1.0,
+            health: 1.0,
+        })
         .build()
 }
 
@@ -120,18 +142,12 @@ pub fn create_debug_scene_border(world: &mut World) {
         .build();
 }
 
-#[allow(dead_code)]
 pub fn generate_rectangle_vertices(
     left_bottom: Vector3,
     right_top: Vector3,
-) -> (Vec<Position>, Vec<TexCoord>) {
+) -> (Vec<Position>, Vec<TexCoord>, Vec<u16>) {
     (
         vec![
-            Position([
-                left_bottom.x,
-                right_top.y,
-                left_bottom.z + (right_top.z - left_bottom.z) / 2.0,
-            ]),
             Position([left_bottom.x, left_bottom.y, left_bottom.z]),
             Position([
                 right_top.x,
@@ -139,25 +155,19 @@ pub fn generate_rectangle_vertices(
                 left_bottom.z + (right_top.z - left_bottom.z) / 2.0,
             ]),
             Position([
-                right_top.x,
-                left_bottom.y,
-                left_bottom.z + (right_top.z - left_bottom.z) / 2.0,
-            ]),
-            Position([right_top.x, right_top.y, right_top.z]),
-            Position([
                 left_bottom.x,
                 right_top.y,
                 left_bottom.z + (right_top.z - left_bottom.z) / 2.0,
             ]),
+            Position([right_top.x, right_top.y, right_top.z]),
         ],
         vec![
-            TexCoord([0.0, 1.0]),
             TexCoord([0.0, 0.0]),
             TexCoord([1.0, 0.0]),
-            TexCoord([1.0, 0.0]),
-            TexCoord([1.0, 1.0]),
             TexCoord([0.0, 1.0]),
+            TexCoord([1.0, 1.0]),
         ],
+        vec![0, 1, 2, 1, 2, 3],
     )
 }
 

@@ -10,8 +10,8 @@ use amethyst::{
 use animation_prefabs::GameSpriteAnimationPrefab;
 
 use crate::{
-    components::{Missile, Player, WorldPosition},
-    data_resources::{GameScene, MissileGraphics, MonsterDefinitions},
+    components::{HealthUiGraphics, Missile, Player, WorldPosition},
+    data_resources::{GameScene, HealthUiMesh, MissileGraphics, MonsterDefinitions},
     models::{
         common::{AssetsHandles, GameState},
         monster_spawn::SpawnActions,
@@ -41,9 +41,11 @@ impl SimpleState for LoadingState {
         world.register::<Missile>();
         world.register::<Player>();
         world.register::<Tag<Landscape>>();
+        world.register::<HealthUiGraphics>();
 
         MissileGraphics::register(world);
         MonsterDefinitions::register(world);
+        HealthUiMesh::register(world);
         world.add_resource(SpawnActions(Vec::new()));
         world.add_resource(GameScene::default());
         world.add_resource(GameState::Loading);
