@@ -1,13 +1,13 @@
-use amethyst::{
-    core::Time,
-    ecs::{ReadExpect, System, WriteExpect},
-};
+use amethyst::ecs::{ReadExpect, System, WriteExpect};
 
 use std::time::Duration;
 
-use crate::models::{
-    common::GameState,
-    monster_spawn::{Count, SpawnAction, SpawnActions, SpawnType},
+use crate::{
+    models::{
+        common::GameState,
+        monster_spawn::{Count, SpawnAction, SpawnActions, SpawnType},
+    },
+    utils::time::GameTimeService,
 };
 
 const SECS_PER_LEVEL: u64 = 30;
@@ -34,18 +34,18 @@ impl LevelSystem {
 
 impl<'s> System<'s> for LevelSystem {
     type SystemData = (
-        ReadExpect<'s, Time>,
+        GameTimeService<'s>,
         ReadExpect<'s, GameState>,
         WriteExpect<'s, SpawnActions>,
     );
 
-    fn run(&mut self, (time, game_state, mut spawn_actions): Self::SystemData) {
+    fn run(&mut self, (game_time_service, game_state, mut spawn_actions): Self::SystemData) {
         if let GameState::Playing = *game_state {
         } else {
             return;
         }
 
-        let now = time.absolute_time();
+        let now = game_time_service.level_duration();
 
         if now - self.level_started > Duration::from_secs(SECS_PER_LEVEL) {
             self.spawn_level += 1;
