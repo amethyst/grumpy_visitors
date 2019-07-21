@@ -117,7 +117,7 @@ fn main() -> amethyst::Result<()> {
             "animation_system",
             &["world_position_transform_system"],
         )
-        .with(MenuSystem, "menu_system", &[])
+        .with(MenuSystem::new(), "menu_system", &[])
         .with_bundle(TransformBundle::new().with_dep(&["camera_translation_system"]))?
         .with(
             HideHierarchySystem::default(),

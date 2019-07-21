@@ -19,7 +19,6 @@ impl<'a> GameTimeService<'a> {
         self.game_time.level_started_at = self.engine_time.absolute_time();
     }
 
-    #[allow(dead_code)]
     pub fn engine_time(&self) -> &Time {
         &self.engine_time
     }
