@@ -80,6 +80,8 @@ impl SimpleState for LoadingState {
         );
 
         let _ui_handle =
+            world.exec(|mut creator: UiCreator| creator.create("resources/ui/hud.ron", ()));
+        let _ui_handle =
             world.exec(|mut creator: UiCreator| creator.create("resources/ui/loading.ron", ()));
 
         world.add_resource(AssetsHandles {

@@ -1,0 +1,40 @@
+#![enable(implicit_some)]
+Container(
+    transform: (
+        id: "ui_hud_container",
+        x: 0.0,
+        y: 0.0,
+        z: 90.0,
+    ),
+    children: [
+        Container(
+            transform: (
+                id: "ui_health_container",
+                anchor: BottomLeft,
+                pivot: BottomLeft,
+                x: 40.0,
+                y: 40.0,
+                width: 180.0,
+                height: 180.0,
+            ),
+            children: [
+                Label(
+                    transform: (
+                        id: "ui_health_label",
+                        z: 1.0,
+                        width: 60.0,
+                        height: 180.0,
+                    ),
+                    text: (
+                        text: "100/100",
+                        color: (0.8, 0.8, 0.8, 1.0),
+                        font_size: 18.0,
+                        font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                        align: Middle,
+                    ),
+                ),
+            ],
+        )
+    ],
+)
+

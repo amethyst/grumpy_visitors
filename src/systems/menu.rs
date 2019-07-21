@@ -7,7 +7,10 @@ use amethyst::{
     window::ScreenDimensions,
 };
 
-use crate::{models::common::GameState, utils::ui::UiFinderMut};
+use crate::{
+    models::common::GameState,
+    utils::ui::{update_fullscreen_container, UiFinderMut},
+};
 
 pub struct MenuSystem;
 
@@ -34,7 +37,11 @@ impl<'s> System<'s> for MenuSystem {
             mut _materials,
         ): Self::SystemData,
     ) {
-        update_container_transform(&mut ui_finder, &screen_dimensions);
+        update_fullscreen_container(
+            &mut ui_finder,
+            "ui_background_container",
+            &screen_dimensions,
+        );
 
         let (ui_loading, ui_background) = if let (Some(ui_loading), Some(ui_background)) = (
             ui_finder.find("ui_loading_label"),
@@ -63,14 +70,5 @@ impl<'s> System<'s> for MenuSystem {
                     .unwrap();
             }
         }
-    }
-}
-
-fn update_container_transform(ui_finder: &mut UiFinderMut, screen_dimensions: &ScreenDimensions) {
-    if let Some((_, ui_background_transform)) =
-        ui_finder.find_with_mut_transform("ui_background_container")
-    {
-        ui_background_transform.width = screen_dimensions.width();
-        ui_background_transform.height = screen_dimensions.height();
     }
 }
