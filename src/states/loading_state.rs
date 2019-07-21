@@ -6,18 +6,20 @@ use amethyst::{
     ui::{FontAsset, TtfFormat, UiCreator},
     utils::tag::Tag,
 };
+use shred::SystemData;
 
 use animation_prefabs::GameSpriteAnimationPrefab;
 
 use crate::{
     components::{HealthUiGraphics, Missile, Player, WorldPosition},
-    data_resources::{GameScene, HealthUiMesh, MissileGraphics, MonsterDefinitions},
+    data_resources::{GameScene, GameTime, HealthUiMesh, MissileGraphics, MonsterDefinitions},
     models::{
         common::{AssetsHandles, GameState},
         monster_spawn::SpawnActions,
     },
     states::PlayingState,
     tags::*,
+    utils::time::GameTimeService,
 };
 
 pub struct LoadingState {
@@ -49,6 +51,7 @@ impl SimpleState for LoadingState {
         world.add_resource(SpawnActions(Vec::new()));
         world.add_resource(GameScene::default());
         world.add_resource(GameState::Loading);
+        world.add_resource(GameTime::default());
 
         let ui_font_handle = {
             let loader = world.read_resource::<Loader>();
@@ -91,8 +94,9 @@ impl SimpleState for LoadingState {
         });
     }
 
-    fn update(&mut self, _data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
+    fn update(&mut self, data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
         if self.progress_counter.is_complete() {
+            GameTimeService::fetch(&data.world.res).set_level_started_at();
             Trans::Switch(Box::new(PlayingState))
         } else {
             Trans::None

@@ -1,6 +1,7 @@
 pub mod animation;
 pub mod camera;
 pub mod math;
+pub mod time;
 pub mod ui;
 pub mod world;
 

@@ -4,7 +4,7 @@ use amethyst::{
     renderer::{palette::LinSrgba, rendy::mesh::MeshBuilder, Material, Mesh},
 };
 
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use crate::{
     factories::{
@@ -15,6 +15,18 @@ use crate::{
 };
 
 pub const HEALTH_UI_SCREEN_PADDING: f32 = 40.0;
+
+pub struct GameTime {
+    pub level_started_at: Duration,
+}
+
+impl Default for GameTime {
+    fn default() -> Self {
+        Self {
+            level_started_at: Duration::new(0, 0),
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct MissileGraphics(pub EntityGraphics);
