@@ -7,10 +7,10 @@ use amethyst::{
 };
 use winit::MouseButton;
 
-use crate::models::player_actions::{PlayerCastAction, PlayerLookAction, PlayerWalkAction};
 use crate::{
     components::{PlayerActions, WorldPosition},
-    models::common::GameState,
+    data_resources::GameEngineState,
+    models::player_actions::{PlayerCastAction, PlayerLookAction, PlayerWalkAction},
     Vector2,
 };
 
@@ -26,7 +26,7 @@ impl<'s> System<'s> for InputSystem {
     type SystemData = (
         ReadExpect<'s, InputHandler<StringBindings>>,
         ReadExpect<'s, ScreenDimensions>,
-        ReadExpect<'s, GameState>,
+        ReadExpect<'s, GameEngineState>,
         ReadStorage<'s, Camera>,
         ReadStorage<'s, Transform>,
         ReadStorage<'s, WorldPosition>,
@@ -45,7 +45,7 @@ impl<'s> System<'s> for InputSystem {
             mut player_actions,
         ): Self::SystemData,
     ) {
-        if let GameState::Playing = *game_state {
+        if let GameEngineState::Playing = *game_state {
         } else {
             return;
         }

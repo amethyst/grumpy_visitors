@@ -3,24 +3,21 @@ use amethyst::{
     ecs::World,
     prelude::{GameData, SimpleState, SimpleTrans, StateData, Trans},
     renderer::{ImageFormat, SpriteSheet, SpriteSheetFormat, Texture},
-    ui::{FontAsset, TtfFormat},
+    ui::{FontAsset, TtfFormat, UiCreator},
     utils::tag::Tag,
 };
 
 use animation_prefabs::GameSpriteAnimationPrefab;
 
 use crate::{
-    animation,
-    components::{Missile, Player, WorldPosition},
-    data_resources::{GameScene, MissileGraphics, MonsterDefinitions},
-    factories::{create_menu_screen, create_player},
-    models::{
-        common::{AssetsHandles, GameState},
-        monster_spawn::SpawnActions,
+    components::{HealthUiGraphics, Missile, Player, WorldPosition},
+    data_resources::{
+        GameEngineState, GameLevelState, GameTime, HealthUiMesh, MissileGraphics,
+        MonsterDefinitions,
     },
-    states::PlayingState,
+    models::{common::AssetsHandles, monster_spawn::SpawnActions},
+    states::MenuState,
     tags::*,
-    utils::camera::initialise_camera,
 };
 
 pub struct LoadingState {
@@ -43,14 +40,16 @@ impl SimpleState for LoadingState {
         world.register::<WorldPosition>();
         world.register::<Missile>();
         world.register::<Player>();
-        world.register::<Tag<UiBackground>>();
         world.register::<Tag<Landscape>>();
+        world.register::<HealthUiGraphics>();
 
         MissileGraphics::register(world);
         MonsterDefinitions::register(world);
+        HealthUiMesh::register(world);
         world.add_resource(SpawnActions(Vec::new()));
-        world.add_resource(GameScene::default());
-        world.add_resource(GameState::Loading);
+        world.add_resource(GameLevelState::default());
+        world.add_resource(GameTime::default());
+        world.add_resource(GameEngineState::Loading);
 
         let ui_font_handle = {
             let loader = world.read_resource::<Loader>();
@@ -68,6 +67,7 @@ impl SimpleState for LoadingState {
             world,
             "resources/levels/desert.png",
             "resources/levels/desert.ron",
+            &mut self.progress_counter,
         );
 
         let hero_prefab_handle = world.exec(
@@ -80,9 +80,10 @@ impl SimpleState for LoadingState {
             },
         );
 
-        let player = create_player(world, hero_prefab_handle.clone());
-        initialise_camera(world, player);
-        create_menu_screen(world, ui_font_handle.clone());
+        let _ui_handle =
+            world.exec(|mut creator: UiCreator| creator.create("resources/ui/hud.ron", ()));
+        let _ui_handle =
+            world.exec(|mut creator: UiCreator| creator.create("resources/ui/main_menu.ron", ()));
 
         world.add_resource(AssetsHandles {
             hero_prefab: hero_prefab_handle,
@@ -91,29 +92,37 @@ impl SimpleState for LoadingState {
         });
     }
 
-    fn update(&mut self, data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
-        let StateData { ref mut world, .. } = data;
+    fn update(&mut self, _data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
         if self.progress_counter.is_complete() {
-            animation::start_hero_animations(world);
-            Trans::Switch(Box::new(PlayingState))
+            Trans::Switch(Box::new(MenuState))
         } else {
             Trans::None
         }
     }
 }
 
-fn load_sprite_sheet(world: &mut World, png_path: &str, ron_path: &str) -> Handle<SpriteSheet> {
+fn load_sprite_sheet(
+    world: &mut World,
+    png_path: &str,
+    ron_path: &str,
+    progress: &mut ProgressCounter,
+) -> Handle<SpriteSheet> {
     let texture_handle = {
         let loader = world.read_resource::<Loader>();
         let texture_storage = world.read_resource::<AssetStorage<Texture>>();
-        loader.load(png_path, ImageFormat::default(), (), &texture_storage)
+        loader.load(
+            png_path,
+            ImageFormat::default(),
+            &mut *progress,
+            &texture_storage,
+        )
     };
     let loader = world.read_resource::<Loader>();
     let sprite_sheet_store = world.read_resource::<AssetStorage<SpriteSheet>>();
     loader.load(
         ron_path,
         SpriteSheetFormat(texture_handle),
-        (),
+        progress,
         &sprite_sheet_store,
     )
 }

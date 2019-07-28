@@ -1,16 +1,32 @@
 use amethyst::{
-    assets::Handle,
+    assets::{Handle, Loader},
     prelude::World,
-    renderer::{palette::LinSrgba, Material, Mesh},
+    renderer::{palette::LinSrgba, rendy::mesh::MeshBuilder, Material, Mesh},
 };
 
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use crate::{
-    factories::{create_color_material, create_mesh, generate_circle_vertices},
+    factories::{
+        create_color_material, create_mesh, generate_circle_vertices, generate_rectangle_vertices,
+    },
     models::{common::MonsterDefinition, mob_actions::MobAttackType},
-    Vector2,
+    Vector2, Vector3,
 };
+
+pub const HEALTH_UI_SCREEN_PADDING: f32 = 40.0;
+
+pub struct GameTime {
+    pub level_started_at: Duration,
+}
+
+impl Default for GameTime {
+    fn default() -> Self {
+        Self {
+            level_started_at: Duration::new(0, 0),
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct MissileGraphics(pub EntityGraphics);
@@ -21,6 +37,32 @@ impl MissileGraphics {
         let mesh = create_mesh(world, positions, tex_coords);
         let material = create_color_material(world, LinSrgba::new(1.0, 0.0, 0.0, 1.0));
         world.add_resource(MissileGraphics(EntityGraphics { mesh, material }));
+    }
+}
+
+#[derive(Clone)]
+pub struct HealthUiMesh(pub Handle<Mesh>);
+
+impl HealthUiMesh {
+    pub fn register(world: &mut World) {
+        let (vertices, tex_coords, indices) = generate_rectangle_vertices(
+            Vector3::new(0.0, 0.0, 100.0),
+            Vector3::new(180.0, 180.0, 100.0),
+        );
+
+        let mesh = {
+            let loader = world.read_resource::<Loader>();
+            loader.load_from_data(
+                MeshBuilder::new()
+                    .with_vertices(vertices)
+                    .with_vertices(tex_coords)
+                    .with_indices(indices)
+                    .into(),
+                (),
+                &world.read_resource(),
+            )
+        };
+        world.add_resource(HealthUiMesh(mesh));
     }
 }
 
@@ -57,20 +99,36 @@ impl MonsterDefinitions {
     }
 }
 
-pub struct GameScene {
+pub struct GameLevelState {
     pub dimensions: Vector2,
+    pub is_over: bool,
+    pub spawn_level: usize,
+    pub spawn_level_started: Duration,
+    pub last_borderline_spawn: Duration,
+    pub last_random_spawn: Duration,
 }
 
-impl GameScene {
-    pub fn half_size(&self) -> Vector2 {
+impl GameLevelState {
+    pub fn dimensions_half_size(&self) -> Vector2 {
         self.dimensions / 2.0
     }
 }
 
-impl Default for GameScene {
+impl Default for GameLevelState {
     fn default() -> Self {
         Self {
             dimensions: Vector2::new(4096.0, 4096.0),
+            is_over: false,
+            spawn_level: 1,
+            spawn_level_started: Duration::new(0, 0),
+            last_borderline_spawn: Duration::new(0, 0),
+            last_random_spawn: Duration::new(0, 0),
         }
     }
+}
+
+pub enum GameEngineState {
+    Loading,
+    Menu,
+    Playing,
 }

@@ -11,20 +11,33 @@ use amethyst::{
         },
         Material, MaterialDefaults, Mesh, SpriteRender, SpriteSheet,
     },
-    ui::{Anchor, FontHandle, UiText, UiTransform},
     utils::tag::Tag,
+    window::ScreenDimensions,
 };
 
 use animation_prefabs::GameSpriteAnimationPrefab;
 
-use crate::{components::*, data_resources::GameScene, tags::*, Vector2, Vector3, ZeroVector};
+use crate::{
+    components::*,
+    data_resources::{GameLevelState, HEALTH_UI_SCREEN_PADDING},
+    tags::*,
+    Vector2, Vector3, ZeroVector,
+};
 
 pub fn create_player(
     world: &mut World,
     prefab_handle: Handle<Prefab<GameSpriteAnimationPrefab>>,
 ) -> Entity {
     let mut transform = Transform::default();
-    transform.set_translation_z(22.0);
+    transform.set_translation_z(10.0);
+
+    let (half_screen_width, half_screen_height) = {
+        let screen_dimensions = world.read_resource::<ScreenDimensions>();
+        (
+            screen_dimensions.width() / 2.0,
+            screen_dimensions.height() / 2.0,
+        )
+    };
 
     world
         .create_entity()
@@ -34,6 +47,14 @@ pub fn create_player(
         .with(WorldPosition::new(Vector2::zero()))
         .with(Player::new())
         .with(DamageHistory::new())
+        .with(HealthUiGraphics {
+            screen_position: Vector2::new(
+                -half_screen_width + HEALTH_UI_SCREEN_PADDING,
+                -half_screen_height + HEALTH_UI_SCREEN_PADDING,
+            ),
+            scale_ratio: 1.0,
+            health: 1.0,
+        })
         .build()
 }
 
@@ -52,52 +73,10 @@ pub fn create_landscape(world: &mut World, landscape_texture_handle: Handle<Spri
         .build();
 }
 
-pub fn create_menu_screen(world: &mut World, font_handle: FontHandle) {
-    let some_big_number = 10000.0;
-    let (bg_positions, bg_tex_coords) = generate_rectangle_vertices(
-        Vector3::new(-some_big_number, -some_big_number, 0.9),
-        Vector3::new(some_big_number, some_big_number, 0.9),
-    );
-    let mesh = create_mesh(world, bg_positions, bg_tex_coords);
-    let color = LinSrgba::new(0.1, 0.1, 0.1, 1.0);
-    let material = create_color_material(world, color);
-    let transform = Transform::default();
-    world
-        .create_entity()
-        .with(Tag::<UiBackground>::default())
-        .with(mesh)
-        .with(material)
-        .with(transform)
-        .build();
-
-    let ui_transform = UiTransform::new(
-        "ui_loading".to_owned(),
-        Anchor::BottomMiddle,
-        Anchor::Middle,
-        0.0,
-        100.0,
-        1.0,
-        125.0,
-        75.0,
-    );
-    let mut ui_text = UiText::new(
-        font_handle,
-        "Loading...".to_owned(),
-        [0.9, 0.9, 0.9, 1.0],
-        38.0,
-    );
-    ui_text.align = Anchor::MiddleLeft;
-    world
-        .create_entity()
-        .with(ui_transform)
-        .with(ui_text)
-        .build();
-}
-
 pub fn create_debug_scene_border(world: &mut World) {
     let border_width = 3.0;
 
-    let screen_dimensions = world.read_resource::<GameScene>().dimensions;
+    let screen_dimensions = world.read_resource::<GameLevelState>().dimensions;
     let half_screen_width = screen_dimensions.x / 2.0;
     let half_screen_height = screen_dimensions.y / 2.0;
 
@@ -166,14 +145,9 @@ pub fn create_debug_scene_border(world: &mut World) {
 pub fn generate_rectangle_vertices(
     left_bottom: Vector3,
     right_top: Vector3,
-) -> (Vec<Position>, Vec<TexCoord>) {
+) -> (Vec<Position>, Vec<TexCoord>, Vec<u16>) {
     (
         vec![
-            Position([
-                left_bottom.x,
-                right_top.y,
-                left_bottom.z + (right_top.z - left_bottom.z) / 2.0,
-            ]),
             Position([left_bottom.x, left_bottom.y, left_bottom.z]),
             Position([
                 right_top.x,
@@ -181,25 +155,19 @@ pub fn generate_rectangle_vertices(
                 left_bottom.z + (right_top.z - left_bottom.z) / 2.0,
             ]),
             Position([
-                right_top.x,
-                left_bottom.y,
-                left_bottom.z + (right_top.z - left_bottom.z) / 2.0,
-            ]),
-            Position([right_top.x, right_top.y, right_top.z]),
-            Position([
                 left_bottom.x,
                 right_top.y,
                 left_bottom.z + (right_top.z - left_bottom.z) / 2.0,
             ]),
+            Position([right_top.x, right_top.y, right_top.z]),
         ],
         vec![
-            TexCoord([0.0, 1.0]),
             TexCoord([0.0, 0.0]),
             TexCoord([1.0, 0.0]),
-            TexCoord([1.0, 0.0]),
-            TexCoord([1.0, 1.0]),
             TexCoord([0.0, 1.0]),
+            TexCoord([1.0, 1.0]),
         ],
+        vec![0, 1, 2, 1, 2, 3],
     )
 }
 

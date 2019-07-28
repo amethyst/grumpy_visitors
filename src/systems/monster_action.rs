@@ -5,13 +5,12 @@ use amethyst::{
 
 use std::time::Duration;
 
-use crate::models::mob_actions::MobAttackType;
 use crate::{
     components::{DamageHistory, Monster, Player, WorldPosition},
-    data_resources::{GameScene, MonsterDefinitions},
+    data_resources::{GameLevelState, MonsterDefinitions},
     models::{
         common::DamageHistoryEntry,
-        mob_actions::{MobAction, MobActionType, MobAttackAction},
+        mob_actions::{MobAction, MobActionType, MobAttackAction, MobAttackType},
     },
     utils::world::random_scene_position,
     Vector2,
@@ -26,7 +25,7 @@ impl<'s> System<'s> for MonsterActionSystem {
         Entities<'s>,
         ReadExpect<'s, Time>,
         ReadExpect<'s, MonsterDefinitions>,
-        ReadExpect<'s, GameScene>,
+        ReadExpect<'s, GameLevelState>,
         ReadStorage<'s, Player>,
         ReadStorage<'s, WorldPosition>,
         WriteStorage<'s, DamageHistory>,

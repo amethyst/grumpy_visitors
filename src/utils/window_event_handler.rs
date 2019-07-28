@@ -55,9 +55,11 @@ pub fn handle_window_event(world: &World, event: &StateEvent) -> Option<SimpleTr
                 event: winit::WindowEvent::Resized(size),
                 ..
             } => {
+                let hidpi = world.read_resource::<ScreenDimensions>().hidpi_factor();
                 let mut cameras = world.write_storage::<Camera>();
                 let camera = (&mut cameras).join().next().unwrap();
-                let (screen_width, screen_height) = (size.width as f32, size.height as f32);
+                let (screen_width, screen_height) =
+                    ((size.width * hidpi) as f32, (size.height * hidpi) as f32);
 
                 camera.set_projection(Projection::orthographic(
                     -screen_width / 2.0,

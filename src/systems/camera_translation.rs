@@ -9,13 +9,13 @@ use amethyst::{
 };
 use num;
 
-use crate::{data_resources::GameScene, utils::camera};
+use crate::{data_resources::GameLevelState, utils::camera};
 
 pub struct CameraTranslationSystem;
 
 impl<'s> System<'s> for CameraTranslationSystem {
     type SystemData = (
-        ReadExpect<'s, GameScene>,
+        ReadExpect<'s, GameLevelState>,
         ReadExpect<'s, ScreenDimensions>,
         Entities<'s>,
         ReadStorage<'s, Parent>,
@@ -56,8 +56,8 @@ impl<'s> System<'s> for CameraTranslationSystem {
         );
         let screen_right_top = Vector2::new(screen_right_top.x, screen_right_top.y);
 
-        let left_bottom_distance = -screen_left_bottom - game_scene.half_size();
-        let right_top_distance = screen_right_top - game_scene.half_size();
+        let left_bottom_distance = -screen_left_bottom - game_scene.dimensions_half_size();
+        let right_top_distance = screen_right_top - game_scene.dimensions_half_size();
 
         let camera_translation = Vector2::new(
             num::Float::max(0.0, left_bottom_distance.x),

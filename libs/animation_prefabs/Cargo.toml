@@ -4,7 +4,18 @@ version = "0.1.0"
 authors = []
 edition = "2018"
 
+[dependencies.amethyst]
+git = "https://github.com/amethyst/amethyst.git"
+rev = "7abfcfc"
+features = ["nightly"]
+
+# Bad news: https://github.com/rust-lang/cargo/issues/1197
+
+#[target.'cfg(target_os = "macos")'.dependencies.amethyst]
+#git = "https://github.com/amethyst/amethyst.git"
+#rev = "7abfcfc"
+#features = ["metal"]
+
 [dependencies]
-amethyst = { git = "https://github.com/amethyst/amethyst.git", rev = "7abfcfc", features = ["nightly", "vulkan"] }
 serde = "1.0.91"
 serde_derive = "1.0.91"

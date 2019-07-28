@@ -6,6 +6,7 @@ mod data_resources;
 mod factories;
 mod models;
 mod render_graph;
+mod render_groups;
 mod states;
 mod systems;
 mod tags;
@@ -96,6 +97,7 @@ fn main() -> amethyst::Result<()> {
             "player_dying_system",
             &["missile_system", "monster_action_system"],
         )
+        .with(HealthUiSystem, "health_ui_system", &["player_dying_system"])
         .with(
             WorldPositionTransformSystem,
             "world_position_transform_system",
@@ -115,7 +117,7 @@ fn main() -> amethyst::Result<()> {
             "animation_system",
             &["world_position_transform_system"],
         )
-        .with(MenuSystem, "menu_system", &[])
+        .with(MenuSystem::new(), "menu_system", &[])
         .with_bundle(TransformBundle::new().with_dep(&["camera_translation_system"]))?
         .with(
             HideHierarchySystem::default(),
