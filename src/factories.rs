@@ -19,7 +19,7 @@ use animation_prefabs::GameSpriteAnimationPrefab;
 
 use crate::{
     components::*,
-    data_resources::{GameScene, HEALTH_UI_SCREEN_PADDING},
+    data_resources::{GameLevelState, HEALTH_UI_SCREEN_PADDING},
     tags::*,
     Vector2, Vector3, ZeroVector,
 };
@@ -76,7 +76,7 @@ pub fn create_landscape(world: &mut World, landscape_texture_handle: Handle<Spri
 pub fn create_debug_scene_border(world: &mut World) {
     let border_width = 3.0;
 
-    let screen_dimensions = world.read_resource::<GameScene>().dimensions;
+    let screen_dimensions = world.read_resource::<GameLevelState>().dimensions;
     let half_screen_width = screen_dimensions.x / 2.0;
     let half_screen_height = screen_dimensions.y / 2.0;
 

@@ -5,16 +5,11 @@ use amethyst::{
     ui::FontHandle,
 };
 
-use animation_prefabs::GameSpriteAnimationPrefab;
-
 use std::time::Duration;
 
-use crate::{data_resources::EntityGraphics, models::mob_actions::MobAttackType, Vector2};
+use animation_prefabs::GameSpriteAnimationPrefab;
 
-pub enum GameState {
-    Loading,
-    Playing,
-}
+use crate::{data_resources::EntityGraphics, models::mob_actions::MobAttackType, Vector2};
 
 #[derive(Clone)]
 pub struct MonsterDefinition {

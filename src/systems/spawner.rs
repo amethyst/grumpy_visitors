@@ -12,7 +12,7 @@ use rand::{
 
 use crate::{
     components::{DamageHistory, Monster, WorldPosition},
-    data_resources::{EntityGraphics, GameScene, MonsterDefinitions},
+    data_resources::{EntityGraphics, GameLevelState, MonsterDefinitions},
     models::{
         common::MonsterDefinition,
         mob_actions::{MobAction, MobActionType},
@@ -28,7 +28,7 @@ impl<'s> System<'s> for SpawnerSystem {
         Entities<'s>,
         ReadExpect<'s, Time>,
         ReadExpect<'s, MonsterDefinitions>,
-        ReadExpect<'s, GameScene>,
+        ReadExpect<'s, GameLevelState>,
         WriteExpect<'s, SpawnActions>,
         WriteStorage<'s, Transform>,
         WriteStorage<'s, Handle<Mesh>>,
@@ -147,7 +147,7 @@ impl<'s> System<'s> for SpawnerSystem {
     }
 }
 
-fn spawning_side(side: Side, game_scene: &GameScene) -> (Vector2, Vector2, Vector2) {
+fn spawning_side(side: Side, game_scene: &GameLevelState) -> (Vector2, Vector2, Vector2) {
     let scene_halfsize = game_scene.dimensions / 2.0;
     let border_distance = 100.0;
     let padding = 25.0;

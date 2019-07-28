@@ -1,0 +1,132 @@
+#![enable(implicit_some)]
+Container(
+    transform: (
+        id: "ui_background_container",
+        x: 0.0,
+        y: 0.0,
+        z: 100.0,
+        stretch: XY(x_margin: 0.0, y_margin: 0.0, keep_aspect_ratio: false),
+    ),
+    background: SolidColor(0.05, 0.05, 0.05, 1.0),
+    children: [
+        Label(
+            transform: (
+                id: "ui_loading_label",
+                anchor: BottomMiddle,
+                pivot: Middle,
+                x: 0.0,
+                y: 100.0,
+                z: 1.0,
+                width: 125.0,
+                height: 75.0,
+            ),
+            text: (
+                text: "Loading...",
+                color: (0.9, 0.9, 0.9, 1.0),
+                font_size: 38.0,
+                font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                align: MiddleLeft,
+            ),
+        ),
+        Button(
+            transform: (
+                id: "ui_single_player_button",
+                anchor: BottomMiddle,
+                pivot: Middle,
+                x: 0.0,
+                y: 375.0,
+                z: 0.5,
+                width: 200.0,
+                height: 75.0,
+                hidden: true,
+            ),
+            button: (
+                text: "Single player",
+                font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                font_size: 36.,
+                normal_text_color: (0.972, 0.917, 0.827, 0.0),
+                hover_text_color: (0.841, 0.670, 0.556, 1.0),
+            )
+        ),
+        Button(
+            transform: (
+                id: "ui_multiplayer_button",
+                anchor: BottomMiddle,
+                pivot: Middle,
+                x: 0.0,
+                y: 300.0,
+                z: 0.5,
+                width: 200.0,
+                height: 75.0,
+                hidden: true,
+            ),
+            button: (
+                text: "Multiplayer",
+                font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                font_size: 36.,
+                normal_text_color: (0.4, 0.4, 0.4, 0.0),
+                hover_text_color: (0.841, 0.670, 0.556, 1.0),
+            )
+        ),
+        Button(
+            transform: (
+                id: "ui_quit_button",
+                anchor: BottomMiddle,
+                pivot: Middle,
+                x: 0.0,
+                y: 225.0,
+                z: 0.5,
+                width: 200.0,
+                height: 75.0,
+                hidden: true,
+            ),
+            button: (
+                text: "Exit",
+                font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                font_size: 36.,
+                normal_text_color: (0.972, 0.917, 0.827, 0.0),
+                hover_text_color: (0.841, 0.670, 0.556, 1.0),
+            )
+        ),
+        Button(
+            transform: (
+                id: "ui_restart_button",
+                anchor: BottomMiddle,
+                pivot: Middle,
+                x: 0.0,
+                y: 375.0,
+                z: 0.5,
+                width: 300.0,
+                height: 75.0,
+                hidden: true,
+            ),
+            button: (
+                text: "Restart",
+                font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                font_size: 36.,
+                normal_text_color: (0.972, 0.917, 0.827, 0.0),
+                hover_text_color: (0.841, 0.670, 0.556, 1.0),
+            )
+        ),
+        Button(
+            transform: (
+                id: "ui_main_menu_button",
+                anchor: BottomMiddle,
+                pivot: Middle,
+                x: 0.0,
+                y: 300.0,
+                z: 0.5,
+                width: 300.0,
+                height: 75.0,
+                hidden: true,
+            ),
+            button: (
+                text: "Back to main menu",
+                font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                font_size: 36.,
+                normal_text_color: (0.972, 0.917, 0.827, 0.0),
+                hover_text_color: (0.841, 0.670, 0.556, 1.0),
+            )
+        ),
+    ],
+)

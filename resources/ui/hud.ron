@@ -5,6 +5,7 @@ Container(
         x: 0.0,
         y: 0.0,
         z: 90.0,
+        stretch: XY(x_margin: 0.0, y_margin: 0.0, keep_aspect_ratio: false),
     ),
     children: [
         Container(

@@ -6,20 +6,18 @@ use amethyst::{
     ui::{FontAsset, TtfFormat, UiCreator},
     utils::tag::Tag,
 };
-use shred::SystemData;
 
 use animation_prefabs::GameSpriteAnimationPrefab;
 
 use crate::{
     components::{HealthUiGraphics, Missile, Player, WorldPosition},
-    data_resources::{GameScene, GameTime, HealthUiMesh, MissileGraphics, MonsterDefinitions},
-    models::{
-        common::{AssetsHandles, GameState},
-        monster_spawn::SpawnActions,
+    data_resources::{
+        GameEngineState, GameLevelState, GameTime, HealthUiMesh, MissileGraphics,
+        MonsterDefinitions,
     },
-    states::PlayingState,
+    models::{common::AssetsHandles, monster_spawn::SpawnActions},
+    states::MenuState,
     tags::*,
-    utils::time::GameTimeService,
 };
 
 pub struct LoadingState {
@@ -49,9 +47,9 @@ impl SimpleState for LoadingState {
         MonsterDefinitions::register(world);
         HealthUiMesh::register(world);
         world.add_resource(SpawnActions(Vec::new()));
-        world.add_resource(GameScene::default());
-        world.add_resource(GameState::Loading);
+        world.add_resource(GameLevelState::default());
         world.add_resource(GameTime::default());
+        world.add_resource(GameEngineState::Loading);
 
         let ui_font_handle = {
             let loader = world.read_resource::<Loader>();
@@ -85,7 +83,7 @@ impl SimpleState for LoadingState {
         let _ui_handle =
             world.exec(|mut creator: UiCreator| creator.create("resources/ui/hud.ron", ()));
         let _ui_handle =
-            world.exec(|mut creator: UiCreator| creator.create("resources/ui/loading.ron", ()));
+            world.exec(|mut creator: UiCreator| creator.create("resources/ui/main_menu.ron", ()));
 
         world.add_resource(AssetsHandles {
             hero_prefab: hero_prefab_handle,
@@ -94,10 +92,9 @@ impl SimpleState for LoadingState {
         });
     }
 
-    fn update(&mut self, data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
+    fn update(&mut self, _data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
         if self.progress_counter.is_complete() {
-            GameTimeService::fetch(&data.world.res).set_level_started_at();
-            Trans::Switch(Box::new(PlayingState))
+            Trans::Switch(Box::new(MenuState))
         } else {
             Trans::None
         }

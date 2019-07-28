@@ -8,13 +8,11 @@ use amethyst::{
 
 use std::time::Duration;
 
-use crate::models::common::DamageHistoryEntry;
-use crate::utils::world::closest_monster;
 use crate::{
     components::{DamageHistory, Missile, Monster, WorldPosition},
-    data_resources::GameScene,
-    models::common::MissileTarget,
-    utils::world::{find_first_hit_monster, random_scene_position},
+    data_resources::GameLevelState,
+    models::common::{DamageHistoryEntry, MissileTarget},
+    utils::world::{closest_monster, find_first_hit_monster, random_scene_position},
 };
 
 pub const MISSILE_MAX_SPEED: f32 = 300.0;
@@ -34,7 +32,7 @@ pub struct MissileSystem;
 impl<'s> System<'s> for MissileSystem {
     type SystemData = (
         ReadExpect<'s, Time>,
-        ReadExpect<'s, GameScene>,
+        ReadExpect<'s, GameLevelState>,
         Entities<'s>,
         WriteStorage<'s, Monster>,
         WriteStorage<'s, Missile>,

@@ -7,7 +7,7 @@ use amethyst::{
 use crate::{
     components::{HealthUiGraphics, Player},
     data_resources::HEALTH_UI_SCREEN_PADDING,
-    utils::ui::{update_fullscreen_container, UiFinderMut},
+    utils::ui::UiFinderMut,
     Vector2,
 };
 
@@ -24,10 +24,8 @@ impl<'s> System<'s> for HealthUiSystem {
 
     fn run(
         &mut self,
-        (mut ui_finder, screen_dimensions, players, mut health_uis, mut ui_texts): Self::SystemData,
+        (ui_finder, screen_dimensions, players, mut health_uis, mut ui_texts): Self::SystemData,
     ) {
-        update_fullscreen_container(&mut ui_finder, "ui_hud_container", &screen_dimensions);
-
         let half_screen_width = screen_dimensions.width() / 2.0;
         let half_screen_height = screen_dimensions.height() / 2.0;
 

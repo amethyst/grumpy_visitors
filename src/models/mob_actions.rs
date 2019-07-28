@@ -1,9 +1,9 @@
 use amethyst::ecs::Entity;
+use rand::Rng;
 
 use std::time::Duration;
 
 use crate::Vector2;
-use rand::Rng;
 
 #[derive(Debug)]
 pub struct MobAction {

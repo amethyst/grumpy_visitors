@@ -8,7 +8,7 @@ use std::ops::Deref;
 
 use crate::{
     components::{Monster, WorldPosition},
-    data_resources::GameScene,
+    data_resources::GameLevelState,
     Vector2,
 };
 
@@ -61,10 +61,16 @@ pub fn find_first_hit_monster<
         .map(|result| result.1)
 }
 
-pub fn random_scene_position(game_scene: &GameScene) -> Vector2 {
+pub fn random_scene_position(game_scene: &GameLevelState) -> Vector2 {
     let mut rng = rand::thread_rng();
     Vector2::new(
-        rng.gen_range(-game_scene.half_size().x, game_scene.half_size().x),
-        rng.gen_range(-game_scene.half_size().y, game_scene.half_size().y),
+        rng.gen_range(
+            -game_scene.dimensions_half_size().x,
+            game_scene.dimensions_half_size().x,
+        ),
+        rng.gen_range(
+            -game_scene.dimensions_half_size().y,
+            game_scene.dimensions_half_size().y,
+        ),
     )
 }

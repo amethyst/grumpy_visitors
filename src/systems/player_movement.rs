@@ -5,7 +5,7 @@ use amethyst::{
 
 use crate::{
     components::{Dead, Player, PlayerActions, WorldPosition},
-    data_resources::GameScene,
+    data_resources::GameLevelState,
     Vector2, ZeroVector,
 };
 
@@ -16,7 +16,7 @@ const PLAYER_SPEED: f32 = 200.0;
 impl<'s> System<'s> for PlayerMovementSystem {
     type SystemData = (
         Read<'s, Time>,
-        ReadExpect<'s, GameScene>,
+        ReadExpect<'s, GameLevelState>,
         ReadStorage<'s, Dead>,
         WriteStorage<'s, Player>,
         WriteStorage<'s, PlayerActions>,

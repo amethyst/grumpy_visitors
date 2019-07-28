@@ -1,9 +1,11 @@
 use amethyst::ecs::{
-    prelude::ComponentEvent, BitSet, Entities, Join, ReadStorage, ReaderId, System, WriteStorage,
+    prelude::ComponentEvent, BitSet, Entities, Join, ReadStorage, ReaderId, System, WriteExpect,
+    WriteStorage,
 };
 
 use crate::{
     components::{DamageHistory, Dead, Player},
+    data_resources::GameLevelState,
     Vector2, ZeroVector,
 };
 
@@ -25,11 +27,15 @@ impl<'s> System<'s> for PlayerDyingSystem {
     type SystemData = (
         Entities<'s>,
         ReadStorage<'s, DamageHistory>,
+        WriteExpect<'s, GameLevelState>,
         WriteStorage<'s, Player>,
         WriteStorage<'s, Dead>,
     );
 
-    fn run(&mut self, (entities, damage_histories, mut players, mut dead): Self::SystemData) {
+    fn run(
+        &mut self,
+        (entities, damage_histories, mut game_level_state, mut players, mut dead): Self::SystemData,
+    ) {
         self.players_hit.clear();
         let events = damage_histories
             .channel()
@@ -57,6 +63,7 @@ impl<'s> System<'s> for PlayerDyingSystem {
                 dead.insert(player_entity, Dead)
                     .expect("Expected to insert Dead component");
             }
+            game_level_state.is_over = true;
         }
     }
 }
