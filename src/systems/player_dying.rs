@@ -59,11 +59,11 @@ impl<'s> System<'s> for PlayerDyingSystem {
 
         for (player_entity, player, _) in (&entities, &mut players, &self.players_hit).join() {
             if player.health <= 0.001 {
+                game_level_state.is_over = true;
                 player.velocity = Vector2::zero();
                 dead.insert(player_entity, Dead)
                     .expect("Expected to insert Dead component");
             }
-            game_level_state.is_over = true;
         }
     }
 }
