@@ -1,7 +1,9 @@
 use amethyst::{
     assets::AssetStorage,
     core::ecs::{Join, Read, ReadExpect, ReadStorage, Resources, SystemData},
+    error::Error,
     renderer::{
+        bundle::{RenderOrder, RenderPlan, RenderPlugin, Target},
         pipeline::{PipelineDescBuilder, PipelinesBuilder},
         pod::ViewArgs,
         rendy::{
@@ -24,6 +26,29 @@ use amethyst::{
 use std::path::PathBuf;
 
 use crate::{components::HealthUiGraphics, data_resources::HealthUiMesh, Vector2};
+
+#[derive(Default, Debug)]
+pub struct HealthUiPlugin {
+    target: Target,
+}
+
+impl<B: Backend> RenderPlugin<B> for HealthUiPlugin {
+    fn on_plan(
+        &mut self,
+        plan: &mut RenderPlan<B>,
+        _factory: &mut Factory<B>,
+        _res: &Resources,
+    ) -> Result<(), Error> {
+        plan.extend_target(self.target, |ctx| {
+            ctx.add(
+                RenderOrder::BeforeTransparent,
+                DrawHealthUiDesc::new().builder(),
+            )?;
+            Ok(())
+        });
+        Ok(())
+    }
+}
 
 lazy_static::lazy_static! {
     static ref VERTEX_SRC: SpirvShader = PathBufShaderInfo::new(

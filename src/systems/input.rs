@@ -91,7 +91,7 @@ impl InputSystem {
 
             let position = camera.projection().screen_to_world(
                 Point2::new(mouse_x as f32, mouse_y as f32),
-                &screen_dimensions,
+                screen_dimensions.diagonal(),
                 camera_transform,
             );
             Vector2::new(position.x, position.y)

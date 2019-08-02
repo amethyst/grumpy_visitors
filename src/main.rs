@@ -5,8 +5,7 @@ mod components;
 mod data_resources;
 mod factories;
 mod models;
-mod render_graph;
-mod render_groups;
+mod rendering;
 mod states;
 mod systems;
 mod tags;
@@ -16,16 +15,16 @@ pub use crate::utils::math::{Vector2, Vector3, ZeroVector};
 
 use amethyst::{
     animation::AnimationBundle,
-    assets::{PrefabLoaderSystem, Processor},
+    assets::PrefabLoaderSystem,
     core::{transform::TransformBundle, HideHierarchySystem},
     input::{InputBundle, StringBindings},
     prelude::{Application, GameDataBuilder},
     renderer::{
-        sprite_visibility::SpriteVisibilitySortingSystem, types::DefaultBackend, RenderingSystem,
-        SpriteRender, SpriteSheet,
+        plugins::{RenderFlat2D, RenderFlat3D, RenderToWindow},
+        types::DefaultBackend,
+        RenderingBundle, SpriteRender,
     },
-    ui::UiBundle,
-    window::WindowBundle,
+    ui::{RenderUi, UiBundle},
     LogLevelFilter, Logger,
 };
 
@@ -33,7 +32,7 @@ use animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
 
 use crate::{
     application_settings::ApplicationSettings, components::DamageHistory,
-    render_graph::RenderGraph, states::LoadingState, systems::*, utils::animation,
+    rendering::HealthUiPlugin, states::LoadingState, systems::*, utils::animation,
 };
 
 fn main() -> amethyst::Result<()> {
@@ -57,7 +56,6 @@ fn main() -> amethyst::Result<()> {
             "",
             &[],
         )
-        .with_bundle(WindowBundle::from_config(display_config))?
         .with_bundle(input_bundle)?
         .with(LevelSystem::new(), "level_system", &[])
         .with(SpawnerSystem, "spawner_system", &["level_system"])
@@ -124,17 +122,7 @@ fn main() -> amethyst::Result<()> {
             "",
             &["parent_hierarchy_system"],
         )
-        .with(
-            Processor::<SpriteSheet>::new(),
-            "sprite_sheet_processor",
-            &[],
-        )
-        .with(
-            SpriteVisibilitySortingSystem::new(),
-            "sprite_visibility_system",
-            &["transform_system"],
-        )
-        .with_bundle(UiBundle::<DefaultBackend, StringBindings>::new())?
+        .with_bundle(UiBundle::<StringBindings>::new())?
         .with_bundle(
             AnimationBundle::<AnimationId, SpriteRender>::new(
                 "animation_control_system",
@@ -142,9 +130,14 @@ fn main() -> amethyst::Result<()> {
             )
             .with_dep(&["animation_system"]),
         )?
-        .with_thread_local(RenderingSystem::<DefaultBackend, _>::new(
-            RenderGraph::default(),
-        ));
+        .with_bundle(
+            RenderingBundle::<DefaultBackend>::new()
+                .with_plugin(RenderToWindow::from_config(display_config))
+                .with_plugin(RenderFlat3D::default())
+                .with_plugin(RenderFlat2D::default())
+                .with_plugin(HealthUiPlugin::default())
+                .with_plugin(RenderUi::default()),
+        )?;
     drop(damage_history_storage);
     let mut game = builder.build(game_data)?;
 
