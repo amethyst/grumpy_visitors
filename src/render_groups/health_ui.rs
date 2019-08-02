@@ -206,10 +206,15 @@ fn build_pipeline<B: Backend>(
     framebuffer_height: u32,
     layouts: Vec<&B::DescriptorSetLayout>,
 ) -> Result<(B::GraphicsPipeline, B::PipelineLayout), failure::Error> {
+    let push_constants = vec![
+        (pso::ShaderStageFlags::VERTEX, 0..4),
+        (pso::ShaderStageFlags::FRAGMENT, 0..4),
+    ];
+
     let pipeline_layout = unsafe {
         factory
             .device()
-            .create_pipeline_layout(layouts, None as Option<(_, _)>)
+            .create_pipeline_layout(layouts, push_constants)
     }?;
 
     let shader_vertex = unsafe { VERTEX.module(factory).unwrap() };
