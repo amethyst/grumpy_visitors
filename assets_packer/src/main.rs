@@ -21,7 +21,8 @@ use ron::{
     ser::{to_string_pretty, PrettyConfig},
 };
 use texture_packer::{
-    exporter::ImageExporter, importer::ImageImporter, Frame, TexturePacker, TexturePackerConfig,
+    exporter::ImageExporter, importer::ImageImporter, texture::Texture, Frame, TexturePacker,
+    TexturePackerConfig,
 };
 
 use std::{
@@ -32,8 +33,7 @@ use std::{
     path::Path,
 };
 
-use animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
-use texture_packer::texture::Texture;
+use ha_animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
 
 struct SpriteSceneData {
     sprite_sheet: SpriteSheetPrefab,
