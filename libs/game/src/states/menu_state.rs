@@ -1,15 +1,12 @@
 use amethyst::{
     ecs::{Entities, Join, ReadStorage},
-    prelude::{GameData, SimpleState, SimpleTrans, StateData, Trans},
+    prelude::{GameData, SimpleState, StateData},
     renderer::Camera,
 };
 
-use crate::{
-    ecs::{
-        components::{missile::Missile, Monster, Player},
-        resources::{GameEngineState, GameLevelState},
-    },
-    states::PlayingState,
+use ha_core::ecs::{
+    components::{missile::Missile, Monster, Player},
+    resources::{GameEngineState, GameLevelState},
 };
 
 pub struct MenuState;
@@ -54,15 +51,6 @@ impl SimpleState for MenuState {
                     }
                 },
             );
-        }
-    }
-
-    fn update(&mut self, data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
-        let world = &data.world;
-        if let GameEngineState::Playing = *world.read_resource::<GameEngineState>() {
-            Trans::Switch(Box::new(PlayingState))
-        } else {
-            Trans::None
         }
     }
 }

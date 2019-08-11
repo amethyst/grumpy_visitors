@@ -4,7 +4,7 @@ use amethyst::{
 };
 use log;
 
-use crate::ecs::components::ConnectionReader;
+use ha_core::ecs::components::ConnectionReader;
 
 pub struct NetworkingSystem;
 

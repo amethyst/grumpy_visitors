@@ -6,11 +6,12 @@ use rand::{self, Rng};
 
 use std::ops::Deref;
 
-use ha_core::math::Vector2;
-
-use crate::ecs::{
-    components::{Monster, WorldPosition},
-    resources::GameLevelState,
+use ha_core::{
+    ecs::{
+        components::{Monster, WorldPosition},
+        resources::GameLevelState,
+    },
+    math::Vector2,
 };
 
 pub fn closest_monster<DW, DM>(

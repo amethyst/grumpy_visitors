@@ -8,17 +8,16 @@ use amethyst::{
 
 use std::time::Duration;
 
-use crate::{
-    ecs::{
-        components::{
-            damage_history::{DamageHistory, DamageHistoryEntry},
-            missile::{Missile, MissileTarget},
-            Monster, WorldPosition,
-        },
-        resources::GameLevelState,
+use ha_core::ecs::{
+    components::{
+        damage_history::{DamageHistory, DamageHistoryEntry},
+        missile::{Missile, MissileTarget},
+        Monster, WorldPosition,
     },
-    utils::world::{closest_monster, find_first_hit_monster, random_scene_position},
+    resources::GameLevelState,
 };
+
+use crate::utils::world::{closest_monster, find_first_hit_monster, random_scene_position};
 
 pub const MISSILE_MAX_SPEED: f32 = 300.0;
 

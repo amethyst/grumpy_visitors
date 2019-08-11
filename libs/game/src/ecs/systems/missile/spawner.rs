@@ -5,12 +5,12 @@ use amethyst::{
 
 use std::time::Duration;
 
+use ha_core::ecs::components::{
+    missile::MissileTarget, Dead, Monster, PlayerActions, WorldPosition,
+};
+
 use crate::{
-    ecs::{
-        components::{missile::MissileTarget, Dead, Monster, PlayerActions, WorldPosition},
-        factories::MissileFactory,
-        systems::missile::physics::MISSILE_MAX_SPEED,
-    },
+    ecs::{factories::MissileFactory, systems::missile::physics::MISSILE_MAX_SPEED},
     utils::world::closest_monster,
 };
 

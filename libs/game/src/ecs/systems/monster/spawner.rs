@@ -8,17 +8,18 @@ use rand::{
     Rng,
 };
 
-use ha_core::math::{Vector2, ZeroVector};
-
-use crate::{
+use ha_core::{
     actions::{
         mob::{MobAction, MobActionType},
         monster_spawn::{SpawnActions, SpawnType},
     },
-    ecs::{
-        factories::MonsterFactory,
-        resources::{GameLevelState, MonsterDefinition, MonsterDefinitions},
-    },
+    ecs::resources::GameLevelState,
+    math::{Vector2, ZeroVector},
+};
+
+use crate::ecs::{
+    factories::MonsterFactory,
+    resources::{MonsterDefinition, MonsterDefinitions},
 };
 
 pub struct MonsterSpawnerSystem;

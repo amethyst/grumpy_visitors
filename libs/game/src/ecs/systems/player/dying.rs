@@ -3,11 +3,12 @@ use amethyst::ecs::{
     WriteStorage,
 };
 
-use ha_core::math::{Vector2, ZeroVector};
-
-use crate::ecs::{
-    components::{damage_history::DamageHistory, Dead, Player},
-    resources::GameLevelState,
+use ha_core::{
+    ecs::{
+        components::{damage_history::DamageHistory, Dead, Player},
+        resources::GameLevelState,
+    },
+    math::{Vector2, ZeroVector},
 };
 
 pub struct PlayerDyingSystem {

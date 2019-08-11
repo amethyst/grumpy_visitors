@@ -2,10 +2,12 @@ use amethyst::ecs::{ReadExpect, System, WriteExpect};
 
 use std::time::Duration;
 
-use crate::{
+use ha_core::{
     actions::monster_spawn::{Count, SpawnAction, SpawnActions, SpawnType},
-    ecs::resources::{GameEngineState, GameLevelState},
-    utils::time::GameTimeService,
+    ecs::{
+        resources::{GameEngineState, GameLevelState},
+        system_data::time::GameTimeService,
+    },
 };
 
 const SECS_PER_LEVEL: u64 = 30;

@@ -1,26 +1,33 @@
 use amethyst::{
-    assets::{AssetStorage, Handle, Loader, PrefabLoader, ProgressCounter, RonFormat},
+    assets::ProgressCounter,
     ecs::World,
     prelude::{GameData, SimpleState, SimpleTrans, StateData, Trans},
-    renderer::{ImageFormat, SpriteSheet, SpriteSheetFormat, Texture},
-    ui::{FontAsset, TtfFormat, UiCreator},
     utils::tag::Tag,
 };
+#[cfg(feature = "client")]
+use amethyst::{
+    assets::{AssetStorage, Handle, Loader, PrefabLoader, RonFormat},
+    renderer::{ImageFormat, SpriteSheet, SpriteSheetFormat, Texture},
+    ui::{FontAsset, TtfFormat, UiCreator},
+};
 
+#[cfg(feature = "client")]
 use ha_animation_prefabs::GameSpriteAnimationPrefab;
-
-use crate::{
+#[cfg(feature = "client")]
+use ha_client_shared::ecs::{
+    components::HealthUiGraphics,
+    resources::{AssetHandles, HealthUiMesh, MissileGraphics},
+};
+use ha_core::{
     actions::monster_spawn::SpawnActions,
     ecs::{
-        components::{missile::Missile, HealthUiGraphics, Player, WorldPosition},
-        resources::{
-            graphics::{HealthUiMesh, MissileGraphics},
-            AssetHandles, GameEngineState, GameLevelState, GameTime, MonsterDefinitions,
-        },
+        components::{missile::Missile, Player, WorldPosition},
+        resources::{GameEngineState, GameLevelState, GameTime, NewGameEngineState},
         tags::*,
     },
-    states::MenuState,
 };
+
+use crate::ecs::resources::MonsterDefinitions;
 
 #[derive(Default)]
 pub struct LoadingState {
@@ -32,70 +39,80 @@ impl SimpleState for LoadingState {
         log::info!("LoadingState started");
         let world = data.world;
 
+        register_client_dependencies(world, &mut self.progress_counter);
+        MonsterDefinitions::register(world);
         world.register::<WorldPosition>();
         world.register::<Missile>();
         world.register::<Player>();
         world.register::<Tag<Landscape>>();
-        world.register::<HealthUiGraphics>();
-
-        MissileGraphics::register(world);
-        MonsterDefinitions::register(world);
-        HealthUiMesh::register(world);
         world.add_resource(SpawnActions(Vec::new()));
         world.add_resource(GameLevelState::default());
         world.add_resource(GameTime::default());
         world.add_resource(GameEngineState::Loading);
-
-        let ui_font_handle = {
-            let loader = world.read_resource::<Loader>();
-            let font_storage = world.read_resource::<AssetStorage<FontAsset>>();
-
-            loader.load(
-                "resources/PT_Sans-Web-Regular.ttf",
-                TtfFormat,
-                &mut self.progress_counter,
-                &font_storage,
-            )
-        };
-
-        let landscape_handle = load_sprite_sheet(
-            world,
-            "resources/levels/desert.png",
-            "resources/levels/desert.ron",
-            &mut self.progress_counter,
-        );
-
-        let hero_prefab_handle = world.exec(
-            |prefab_loader: PrefabLoader<'_, GameSpriteAnimationPrefab>| {
-                prefab_loader.load(
-                    "resources/animation_metadata.ron",
-                    RonFormat,
-                    &mut self.progress_counter,
-                )
-            },
-        );
-
-        let _ui_handle =
-            world.exec(|mut creator: UiCreator| creator.create("resources/ui/hud.ron", ()));
-        let _ui_handle =
-            world.exec(|mut creator: UiCreator| creator.create("resources/ui/main_menu.ron", ()));
-
-        world.add_resource(AssetHandles {
-            hero_prefab: hero_prefab_handle,
-            landscape: landscape_handle,
-            ui_font: ui_font_handle,
-        });
+        world.add_resource(NewGameEngineState(GameEngineState::Loading));
     }
 
-    fn update(&mut self, _data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
+    fn update(&mut self, data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
         if self.progress_counter.is_complete() {
-            Trans::Switch(Box::new(MenuState))
-        } else {
-            Trans::None
+            *data.world.write_resource::<NewGameEngineState>() =
+                NewGameEngineState(GameEngineState::Menu);
         }
+        Trans::None
     }
 }
 
+#[cfg(feature = "client")]
+fn register_client_dependencies(world: &mut World, progress_counter: &mut ProgressCounter) {
+    world.register::<HealthUiGraphics>();
+
+    MissileGraphics::register(world);
+    HealthUiMesh::register(world);
+
+    let ui_font_handle = {
+        let loader = world.read_resource::<Loader>();
+        let font_storage = world.read_resource::<AssetStorage<FontAsset>>();
+
+        loader.load(
+            "resources/PT_Sans-Web-Regular.ttf",
+            TtfFormat,
+            &mut *progress_counter,
+            &font_storage,
+        )
+    };
+
+    let landscape_handle = load_sprite_sheet(
+        world,
+        "resources/levels/desert.png",
+        "resources/levels/desert.ron",
+        &mut *progress_counter,
+    );
+
+    let hero_prefab_handle = world.exec(
+        |prefab_loader: PrefabLoader<'_, GameSpriteAnimationPrefab>| {
+            prefab_loader.load(
+                "resources/animation_metadata.ron",
+                RonFormat,
+                &mut *progress_counter,
+            )
+        },
+    );
+
+    let _ui_handle =
+        world.exec(|mut creator: UiCreator| creator.create("resources/ui/hud.ron", ()));
+    let _ui_handle =
+        world.exec(|mut creator: UiCreator| creator.create("resources/ui/main_menu.ron", ()));
+
+    world.add_resource(AssetHandles {
+        hero_prefab: hero_prefab_handle,
+        landscape: landscape_handle,
+        ui_font: ui_font_handle,
+    });
+}
+
+#[cfg(not(feature = "client"))]
+fn register_client_dependencies(_world: &mut World, _progress_counter: &mut ProgressCounter) {}
+
+#[cfg(feature = "client")]
 fn load_sprite_sheet(
     world: &mut World,
     png_path: &str,

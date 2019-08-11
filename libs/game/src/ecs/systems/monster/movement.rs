@@ -3,12 +3,12 @@ use amethyst::{
     ecs::{Join, ReadExpect, System, WriteStorage},
 };
 
-use ha_core::math::{Vector2, ZeroVector};
-
-use crate::ecs::{
-    components::{Monster, WorldPosition},
-    resources::MonsterDefinitions,
+use ha_core::{
+    ecs::components::{Monster, WorldPosition},
+    math::{Vector2, ZeroVector},
 };
+
+use crate::ecs::resources::MonsterDefinitions;
 
 pub struct MonsterMovementSystem;
 

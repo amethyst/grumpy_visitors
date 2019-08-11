@@ -5,19 +5,19 @@ use amethyst::{
 
 use std::time::Duration;
 
-use ha_core::math::Vector2;
-
-use crate::{
+use ha_core::{
     actions::mob::{MobAction, MobActionType, MobAttackAction, MobAttackType},
     ecs::{
         components::{
             damage_history::{DamageHistory, DamageHistoryEntry},
             Monster, Player, WorldPosition,
         },
-        resources::{GameLevelState, MonsterDefinitions},
+        resources::GameLevelState,
     },
-    utils::world::random_scene_position,
+    math::Vector2,
 };
+
+use crate::{ecs::resources::MonsterDefinitions, utils::world::random_scene_position};
 
 const IDLE_TIME_SEC: f32 = 0.5;
 

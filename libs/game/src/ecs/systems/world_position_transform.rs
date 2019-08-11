@@ -3,7 +3,7 @@ use amethyst::{
     ecs::{Join, ReadStorage, System, WriteStorage},
 };
 
-use crate::ecs::components::WorldPosition;
+use ha_core::ecs::components::WorldPosition;
 
 pub struct WorldPositionTransformSystem;
 

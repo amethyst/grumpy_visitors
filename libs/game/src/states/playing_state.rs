@@ -1,16 +1,25 @@
+#[cfg(feature = "client")]
+use amethyst::prelude::{SimpleTrans, StateEvent, Trans};
 use amethyst::{
-    prelude::{GameData, SimpleState, SimpleTrans, StateData, StateEvent, Trans},
+    ecs::{Entity, World},
+    prelude::{GameData, SimpleState, StateData},
     shred::SystemData,
 };
 
-use crate::{
+#[cfg(feature = "client")]
+use ha_client_shared::{
+    ecs::factories::CameraFactory,
+    utils::{self, animation},
+};
+use ha_core::{
     actions::monster_spawn::{Count, SpawnAction, SpawnActions, SpawnType},
     ecs::{
-        factories::{CameraFactory, LandscapeFactory, PlayerFactory},
         resources::{GameEngineState, GameLevelState},
+        system_data::time::GameTimeService,
     },
-    utils::{self, animation, time::GameTimeService},
 };
+
+use crate::ecs::factories::{LandscapeFactory, PlayerFactory};
 
 #[derive(Default)]
 pub struct PlayingState;
@@ -27,7 +36,7 @@ impl SimpleState for PlayingState {
         GameTimeService::fetch(&world.res).set_level_started_at();
 
         let player = world.exec(|mut player_factory: PlayerFactory| player_factory.create());
-        world.exec(move |mut camera_factory: CameraFactory| camera_factory.create(player));
+        initialize_camera(world, player);
 
         {
             let mut spawn_actions = world.write_resource::<SpawnActions>();
@@ -52,6 +61,7 @@ impl SimpleState for PlayingState {
         world.exec(|mut landscape_factory: LandscapeFactory| landscape_factory.create());
     }
 
+    #[cfg(feature = "client")]
     fn handle_event(
         &mut self,
         data: StateData<'_, GameData<'_, '_>>,
@@ -62,8 +72,17 @@ impl SimpleState for PlayingState {
         Trans::None
     }
 
+    #[cfg(feature = "client")]
     fn update(&mut self, data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
         animation::start_hero_animations(data.world);
         Trans::None
     }
 }
+
+#[cfg(feature = "client")]
+fn initialize_camera(world: &mut World, player: Entity) {
+    world.exec(move |mut camera_factory: CameraFactory| camera_factory.create(player));
+}
+
+#[cfg(not(feature = "client"))]
+fn initialize_camera(_world: &mut World, _player: Entity) {}
