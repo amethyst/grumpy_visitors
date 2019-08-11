@@ -15,7 +15,7 @@ use crate::{
         components::{missile::Missile, HealthUiGraphics, Player, WorldPosition},
         resources::{
             graphics::{HealthUiMesh, MissileGraphics},
-            AssetsHandles, GameEngineState, GameLevelState, GameTime, MonsterDefinitions,
+            AssetHandles, GameEngineState, GameLevelState, GameTime, MonsterDefinitions,
         },
         tags::*,
     },
@@ -80,7 +80,7 @@ impl SimpleState for LoadingState {
         let _ui_handle =
             world.exec(|mut creator: UiCreator| creator.create("resources/ui/main_menu.ron", ()));
 
-        world.add_resource(AssetsHandles {
+        world.add_resource(AssetHandles {
             hero_prefab: hero_prefab_handle,
             landscape: landscape_handle,
             ui_font: ui_font_handle,

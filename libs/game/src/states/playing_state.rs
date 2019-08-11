@@ -6,10 +6,10 @@ use amethyst::{
 use crate::{
     actions::monster_spawn::{Count, SpawnAction, SpawnActions, SpawnType},
     ecs::{
-        factories::{create_debug_scene_border, create_landscape, create_player},
-        resources::{AssetsHandles, GameEngineState, GameLevelState},
+        factories::{CameraFactory, LandscapeFactory, PlayerFactory},
+        resources::{GameEngineState, GameLevelState},
     },
-    utils::{self, animation, camera::initialise_camera, time::GameTimeService},
+    utils::{self, animation, time::GameTimeService},
 };
 
 #[derive(Default)]
@@ -26,10 +26,8 @@ impl SimpleState for PlayingState {
 
         GameTimeService::fetch(&world.res).set_level_started_at();
 
-        let AssetsHandles { hero_prefab, .. } = world.read_resource::<AssetsHandles>().clone();
-
-        let player = create_player(world, hero_prefab);
-        initialise_camera(world, player);
+        let player = world.exec(|mut player_factory: PlayerFactory| player_factory.create());
+        world.exec(move |mut camera_factory: CameraFactory| camera_factory.create(player));
 
         {
             let mut spawn_actions = world.write_resource::<SpawnActions>();
@@ -51,10 +49,7 @@ impl SimpleState for PlayingState {
             ]);
         }
 
-        let AssetsHandles { landscape, .. } = world.read_resource::<AssetsHandles>().clone();
-
-        create_landscape(world, landscape);
-        create_debug_scene_border(world);
+        world.exec(|mut landscape_factory: LandscapeFactory| landscape_factory.create());
     }
 
     fn handle_event(

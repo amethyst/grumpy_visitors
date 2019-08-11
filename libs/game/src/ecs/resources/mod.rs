@@ -33,7 +33,7 @@ impl Default for GameTime {
 }
 
 #[derive(Clone)]
-pub struct AssetsHandles {
+pub struct AssetHandles {
     pub hero_prefab: Handle<Prefab<GameSpriteAnimationPrefab>>,
     pub landscape: Handle<SpriteSheet>,
     pub ui_font: FontHandle,

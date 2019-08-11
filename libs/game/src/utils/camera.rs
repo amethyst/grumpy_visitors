@@ -1,9 +1,5 @@
 use amethyst::{
-    core::{
-        math::{Matrix4, Point2, Point3},
-        Parent, Transform,
-    },
-    ecs::{world::Builder, Entity, World},
+    core::math::{Matrix4, Point2, Point3},
     renderer::Camera,
     window::ScreenDimensions,
 };
@@ -24,23 +20,4 @@ pub fn screen_to_world_from_global_matrix(
             .expect("Camera projection matrix is not invertible")
         * screen_point;
     Point3::from_homogeneous(vector).expect("Vector is not homogeneous")
-}
-
-pub fn initialise_camera(world: &mut World, player: Entity) {
-    let (width, height) = {
-        let screen_dimensions = world.read_resource::<ScreenDimensions>();
-        (screen_dimensions.width(), screen_dimensions.height())
-    };
-    let transform = {
-        let mut transform = Transform::default();
-        transform.set_translation_z(100.0);
-        transform
-    };
-
-    world
-        .create_entity()
-        .with(Camera::standard_2d(width, height))
-        .with(transform)
-        .with(Parent::new(player))
-        .build();
 }
