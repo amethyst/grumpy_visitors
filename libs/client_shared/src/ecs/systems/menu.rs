@@ -19,11 +19,41 @@ use ha_core::ecs::resources::NewGameEngineState;
 const MENU_FADE_OUT_DURATION_MS: u64 = 500;
 const UI_BACKGROUND_CONTAINER: &str = "ui_background_container";
 const UI_LOADING_LABEL: &str = "ui_loading_label";
+
 const UI_SINGLE_PLAYER_BUTTON: &str = "ui_single_player_button";
 const UI_MULTIPLAYER_BUTTON: &str = "ui_multiplayer_button";
 const UI_QUIT_BUTTON: &str = "ui_quit_button";
+
 const UI_RESTART_BUTTON: &str = "ui_restart_button";
 const UI_MAIN_MENU_BUTTON: &str = "ui_main_menu_button";
+
+const UI_LOBBY_NICKNAME_LABEL: &str = "ui_lobby_nickname_label";
+const UI_LOBBY_NICKNAME_CONTAINER: &str = "ui_lobby_nickname_container";
+const UI_LOBBY_NICKNAME_EDITABLE: &str = "ui_lobby_nickname_editable";
+const UI_LOBBY_HOST_IP_CONTAINER: &str = "ui_lobby_host_ip_container";
+const UI_LOBBY_HOST_BUTTON: &str = "ui_lobby_host_button";
+const UI_LOBBY_HOST_IP_EDITABLE: &str = "ui_lobby_host_ip_editable";
+const UI_LOBBY_JOIN_IP_CONTAINER: &str = "ui_lobby_join_ip_container";
+const UI_LOBBY_JOIN_IP_EDITABLE: &str = "ui_lobby_join_ip_editable";
+const UI_LOBBY_JOIN_BUTTON: &str = "ui_lobby_join_button";
+
+const UI_MP_ROOM_START_BUTTON: &str = "ui_start_multiplayer_button";
+const UI_MP_ROOM_LOBBY_BUTTON: &str = "ui_back_to_lobby_button";
+const UI_MP_ROOM_PLAYER1_CONTAINER: &str = "ui_mp_room_player1_container";
+const UI_MP_ROOM_PLAYER1_NUMBER: &str = "ui_mp_room_player1_number";
+const UI_MP_ROOM_PLAYER1_NICKNAME: &str = "ui_mp_room_player1_nickname";
+const UI_MP_ROOM_PLAYER2_CONTAINER: &str = "ui_mp_room_player2_container";
+const UI_MP_ROOM_PLAYER2_NUMBER: &str = "ui_mp_room_player2_number";
+const UI_MP_ROOM_PLAYER2_NICKNAME: &str = "ui_mp_room_player2_nickname";
+const UI_MP_ROOM_PLAYER2_KICK: &str = "ui_mp_room_player2_kick";
+const UI_MP_ROOM_PLAYER3_CONTAINER: &str = "ui_mp_room_player3_container";
+const UI_MP_ROOM_PLAYER3_NUMBER: &str = "ui_mp_room_player3_number";
+const UI_MP_ROOM_PLAYER3_NICKNAME: &str = "ui_mp_room_player3_nickname";
+const UI_MP_ROOM_PLAYER3_KICK: &str = "ui_mp_room_player3_kick";
+const UI_MP_ROOM_PLAYER4_CONTAINER: &str = "ui_mp_room_player4_container";
+const UI_MP_ROOM_PLAYER4_NUMBER: &str = "ui_mp_room_player4_number";
+const UI_MP_ROOM_PLAYER4_NICKNAME: &str = "ui_mp_room_player4_nickname";
+const UI_MP_ROOM_PLAYER4_KICK: &str = "ui_mp_room_player4_kick";
 
 lazy_static! {
     static ref MAIN_MENU_ELEMENTS: &'static [&'static str] = &[
@@ -33,6 +63,47 @@ lazy_static! {
     ];
     static ref RESTART_MENU_ELEMENTS: &'static [&'static str] =
         &[UI_RESTART_BUTTON, UI_MAIN_MENU_BUTTON];
+    static ref LOBBY_MENU_ELEMENTS: &'static [&'static str] = &[
+        UI_LOBBY_NICKNAME_LABEL,
+        UI_LOBBY_NICKNAME_CONTAINER,
+        UI_LOBBY_NICKNAME_EDITABLE,
+        UI_LOBBY_HOST_IP_CONTAINER,
+        UI_LOBBY_HOST_IP_EDITABLE,
+        UI_LOBBY_HOST_BUTTON,
+        UI_LOBBY_JOIN_IP_CONTAINER,
+        UI_LOBBY_JOIN_IP_EDITABLE,
+        UI_LOBBY_JOIN_BUTTON,
+        UI_MAIN_MENU_BUTTON,
+    ];
+    static ref MP_ROOM_MENU_ELEMENTS_INITIAL: &'static [&'static str] = &[
+        UI_MP_ROOM_START_BUTTON,
+        UI_MP_ROOM_LOBBY_BUTTON,
+        UI_MP_ROOM_PLAYER1_CONTAINER,
+        UI_MP_ROOM_PLAYER1_NUMBER,
+        UI_MP_ROOM_PLAYER1_NICKNAME,
+        UI_MP_ROOM_PLAYER2_CONTAINER,
+        UI_MP_ROOM_PLAYER3_CONTAINER,
+        UI_MP_ROOM_PLAYER4_CONTAINER,
+    ];
+    static ref MP_ROOM_MENU_ELEMENTS: &'static [&'static str] = &[
+        UI_MP_ROOM_START_BUTTON,
+        UI_MP_ROOM_LOBBY_BUTTON,
+        UI_MP_ROOM_PLAYER1_CONTAINER,
+        UI_MP_ROOM_PLAYER1_NUMBER,
+        UI_MP_ROOM_PLAYER1_NICKNAME,
+        UI_MP_ROOM_PLAYER2_CONTAINER,
+        UI_MP_ROOM_PLAYER2_NUMBER,
+        UI_MP_ROOM_PLAYER2_NICKNAME,
+        UI_MP_ROOM_PLAYER2_KICK,
+        UI_MP_ROOM_PLAYER3_CONTAINER,
+        UI_MP_ROOM_PLAYER3_NUMBER,
+        UI_MP_ROOM_PLAYER3_NICKNAME,
+        UI_MP_ROOM_PLAYER3_KICK,
+        UI_MP_ROOM_PLAYER4_CONTAINER,
+        UI_MP_ROOM_PLAYER4_NUMBER,
+        UI_MP_ROOM_PLAYER4_NICKNAME,
+        UI_MP_ROOM_PLAYER4_KICK,
+    ];
 }
 
 pub struct MenuSystem {
@@ -53,9 +124,20 @@ impl MenuSystem {
             elements_to_show: Vec::new(),
             mouse_reactive: vec![
                 UI_SINGLE_PLAYER_BUTTON,
+                UI_MULTIPLAYER_BUTTON,
                 UI_QUIT_BUTTON,
                 UI_RESTART_BUTTON,
                 UI_MAIN_MENU_BUTTON,
+                UI_LOBBY_NICKNAME_EDITABLE,
+                UI_LOBBY_HOST_IP_EDITABLE,
+                UI_LOBBY_HOST_BUTTON,
+                UI_LOBBY_JOIN_IP_EDITABLE,
+                UI_LOBBY_JOIN_BUTTON,
+                UI_MP_ROOM_START_BUTTON,
+                UI_MP_ROOM_LOBBY_BUTTON,
+                UI_MP_ROOM_PLAYER2_KICK,
+                UI_MP_ROOM_PLAYER3_KICK,
+                UI_MP_ROOM_PLAYER4_KICK,
             ],
             is_transitioning: false,
             transition_began_at: Duration::new(0, 0),
@@ -76,6 +158,8 @@ enum GameMenuState {
     Loading,
     MainMenu,
     RestartMenu,
+    LobbyMenu,
+    MultiplayerRoomMenu,
     Hidden,
 }
 
@@ -156,8 +240,12 @@ impl<'s> System<'s> for MenuSystem {
                 None
             }
             (GameEngineState::Menu, ref mut menu_state @ GameMenuState::Loading) => {
-                **menu_state = GameMenuState::MainMenu;
-                self.set_fade_animation(now, vec![UI_LOADING_LABEL], MAIN_MENU_ELEMENTS.to_vec());
+                **menu_state = GameMenuState::MultiplayerRoomMenu;
+                self.set_fade_animation(
+                    now,
+                    vec![UI_LOADING_LABEL],
+                    MP_ROOM_MENU_ELEMENTS_INITIAL.to_vec(),
+                );
                 None
             }
             (GameEngineState::Menu, ref mut menu_state @ GameMenuState::MainMenu) => {
@@ -171,7 +259,53 @@ impl<'s> System<'s> for MenuSystem {
                         );
                         Some(GameEngineState::Playing)
                     }
+                    Some(UI_MULTIPLAYER_BUTTON) => {
+                        **menu_state = GameMenuState::LobbyMenu;
+                        self.set_fade_animation(
+                            now,
+                            MAIN_MENU_ELEMENTS.to_vec(),
+                            LOBBY_MENU_ELEMENTS.to_vec(),
+                        );
+                        None
+                    }
                     Some(UI_QUIT_BUTTON) => Some(GameEngineState::Quit),
+                    _ => None,
+                }
+            }
+            (GameEngineState::Menu, ref mut menu_state @ GameMenuState::LobbyMenu) => {
+                match button_pressed.as_ref().map(std::string::String::as_str) {
+                    Some(UI_MAIN_MENU_BUTTON) => {
+                        **menu_state = GameMenuState::MainMenu;
+                        self.set_fade_animation(
+                            now,
+                            LOBBY_MENU_ELEMENTS.to_vec(),
+                            MAIN_MENU_ELEMENTS.to_vec(),
+                        );
+                        None
+                    }
+                    Some(UI_LOBBY_HOST_BUTTON) => {
+                        **menu_state = GameMenuState::MultiplayerRoomMenu;
+                        self.set_fade_animation(
+                            now,
+                            LOBBY_MENU_ELEMENTS.to_vec(),
+                            MP_ROOM_MENU_ELEMENTS_INITIAL.to_vec(),
+                        );
+                        None
+                    }
+                    _ => None,
+                }
+            }
+            (GameEngineState::Menu, ref mut menu_state @ GameMenuState::MultiplayerRoomMenu) => {
+                match button_pressed.as_ref().map(std::string::String::as_str) {
+                    Some(UI_MP_ROOM_LOBBY_BUTTON) => {
+                        **menu_state = GameMenuState::LobbyMenu;
+                        self.set_fade_animation(
+                            now,
+                            MP_ROOM_MENU_ELEMENTS.to_vec(),
+                            LOBBY_MENU_ELEMENTS.to_vec(),
+                        );
+                        None
+                    }
                     _ => None,
                 }
             }
@@ -308,7 +442,7 @@ impl MenuSystem {
                     };
                     Self::set_alpha_for(new_alpha, ui_entity, ui_texts, ui_images, hierarchy);
                     if transition_completed > 1.0 {
-                        if *element_to_show != UI_BACKGROUND_CONTAINER {
+                        if !element_to_show.contains("container") {
                             ui_transform.local_z = 1.0;
                         }
                         if self.mouse_reactive.contains(element_to_show) {
