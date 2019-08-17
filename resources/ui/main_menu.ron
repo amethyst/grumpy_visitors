@@ -141,7 +141,7 @@ Container(
                 pivot: Middle,
                 x: 0.0,
                 y: 375.0,
-                z: 1.0,
+                z: 0.5,
                 width: 500.0,
                 height: 75.0,
                 hidden: true,
@@ -156,7 +156,7 @@ Container(
         ),
         Container(
             transform: (
-                id: "ui_lobby_nickname_container",
+                id: "ui_lobby_nickname_field",
                 anchor: Middle,
                 pivot: Middle,
                 x: 0.0,
@@ -175,6 +175,7 @@ Container(
                         height: 48.0,
                         anchor: Middle,
                         stretch: XY(x_margin: 15.0, y_margin: 6.0, keep_aspect_ratio: false),
+                        selectable: 0,
                     ),
                     text: (
                         text: "Player",
@@ -193,11 +194,12 @@ Container(
         ),
         Container(
             transform: (
-                id: "ui_lobby_host_ip_container",
+                id: "ui_lobby_host_ip_field",
                 anchor: Middle,
                 pivot: MiddleLeft,
                 x: -500.0,
                 y: 100.0,
+                z: 0.5,
                 width: 400.0,
                 height: 48.0,
                 hidden: true,
@@ -209,9 +211,9 @@ Container(
                         id: "ui_lobby_host_ip_editable",
                         width: 480.0,
                         height: 36.0,
-                        tab_order: 1,
                         anchor: Middle,
                         stretch: XY(x_margin: 10.0, y_margin: 6.0, keep_aspect_ratio: false),
+                        selectable: 0,
                     ),
                     text: (
                         text: "0.0.0.0:3455",
@@ -250,11 +252,12 @@ Container(
         ),
         Container(
             transform: (
-                id: "ui_lobby_join_ip_container",
+                id: "ui_lobby_join_ip_field",
                 anchor: Middle,
                 pivot: MiddleRight,
                 x: 500.0,
                 y: 100.0,
+                z: 0.5,
                 width: 400.0,
                 height: 48.0,
                 hidden: true,
@@ -266,9 +269,9 @@ Container(
                         id: "ui_lobby_join_ip_editable",
                         width: 480.0,
                         height: 36.0,
-                        tab_order: 1,
                         anchor: Middle,
                         stretch: XY(x_margin: 10.0, y_margin: 6.0, keep_aspect_ratio: false),
+                        selectable: 0,
                     ),
                     text: (
                         text: "127.0.0.1:3455",
@@ -355,16 +358,26 @@ Container(
                 pivot: Middle,
                 x: 0.0,
                 y: 300.0,
+                z: 0.1,
                 width: 800.0,
                 height: 72.0,
                 hidden: true,
             ),
-            background: SolidColor(0.055, 0.055, 0.055, 1.0),
             children: [
+                Image(
+                    transform: (
+                        id: "ui_mp_room_player1_bg",
+                        z: 0.0,
+                        stretch: XY(x_margin: 0.0, y_margin: 0.0, keep_aspect_ratio: false),
+                        hidden: true,
+                    ),
+                    image: SolidColor(0.055, 0.055, 0.055, 1.0),
+                ),
                 Label(
                     transform: (
                         id: "ui_mp_room_player1_number",
                         x: 50.0,
+                        y: 0.0,
                         z: 0.5,
                         width: 58.0,
                         height: 58.0,
@@ -384,6 +397,7 @@ Container(
                     transform: (
                         id: "ui_mp_room_player1_nickname",
                         x: 150.0,
+                        y: 0.0,
                         z: 0.5,
                         width: 480.0,
                         height: 58.0,
@@ -408,16 +422,26 @@ Container(
                 pivot: Middle,
                 x: 0.0,
                 y: 200.0,
+                z: 0.1,
                 width: 800.0,
                 height: 72.0,
                 hidden: true,
             ),
-            background: SolidColor(0.055, 0.055, 0.055, 1.0),
             children: [
+                Image(
+                    transform: (
+                        id: "ui_mp_room_player2_bg",
+                        z: 0.0,
+                        stretch: XY(x_margin: 0.0, y_margin: 0.0, keep_aspect_ratio: false),
+                        hidden: true,
+                    ),
+                    image: SolidColor(0.055, 0.055, 0.055, 1.0),
+                ),
                 Label(
                     transform: (
                         id: "ui_mp_room_player2_number",
                         x: 50.0,
+                        y: 0.0,
                         z: 0.5,
                         width: 58.0,
                         height: 58.0,
@@ -437,6 +461,7 @@ Container(
                     transform: (
                         id: "ui_mp_room_player2_nickname",
                         x: 150.0,
+                        y: 0.0,
                         z: 0.5,
                         width: 480.0,
                         height: 58.0,
@@ -481,16 +506,26 @@ Container(
                 pivot: Middle,
                 x: 0.0,
                 y: 100.0,
+                z: 0.1,
                 width: 800.0,
                 height: 72.0,
                 hidden: true,
             ),
-            background: SolidColor(0.055, 0.055, 0.055, 1.0),
             children: [
+                Image(
+                    transform: (
+                        id: "ui_mp_room_player3_bg",
+                        z: 0.0,
+                        stretch: XY(x_margin: 0.0, y_margin: 0.0, keep_aspect_ratio: false),
+                        hidden: true,
+                    ),
+                    image: SolidColor(0.055, 0.055, 0.055, 1.0),
+                ),
                 Label(
                     transform: (
                         id: "ui_mp_room_player3_number",
                         x: 50.0,
+                        y: 0.0,
                         z: 0.5,
                         width: 58.0,
                         height: 58.0,
@@ -510,6 +545,7 @@ Container(
                     transform: (
                         id: "ui_mp_room_player3_nickname",
                         x: 150.0,
+                        y: 0.0,
                         z: 0.5,
                         width: 480.0,
                         height: 58.0,
@@ -554,16 +590,26 @@ Container(
                 pivot: Middle,
                 x: 0.0,
                 y: 0.0,
+                z: 0.1,
                 width: 800.0,
                 height: 72.0,
                 hidden: true,
             ),
-            background: SolidColor(0.055, 0.055, 0.055, 1.0),
             children: [
+                Image(
+                    transform: (
+                        id: "ui_mp_room_player4_bg",
+                        z: 0.0,
+                        stretch: XY(x_margin: 0.0, y_margin: 0.0, keep_aspect_ratio: false),
+                        hidden: true,
+                    ),
+                    image: SolidColor(0.055, 0.055, 0.055, 1.0),
+                ),
                 Label(
                     transform: (
                         id: "ui_mp_room_player4_number",
                         x: 50.0,
+                        y: 0.0,
                         z: 0.5,
                         width: 58.0,
                         height: 58.0,
@@ -583,6 +629,7 @@ Container(
                     transform: (
                         id: "ui_mp_room_player4_nickname",
                         x: 150.0,
+                        y: 0.0,
                         z: 0.5,
                         width: 480.0,
                         height: 58.0,

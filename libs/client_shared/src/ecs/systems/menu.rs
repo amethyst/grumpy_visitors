@@ -1,5 +1,5 @@
 use amethyst::{
-    core::{HiddenPropagate, ParentHierarchy},
+    core::{Hidden, HiddenPropagate, ParentHierarchy},
     ecs::{Entity, ReadExpect, System, Write, WriteExpect, WriteStorage},
     shrev::{EventChannel, ReaderId},
     ui::{Interactable, UiEvent, UiEventType, UiImage, UiText},
@@ -17,6 +17,8 @@ use crate::ecs::system_data::ui::UiFinderMut;
 use ha_core::ecs::resources::NewGameEngineState;
 
 const MENU_FADE_OUT_DURATION_MS: u64 = 500;
+const CONTAINER_TAG: &str = "_container";
+const BACKGROUND_TAG: &str = "_bg";
 const UI_BACKGROUND_CONTAINER: &str = "ui_background_container";
 const UI_LOADING_LABEL: &str = "ui_loading_label";
 
@@ -28,29 +30,33 @@ const UI_RESTART_BUTTON: &str = "ui_restart_button";
 const UI_MAIN_MENU_BUTTON: &str = "ui_main_menu_button";
 
 const UI_LOBBY_NICKNAME_LABEL: &str = "ui_lobby_nickname_label";
-const UI_LOBBY_NICKNAME_CONTAINER: &str = "ui_lobby_nickname_container";
+const UI_LOBBY_NICKNAME_FIELD: &str = "ui_lobby_nickname_field";
 const UI_LOBBY_NICKNAME_EDITABLE: &str = "ui_lobby_nickname_editable";
-const UI_LOBBY_HOST_IP_CONTAINER: &str = "ui_lobby_host_ip_container";
-const UI_LOBBY_HOST_BUTTON: &str = "ui_lobby_host_button";
+const UI_LOBBY_HOST_IP_FIELD: &str = "ui_lobby_host_ip_field";
 const UI_LOBBY_HOST_IP_EDITABLE: &str = "ui_lobby_host_ip_editable";
-const UI_LOBBY_JOIN_IP_CONTAINER: &str = "ui_lobby_join_ip_container";
+const UI_LOBBY_HOST_BUTTON: &str = "ui_lobby_host_button";
+const UI_LOBBY_JOIN_IP_FIELD: &str = "ui_lobby_join_ip_field";
 const UI_LOBBY_JOIN_IP_EDITABLE: &str = "ui_lobby_join_ip_editable";
 const UI_LOBBY_JOIN_BUTTON: &str = "ui_lobby_join_button";
 
 const UI_MP_ROOM_START_BUTTON: &str = "ui_start_multiplayer_button";
 const UI_MP_ROOM_LOBBY_BUTTON: &str = "ui_back_to_lobby_button";
 const UI_MP_ROOM_PLAYER1_CONTAINER: &str = "ui_mp_room_player1_container";
+const UI_MP_ROOM_PLAYER1_BG: &str = "ui_mp_room_player1_bg";
 const UI_MP_ROOM_PLAYER1_NUMBER: &str = "ui_mp_room_player1_number";
 const UI_MP_ROOM_PLAYER1_NICKNAME: &str = "ui_mp_room_player1_nickname";
 const UI_MP_ROOM_PLAYER2_CONTAINER: &str = "ui_mp_room_player2_container";
+const UI_MP_ROOM_PLAYER2_BG: &str = "ui_mp_room_player2_bg";
 const UI_MP_ROOM_PLAYER2_NUMBER: &str = "ui_mp_room_player2_number";
 const UI_MP_ROOM_PLAYER2_NICKNAME: &str = "ui_mp_room_player2_nickname";
 const UI_MP_ROOM_PLAYER2_KICK: &str = "ui_mp_room_player2_kick";
 const UI_MP_ROOM_PLAYER3_CONTAINER: &str = "ui_mp_room_player3_container";
+const UI_MP_ROOM_PLAYER3_BG: &str = "ui_mp_room_player3_bg";
 const UI_MP_ROOM_PLAYER3_NUMBER: &str = "ui_mp_room_player3_number";
 const UI_MP_ROOM_PLAYER3_NICKNAME: &str = "ui_mp_room_player3_nickname";
 const UI_MP_ROOM_PLAYER3_KICK: &str = "ui_mp_room_player3_kick";
 const UI_MP_ROOM_PLAYER4_CONTAINER: &str = "ui_mp_room_player4_container";
+const UI_MP_ROOM_PLAYER4_BG: &str = "ui_mp_room_player4_bg";
 const UI_MP_ROOM_PLAYER4_NUMBER: &str = "ui_mp_room_player4_number";
 const UI_MP_ROOM_PLAYER4_NICKNAME: &str = "ui_mp_room_player4_nickname";
 const UI_MP_ROOM_PLAYER4_KICK: &str = "ui_mp_room_player4_kick";
@@ -65,12 +71,12 @@ lazy_static! {
         &[UI_RESTART_BUTTON, UI_MAIN_MENU_BUTTON];
     static ref LOBBY_MENU_ELEMENTS: &'static [&'static str] = &[
         UI_LOBBY_NICKNAME_LABEL,
-        UI_LOBBY_NICKNAME_CONTAINER,
+        UI_LOBBY_NICKNAME_FIELD,
         UI_LOBBY_NICKNAME_EDITABLE,
-        UI_LOBBY_HOST_IP_CONTAINER,
+        UI_LOBBY_HOST_IP_FIELD,
         UI_LOBBY_HOST_IP_EDITABLE,
         UI_LOBBY_HOST_BUTTON,
-        UI_LOBBY_JOIN_IP_CONTAINER,
+        UI_LOBBY_JOIN_IP_FIELD,
         UI_LOBBY_JOIN_IP_EDITABLE,
         UI_LOBBY_JOIN_BUTTON,
         UI_MAIN_MENU_BUTTON,
@@ -79,27 +85,35 @@ lazy_static! {
         UI_MP_ROOM_START_BUTTON,
         UI_MP_ROOM_LOBBY_BUTTON,
         UI_MP_ROOM_PLAYER1_CONTAINER,
+        UI_MP_ROOM_PLAYER1_BG,
         UI_MP_ROOM_PLAYER1_NUMBER,
         UI_MP_ROOM_PLAYER1_NICKNAME,
         UI_MP_ROOM_PLAYER2_CONTAINER,
+        UI_MP_ROOM_PLAYER2_BG,
         UI_MP_ROOM_PLAYER3_CONTAINER,
+        UI_MP_ROOM_PLAYER3_BG,
         UI_MP_ROOM_PLAYER4_CONTAINER,
+        UI_MP_ROOM_PLAYER4_BG,
     ];
     static ref MP_ROOM_MENU_ELEMENTS: &'static [&'static str] = &[
         UI_MP_ROOM_START_BUTTON,
         UI_MP_ROOM_LOBBY_BUTTON,
         UI_MP_ROOM_PLAYER1_CONTAINER,
+        UI_MP_ROOM_PLAYER1_BG,
         UI_MP_ROOM_PLAYER1_NUMBER,
         UI_MP_ROOM_PLAYER1_NICKNAME,
         UI_MP_ROOM_PLAYER2_CONTAINER,
+        UI_MP_ROOM_PLAYER2_BG,
         UI_MP_ROOM_PLAYER2_NUMBER,
         UI_MP_ROOM_PLAYER2_NICKNAME,
         UI_MP_ROOM_PLAYER2_KICK,
         UI_MP_ROOM_PLAYER3_CONTAINER,
+        UI_MP_ROOM_PLAYER3_BG,
         UI_MP_ROOM_PLAYER3_NUMBER,
         UI_MP_ROOM_PLAYER3_NICKNAME,
         UI_MP_ROOM_PLAYER3_KICK,
         UI_MP_ROOM_PLAYER4_CONTAINER,
+        UI_MP_ROOM_PLAYER4_BG,
         UI_MP_ROOM_PLAYER4_NUMBER,
         UI_MP_ROOM_PLAYER4_NICKNAME,
         UI_MP_ROOM_PLAYER4_KICK,
@@ -181,6 +195,7 @@ impl<'s> System<'s> for MenuSystem {
         WriteStorage<'s, UiText>,
         WriteStorage<'s, UiImage>,
         WriteStorage<'s, Interactable>,
+        WriteStorage<'s, Hidden>,
         WriteStorage<'s, HiddenPropagate>,
     );
 
@@ -197,6 +212,7 @@ impl<'s> System<'s> for MenuSystem {
             mut ui_texts,
             mut ui_images,
             mut ui_interactables,
+            mut hidden,
             mut hidden_propagates,
         ): Self::SystemData,
     ) {
@@ -208,10 +224,6 @@ impl<'s> System<'s> for MenuSystem {
 
         let mut button_pressed = None;
         for event in ui_events.read(event_readers) {
-            log::trace!(
-                "[SYSTEM] You just interacted with a ui element: {:?}",
-                event
-            );
             if let UiEventType::Click = event.event_type {
                 button_pressed = ui_finder.get_id_by_entity(event.target);
             }
@@ -229,6 +241,7 @@ impl<'s> System<'s> for MenuSystem {
             &mut ui_texts,
             &mut ui_images,
             &mut ui_interactables,
+            &mut hidden,
             &mut hidden_propagates,
             &hierarchy,
             now,
@@ -378,6 +391,7 @@ impl MenuSystem {
         ui_texts: &mut WriteStorage<'_, UiText>,
         ui_images: &mut WriteStorage<'_, UiImage>,
         ui_interactables: &mut WriteStorage<'_, Interactable>,
+        hidden: &mut WriteStorage<'_, Hidden>,
         hidden_propagates: &mut WriteStorage<'_, HiddenPropagate>,
         hierarchy: &ReadExpect<'_, ParentHierarchy>,
         now: Duration,
@@ -391,27 +405,30 @@ impl MenuSystem {
 
                 for element_to_hide in &self.elements_to_hide {
                     let ui_entity = ui_finder.find_with_mut_transform(element_to_hide);
+                    let is_container = element_to_hide.contains(CONTAINER_TAG);
                     let (ui_entity, ui_transform) = if ui_entity.is_some() {
                         ui_entity.unwrap()
                     } else {
                         continue;
                     };
 
-                    if *element_to_hide != UI_BACKGROUND_CONTAINER {
+                    if !is_container && !element_to_hide.contains(BACKGROUND_TAG) {
                         ui_transform.local_z = 0.5;
                     }
                     ui_interactables.remove(ui_entity);
 
+                    let hierarchy = if is_container { None } else { Some(hierarchy) };
                     if transition_completed > 1.0 {
-                        hidden_propagates
-                            .insert(ui_entity, HiddenPropagate)
-                            .expect("Expected to insert HiddenPropagate component");
-                    } else {
-                        let hierarchy = if *element_to_hide == UI_BACKGROUND_CONTAINER {
-                            None
+                        if is_container {
+                            hidden
+                                .insert(ui_entity, Hidden)
+                                .expect("Expected to insert Hidden component");
                         } else {
-                            Some(hierarchy)
-                        };
+                            hidden_propagates
+                                .insert(ui_entity, HiddenPropagate)
+                                .expect("Expected to insert HiddenPropagate component");
+                        }
+                    } else {
                         Self::set_alpha_for(new_alpha, ui_entity, ui_texts, ui_images, hierarchy);
                     }
                 }
@@ -427,22 +444,23 @@ impl MenuSystem {
 
                 for element_to_show in &self.elements_to_show {
                     let ui_entity = ui_finder.find_with_mut_transform(element_to_show);
+                    let is_container = element_to_show.contains(CONTAINER_TAG);
                     let (ui_entity, ui_transform) = if ui_entity.is_some() {
                         ui_entity.unwrap()
                     } else {
                         continue;
                     };
 
-                    hidden_propagates.remove(ui_entity);
-
-                    let hierarchy = if *element_to_show == UI_BACKGROUND_CONTAINER {
+                    let hierarchy = if is_container {
+                        hidden.remove(ui_entity);
                         None
                     } else {
+                        hidden_propagates.remove(ui_entity);
                         Some(hierarchy)
                     };
                     Self::set_alpha_for(new_alpha, ui_entity, ui_texts, ui_images, hierarchy);
                     if transition_completed > 1.0 {
-                        if !element_to_show.contains("container") {
+                        if !is_container && !element_to_show.contains(BACKGROUND_TAG) {
                             ui_transform.local_z = 1.0;
                         }
                         if self.mouse_reactive.contains(element_to_show) {
