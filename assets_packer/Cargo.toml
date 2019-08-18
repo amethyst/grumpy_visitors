@@ -11,12 +11,6 @@ path = "../libs/animation_prefabs"
 version = "0.12.0"
 features = ["nightly"]
 
-# Bad news: https://github.com/rust-lang/cargo/issues/1197
-
-#[target.'cfg(target_os = "macos")'.dependencies.amethyst]
-#version = "0.12.0"
-#features = ["metal"]
-
 [dependencies]
 texture_packer = "0.16.0"
 image = "0.21.1"

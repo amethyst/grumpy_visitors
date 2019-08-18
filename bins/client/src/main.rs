@@ -1,6 +1,8 @@
-mod rendering;
+#![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
-pub use ha_core::math::{Vector2, Vector3, ZeroVector};
+mod ecs;
+mod rendering;
+mod utils;
 
 use amethyst::{
     animation::AnimationBundle,
@@ -19,10 +21,16 @@ use amethyst::{
 };
 
 use ha_animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
-use ha_client_shared::{ecs::systems::*, settings::Settings};
-use ha_game::{build_game_logic_systems, ecs::systems::NetworkingSystem, states::LoadingState};
+use ha_client_shared::settings::Settings;
+use ha_core::net::EncodedMessage;
+use ha_game::{
+    build_game_logic_systems, ecs::systems::NetConnectionManagerSystem, states::LoadingState,
+};
 
-use crate::rendering::HealthUiPlugin;
+use crate::{
+    ecs::{resources::ServerCommand, systems::*},
+    rendering::HealthUiPlugin,
+};
 
 fn main() -> amethyst::Result<()> {
     let _cli_matches = clap::App::new("hello_amethyst")
@@ -45,10 +53,15 @@ fn main() -> amethyst::Result<()> {
 
     let mut builder = Application::build("./", LoadingState::default())?;
     builder.world.add_resource(settings);
+    builder.world.add_resource(ServerCommand::new());
 
     let mut game_data_builder = GameDataBuilder::default()
-        .with_bundle(NetworkBundle::<Vec<u8>>::new(socket_addr.parse()?))?
-        .with(NetworkingSystem, "networking_system", &["net_socket"]);
+        .with_bundle(NetworkBundle::<EncodedMessage>::new(socket_addr.parse()?))?
+        .with(
+            NetConnectionManagerSystem,
+            "net_connection_manager_system",
+            &["net_socket"],
+        );
 
     // Client input systems.
     game_data_builder = game_data_builder
@@ -56,9 +69,10 @@ fn main() -> amethyst::Result<()> {
         .with(
             InputSystem::default(),
             "mouse_system",
-            &["networking_system", "input_system"],
+            &["net_connection_manager_system", "input_system"],
         )
-        .with(MenuSystem::new(), "menu_system", &[]);
+        .with(MenuSystem::new(), "menu_system", &[])
+        .with(LocalServerSystem, "local_server_system", &["menu_system"]);
 
     game_data_builder = build_game_logic_systems(game_data_builder, &mut builder.world, false)?
         .with(

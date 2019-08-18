@@ -1,3 +1,5 @@
+#![allow(clippy::type_repetition_in_bounds)]
+
 #[cfg(feature = "client")]
 use amethyst::{
     assets::{Handle, Prefab},

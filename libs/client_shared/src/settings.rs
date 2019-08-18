@@ -8,10 +8,10 @@ use ron::ser::PrettyConfig;
 
 use std::{fs, path::PathBuf};
 
-static DEFAULT_BINDINGS_CONFIG_BYTES: &'static [u8] =
+static DEFAULT_BINDINGS_CONFIG_BYTES: &[u8] =
     include_bytes!("../../../resources/bindings_config.ron");
 
-static DEFAULT_DISPLAY_CONFIG_BYTES: &'static [u8] =
+static DEFAULT_DISPLAY_CONFIG_BYTES: &[u8] =
     include_bytes!("../../../resources/display_config.ron");
 
 pub struct Settings {

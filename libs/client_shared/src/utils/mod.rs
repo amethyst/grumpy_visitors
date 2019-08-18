@@ -1,5 +1,4 @@
 pub mod animation;
-pub mod camera;
 pub mod graphic_helpers;
 
 mod window_event_handler;

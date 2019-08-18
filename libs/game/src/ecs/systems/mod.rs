@@ -3,11 +3,11 @@ pub mod monster;
 pub mod player;
 
 mod level;
-mod networking;
+mod net_connection_manager;
 mod state_switcher;
 mod world_position_transform;
 
 pub use self::{
-    level::LevelSystem, networking::NetworkingSystem, state_switcher::StateSwitcherSystem,
-    world_position_transform::WorldPositionTransformSystem,
+    level::LevelSystem, net_connection_manager::NetConnectionManagerSystem,
+    state_switcher::StateSwitcherSystem, world_position_transform::WorldPositionTransformSystem,
 };

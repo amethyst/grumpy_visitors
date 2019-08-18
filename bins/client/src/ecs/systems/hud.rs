@@ -4,11 +4,10 @@ use amethyst::{
     window::ScreenDimensions,
 };
 
+use ha_client_shared::ecs::{components::HealthUiGraphics, resources::HEALTH_UI_SCREEN_PADDING};
 use ha_core::{ecs::components::Player, math::Vector2};
 
-use crate::ecs::{
-    components::HealthUiGraphics, resources::HEALTH_UI_SCREEN_PADDING, system_data::ui::UiFinderMut,
-};
+use crate::ecs::system_data::ui::UiFinderMut;
 
 pub struct HealthUiSystem;
 

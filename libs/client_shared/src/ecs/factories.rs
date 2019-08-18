@@ -1,3 +1,5 @@
+#![allow(clippy::type_repetition_in_bounds)]
+
 use amethyst::{
     core::{Parent, Transform},
     ecs::{Entities, Entity, ReadExpect, WriteStorage},

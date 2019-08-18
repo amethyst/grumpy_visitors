@@ -9,12 +9,11 @@ use lazy_static::lazy_static;
 use std::time::Duration;
 
 use ha_core::ecs::{
-    resources::{GameEngineState, GameLevelState},
+    resources::{GameEngineState, GameLevelState, NewGameEngineState},
     system_data::time::GameTimeService,
 };
 
-use crate::ecs::system_data::ui::UiFinderMut;
-use ha_core::ecs::resources::NewGameEngineState;
+use crate::ecs::{resources::ServerCommand, system_data::ui::UiFinderMut};
 
 const MENU_FADE_OUT_DURATION_MS: u64 = 500;
 const CONTAINER_TAG: &str = "_container";
@@ -95,6 +94,7 @@ lazy_static! {
         UI_MP_ROOM_PLAYER4_CONTAINER,
         UI_MP_ROOM_PLAYER4_BG,
     ];
+    // TODO: implement and uncomment buttons.
     static ref MP_ROOM_MENU_ELEMENTS: &'static [&'static str] = &[
         UI_MP_ROOM_START_BUTTON,
         UI_MP_ROOM_LOBBY_BUTTON,
@@ -106,17 +106,17 @@ lazy_static! {
         UI_MP_ROOM_PLAYER2_BG,
         UI_MP_ROOM_PLAYER2_NUMBER,
         UI_MP_ROOM_PLAYER2_NICKNAME,
-        UI_MP_ROOM_PLAYER2_KICK,
+        // UI_MP_ROOM_PLAYER2_KICK,
         UI_MP_ROOM_PLAYER3_CONTAINER,
         UI_MP_ROOM_PLAYER3_BG,
         UI_MP_ROOM_PLAYER3_NUMBER,
         UI_MP_ROOM_PLAYER3_NICKNAME,
-        UI_MP_ROOM_PLAYER3_KICK,
+        // UI_MP_ROOM_PLAYER3_KICK,
         UI_MP_ROOM_PLAYER4_CONTAINER,
         UI_MP_ROOM_PLAYER4_BG,
         UI_MP_ROOM_PLAYER4_NUMBER,
         UI_MP_ROOM_PLAYER4_NICKNAME,
-        UI_MP_ROOM_PLAYER4_KICK,
+        // UI_MP_ROOM_PLAYER4_KICK,
     ];
 }
 
@@ -191,6 +191,7 @@ impl<'s> System<'s> for MenuSystem {
         ReadExpect<'s, GameEngineState>,
         WriteExpect<'s, NewGameEngineState>,
         ReadExpect<'s, GameLevelState>,
+        WriteExpect<'s, ServerCommand>,
         Write<'s, EventChannel<UiEvent>>,
         WriteStorage<'s, UiText>,
         WriteStorage<'s, UiImage>,
@@ -208,6 +209,7 @@ impl<'s> System<'s> for MenuSystem {
             game_engine_state,
             mut new_game_engine_state,
             game_level_state,
+            mut server_command,
             mut ui_events,
             mut ui_texts,
             mut ui_images,
@@ -253,12 +255,8 @@ impl<'s> System<'s> for MenuSystem {
                 None
             }
             (GameEngineState::Menu, ref mut menu_state @ GameMenuState::Loading) => {
-                **menu_state = GameMenuState::MultiplayerRoomMenu;
-                self.set_fade_animation(
-                    now,
-                    vec![UI_LOADING_LABEL],
-                    MP_ROOM_MENU_ELEMENTS_INITIAL.to_vec(),
-                );
+                **menu_state = GameMenuState::LobbyMenu;
+                self.set_fade_animation(now, vec![UI_LOADING_LABEL], LOBBY_MENU_ELEMENTS.to_vec());
                 None
             }
             (GameEngineState::Menu, ref mut menu_state @ GameMenuState::MainMenu) => {
@@ -297,6 +295,15 @@ impl<'s> System<'s> for MenuSystem {
                         None
                     }
                     Some(UI_LOBBY_HOST_BUTTON) => {
+                        let addr = ui_finder
+                            .find(UI_LOBBY_HOST_IP_EDITABLE)
+                            .and_then(|entity| ui_texts.get(entity))
+                            .map(|ui_text| ui_text.text.clone())
+                            .unwrap();
+                        // TODO: error validations.
+                        server_command
+                            .start(addr.parse().expect("Expected a valid address"))
+                            .expect("Expected to start a server");
                         **menu_state = GameMenuState::MultiplayerRoomMenu;
                         self.set_fade_animation(
                             now,
@@ -406,8 +413,8 @@ impl MenuSystem {
                 for element_to_hide in &self.elements_to_hide {
                     let ui_entity = ui_finder.find_with_mut_transform(element_to_hide);
                     let is_container = element_to_hide.contains(CONTAINER_TAG);
-                    let (ui_entity, ui_transform) = if ui_entity.is_some() {
-                        ui_entity.unwrap()
+                    let (ui_entity, ui_transform) = if let Some(ui_entity) = ui_entity {
+                        ui_entity
                     } else {
                         continue;
                     };
@@ -445,8 +452,8 @@ impl MenuSystem {
                 for element_to_show in &self.elements_to_show {
                     let ui_entity = ui_finder.find_with_mut_transform(element_to_show);
                     let is_container = element_to_show.contains(CONTAINER_TAG);
-                    let (ui_entity, ui_transform) = if ui_entity.is_some() {
-                        ui_entity.unwrap()
+                    let (ui_entity, ui_transform) = if let Some(ui_entity) = ui_entity {
+                        ui_entity
                     } else {
                         continue;
                     };

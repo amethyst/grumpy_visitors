@@ -25,7 +25,7 @@ pub fn build_game_logic_systems<'a, 'b>(
         .with(
             PlayerMovementSystem,
             "player_movement_system",
-            &dependencies_with_optional(&["networking_system"], !is_server, &["input_system"]),
+            &dependencies_with_optional(&[], !is_server, &["input_system"]),
         )
         .with(
             MonsterActionSystem,
@@ -40,7 +40,7 @@ pub fn build_game_logic_systems<'a, 'b>(
         .with(
             MissileSpawnerSystem,
             "missile_spawner_system",
-            &dependencies_with_optional(&["networking_system"], !is_server, &["input_system"]),
+            &dependencies_with_optional(&[], !is_server, &["input_system"]),
         )
         .with(
             MissileSystem,

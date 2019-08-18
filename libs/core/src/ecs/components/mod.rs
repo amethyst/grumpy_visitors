@@ -7,7 +7,7 @@ use amethyst::{
 };
 use shrinkwraprs::Shrinkwrap;
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crate::{
     actions::{
@@ -15,6 +15,7 @@ use crate::{
         player::{PlayerCastAction, PlayerLookAction, PlayerWalkAction},
     },
     math::{Vector2, ZeroVector},
+    net::EncodedMessage,
 };
 
 #[derive(Shrinkwrap)]
@@ -97,8 +98,22 @@ impl Component for Dead {
     type Storage = FlaggedStorage<Self, NullStorage<Self>>;
 }
 
-pub struct ConnectionReader(pub ReaderId<NetEvent<Vec<u8>>>);
+pub struct NetConnectionModel {
+    pub reader: ReaderId<NetEvent<EncodedMessage>>,
+    pub created_at: Instant,
+    pub last_pinged_at: Instant,
+}
 
-impl Component for ConnectionReader {
+impl NetConnectionModel {
+    pub fn new(reader: ReaderId<NetEvent<EncodedMessage>>) -> Self {
+        Self {
+            reader,
+            created_at: Instant::now(),
+            last_pinged_at: Instant::now(),
+        }
+    }
+}
+
+impl Component for NetConnectionModel {
     type Storage = DenseVecStorage<Self>;
 }

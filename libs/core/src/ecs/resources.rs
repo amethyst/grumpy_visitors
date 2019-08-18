@@ -1,3 +1,5 @@
+use serde_derive::{Serialize, Deserialize};
+
 use std::time::Duration;
 
 use crate::math::Vector2;
@@ -52,3 +54,13 @@ pub enum GameEngineState {
     Playing,
     Quit,
 }
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct MultiplayerRoomPlayer {
+    pub nickname: String,
+    pub is_host: bool,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct MultiplayerRoomPlayers(pub Vec<MultiplayerRoomPlayer>);
+

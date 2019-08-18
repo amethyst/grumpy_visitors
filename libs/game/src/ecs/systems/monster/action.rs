@@ -19,7 +19,7 @@ use ha_core::{
 
 use crate::{ecs::resources::MonsterDefinitions, utils::world::random_scene_position};
 
-const IDLE_TIME_SEC: f32 = 0.5;
+const IDLE_TIME_SECS: f32 = 0.5;
 
 pub struct MonsterActionSystem;
 
@@ -65,7 +65,7 @@ impl<'s> System<'s> for MonsterActionSystem {
                     } else {
                         let time_being_idle = time.absolute_time() - monster.action.started_at;
                         let max_idle_duration =
-                            Duration::from_millis((IDLE_TIME_SEC as f32 * 1000.0).round() as u64);
+                            Duration::from_millis((IDLE_TIME_SECS as f32 * 1000.0).round() as u64);
                         if time_being_idle > max_idle_duration {
                             Some(MobActionType::Move(random_scene_position(&*game_scene)))
                         } else {
