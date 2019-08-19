@@ -76,3 +76,19 @@ impl Drop for ServerProcess {
         }
     }
 }
+
+pub struct MultiplayerRoomState {
+    pub nickname: String,
+    pub is_active: bool,
+    pub has_sent_join_package: bool,
+}
+
+impl MultiplayerRoomState {
+    pub fn new() -> Self {
+        Self {
+            nickname: "Player".to_owned(),
+            is_active: false,
+            has_sent_join_package: false,
+        }
+    }
+}

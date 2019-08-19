@@ -1,4 +1,4 @@
-mod systems;
+mod ecs;
 
 use amethyst::{
     core::{frame_limiter::FrameRateLimitStrategy, transform::TransformBundle},
@@ -11,9 +11,9 @@ use log::LevelFilter;
 use std::{env, io, path::PathBuf, str::FromStr, time::Duration};
 
 use ha_core::net::EncodedMessage;
-use ha_game::{
-    build_game_logic_systems, ecs::systems::NetConnectionManagerSystem, states::LoadingState,
-};
+use ha_game::{build_game_logic_systems, states::LoadingState};
+
+use crate::ecs::systems::*;
 
 fn main() -> amethyst::Result<()> {
     let cli_matches = clap::App::new("hello_amethyst")
@@ -37,14 +37,15 @@ fn main() -> amethyst::Result<()> {
 
     Logger::from_config(Default::default())
         .level_for("gfx_backend_vulkan", LogLevelFilter::Warn)
+        .level_for("ha_game::ecs::systems::net_connection_manager", LogLevelFilter::Trace)
         .start();
 
     let mut builder = Application::build("./", LoadingState::default())?;
     let mut game_data_builder = GameDataBuilder::default()
         .with_bundle(NetworkBundle::<EncodedMessage>::new(socket_addr.parse()?))?
         .with(
-            NetConnectionManagerSystem,
-            "net_connection_manager_system",
+            ServerNetworkSystem,
+            "server_network_system",
             &["net_socket"],
         );
     game_data_builder = build_game_logic_systems(game_data_builder, &mut builder.world, true)?

@@ -1,29 +1,43 @@
 use amethyst::{
-    ecs::{Entities, Join, System, WriteStorage},
+    ecs::{Entities, Join, System, WriteExpect, WriteStorage},
     network::{NetEvent, NetPacket},
 };
 use log;
 
 use std::time::{Duration, Instant};
 
-#[cfg(feature = "client")]
-use ha_core::net::client_messages::ClientMessages;
-#[cfg(not(feature = "client"))]
-use ha_core::net::server_messages::ServerMessages;
-use ha_core::{ecs::components::NetConnectionModel, net::NetConnection};
+use ha_core::{
+    ecs::components::NetConnectionModel,
+    net::{client_message::ClientMessage, server_message::ServerMessage, NetConnection},
+};
+
+use crate::ecs::resources::IncomingMessages;
 
 const PING_INTERVAL_SECS: u64 = 1;
+
+#[cfg(feature = "client")]
+type IncomingMessage = ServerMessage;
+#[cfg(not(feature = "client"))]
+type IncomingMessage = ClientMessage;
+#[cfg(feature = "client")]
+type OutcomingMessage = ClientMessage;
+#[cfg(not(feature = "client"))]
+type OutcomingMessage = ServerMessage;
 
 pub struct NetConnectionManagerSystem;
 
 impl<'s> System<'s> for NetConnectionManagerSystem {
     type SystemData = (
+        WriteExpect<'s, IncomingMessages>,
         WriteStorage<'s, NetConnection>,
         WriteStorage<'s, NetConnectionModel>,
         Entities<'s>,
     );
 
-    fn run(&mut self, (mut connections, mut connection_readers, entities): Self::SystemData) {
+    fn run(
+        &mut self,
+        (mut incoming_messages, mut connections, mut connection_readers, entities): Self::SystemData,
+    ) {
         let mut count = 0;
         let mut connection_count = 0;
 
@@ -39,9 +53,20 @@ impl<'s> System<'s> for NetConnectionManagerSystem {
             let mut client_disconnected = false;
 
             for ev in connection.received_events(&mut connection_data.reader) {
-                connection_messages_count += 1;
                 match ev {
-                    NetEvent::Packet(packet) => log::debug!("{:?}", packet.content()),
+                    NetEvent::Packet(packet) => {
+                        if let Ok(message) =
+                            bincode::deserialize::<IncomingMessage>(packet.content())
+                        {
+                            if !message.is_ping_message() {
+                                log::debug!("{:?}", &message);
+                                connection_messages_count += 1;
+                            }
+                            incoming_messages.0.push(message);
+                        } else {
+                            log::debug!("{:?}", packet.content());
+                        }
+                    }
                     NetEvent::Connected(addr) => log::info!("New client connection: {}", addr),
                     NetEvent::Disconnected(_addr) => {
                         client_disconnected = true;
@@ -80,12 +105,6 @@ impl<'s> System<'s> for NetConnectionManagerSystem {
     }
 }
 
-#[cfg(feature = "client")]
 fn ping_message() -> Vec<u8> {
-    bincode::serialize(&ClientMessages::Ping).expect("Expected to serialize Ping message")
-}
-
-#[cfg(not(feature = "client"))]
-fn ping_message() -> Vec<u8> {
-    bincode::serialize(&ServerMessages::Ping).expect("Expected to serialize Ping message")
+    bincode::serialize(&OutcomingMessage::Ping).expect("Expected to serialize Ping message")
 }

@@ -23,12 +23,13 @@ use amethyst::{
 use ha_animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
 use ha_client_shared::settings::Settings;
 use ha_core::net::EncodedMessage;
-use ha_game::{
-    build_game_logic_systems, ecs::systems::NetConnectionManagerSystem, states::LoadingState,
-};
+use ha_game::{build_game_logic_systems, states::LoadingState};
 
 use crate::{
-    ecs::{resources::ServerCommand, systems::*},
+    ecs::{
+        resources::{MultiplayerRoomState, ServerCommand},
+        systems::*,
+    },
     rendering::HealthUiPlugin,
 };
 
@@ -43,6 +44,10 @@ fn main() -> amethyst::Result<()> {
 
     Logger::from_config(Default::default())
         .level_for("gfx_backend_vulkan", LogLevelFilter::Warn)
+        .level_for(
+            "ha_game::ecs::systems::net_connection_manager",
+            LogLevelFilter::Trace,
+        )
         .start();
 
     let settings = Settings::new()?;
@@ -54,22 +59,20 @@ fn main() -> amethyst::Result<()> {
     let mut builder = Application::build("./", LoadingState::default())?;
     builder.world.add_resource(settings);
     builder.world.add_resource(ServerCommand::new());
+    builder.world.add_resource(MultiplayerRoomState::new());
 
     let mut game_data_builder = GameDataBuilder::default()
         .with_bundle(NetworkBundle::<EncodedMessage>::new(socket_addr.parse()?))?
         .with(
-            NetConnectionManagerSystem,
-            "net_connection_manager_system",
+            ClientNetworkSystem,
+            "client_network_system",
             &["net_socket"],
-        );
-
-    // Client input systems.
-    game_data_builder = game_data_builder
+        )
         .with_bundle(input_bundle)?
         .with(
             InputSystem::default(),
             "mouse_system",
-            &["net_connection_manager_system", "input_system"],
+            &["client_network_system", "input_system"],
         )
         .with(MenuSystem::new(), "menu_system", &[])
         .with(LocalServerSystem, "local_server_system", &["menu_system"]);

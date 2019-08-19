@@ -10,6 +10,10 @@ use ha_client_shared::{
     utils::graphic_helpers::{create_color_material, create_mesh, generate_circle_vertices},
 };
 use ha_core::actions::mob::MobAttackType;
+#[cfg(not(feature = "client"))]
+use ha_core::net::client_message::ClientMessage;
+#[cfg(feature = "client")]
+use ha_core::net::server_message::ServerMessage;
 
 pub struct GameTime {
     pub level_started_at: Duration,
@@ -79,3 +83,8 @@ impl MonsterDefinitions {
         world.add_resource(Self(map))
     }
 }
+
+#[cfg(feature = "client")]
+pub struct IncomingMessages(pub Vec<ServerMessage>);
+#[cfg(not(feature = "client"))]
+pub struct IncomingMessages(pub Vec<ClientMessage>);

@@ -1,5 +1,5 @@
-pub mod client_messages;
-pub mod server_messages;
+pub mod client_message;
+pub mod server_message;
 
 use amethyst::network;
 

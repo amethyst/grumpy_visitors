@@ -1,14 +1,11 @@
-use amethyst::{
-    ecs::{Entities, System, WriteExpect, WriteStorage},
-    network::{NetEvent, NetPacket},
-};
+use amethyst::ecs::{Entities, System, WriteExpect, WriteStorage};
 
 use std::{
     net::{IpAddr, Ipv4Addr},
     time::{Duration, Instant},
 };
 
-use ha_core::net::{client_messages::ClientMessages, NetConnection};
+use ha_core::net::NetConnection;
 
 use crate::ecs::resources::ServerCommand;
 
@@ -45,17 +42,9 @@ impl<'s> System<'s> for LocalServerSystem {
 
             log::info!("Creating a connection to a local server: {}", addr);
 
-            let mut connection = NetConnection::new(addr);
-            connection.queue(NetEvent::Packet(NetPacket::reliable_unordered(
-                bincode::serialize(&ClientMessages::JoinRoom {
-                    nickname: "Player".to_owned(),
-                })
-                .expect("Expected to serialize a message"),
-            )));
-
             entities
                 .build_entity()
-                .with(connection, &mut net_connections)
+                .with(NetConnection::new(addr), &mut net_connections)
                 .build();
         }
     }

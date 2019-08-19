@@ -15,6 +15,7 @@ features = ["nightly"]
 #features = ["metal"]
 
 [dependencies]
+bincode = "1.1.4"
 num = "0.2.0"
 rand = "0.6.5"
 serde = "1.0.91"

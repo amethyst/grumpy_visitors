@@ -1,4 +1,4 @@
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 
 use std::time::Duration;
 
@@ -55,12 +55,37 @@ pub enum GameEngineState {
     Quit,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MultiplayerRoomPlayer {
     pub nickname: String,
     pub is_host: bool,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
-pub struct MultiplayerRoomPlayers(pub Vec<MultiplayerRoomPlayer>);
+#[derive(Clone, Serialize, Deserialize, Default)]
+pub struct MultiplayerRoomPlayers {
+    pub players: Vec<MultiplayerRoomPlayer>,
+    updated: bool,
+}
 
+impl MultiplayerRoomPlayers {
+    pub fn new() -> Self {
+        Self {
+            players: Vec::new(),
+            updated: false,
+        }
+    }
+
+    pub fn read_updated(&mut self) -> Option<&[MultiplayerRoomPlayer]> {
+        if self.updated {
+            self.updated = false;
+            Some(&self.players)
+        } else {
+            None
+        }
+    }
+
+    pub fn update(&mut self) -> &mut Vec<MultiplayerRoomPlayer> {
+        self.updated = true;
+        &mut self.players
+    }
+}

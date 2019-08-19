@@ -9,11 +9,14 @@ use lazy_static::lazy_static;
 use std::time::Duration;
 
 use ha_core::ecs::{
-    resources::{GameEngineState, GameLevelState, NewGameEngineState},
+    resources::{GameEngineState, GameLevelState, MultiplayerRoomPlayers, NewGameEngineState},
     system_data::time::GameTimeService,
 };
 
-use crate::ecs::{resources::ServerCommand, system_data::ui::UiFinderMut};
+use crate::ecs::{
+    resources::{MultiplayerRoomState, ServerCommand},
+    system_data::ui::UiFinderMut,
+};
 
 const MENU_FADE_OUT_DURATION_MS: u64 = 500;
 const CONTAINER_TAG: &str = "_container";
@@ -85,8 +88,6 @@ lazy_static! {
         UI_MP_ROOM_LOBBY_BUTTON,
         UI_MP_ROOM_PLAYER1_CONTAINER,
         UI_MP_ROOM_PLAYER1_BG,
-        UI_MP_ROOM_PLAYER1_NUMBER,
-        UI_MP_ROOM_PLAYER1_NICKNAME,
         UI_MP_ROOM_PLAYER2_CONTAINER,
         UI_MP_ROOM_PLAYER2_BG,
         UI_MP_ROOM_PLAYER3_CONTAINER,
@@ -192,6 +193,8 @@ impl<'s> System<'s> for MenuSystem {
         WriteExpect<'s, NewGameEngineState>,
         ReadExpect<'s, GameLevelState>,
         WriteExpect<'s, ServerCommand>,
+        WriteExpect<'s, MultiplayerRoomState>,
+        WriteExpect<'s, MultiplayerRoomPlayers>,
         Write<'s, EventChannel<UiEvent>>,
         WriteStorage<'s, UiText>,
         WriteStorage<'s, UiImage>,
@@ -210,6 +213,8 @@ impl<'s> System<'s> for MenuSystem {
             mut new_game_engine_state,
             game_level_state,
             mut server_command,
+            mut multiplayer_room_state,
+            mut multiplayer_room_players,
             mut ui_events,
             mut ui_texts,
             mut ui_images,
@@ -300,11 +305,18 @@ impl<'s> System<'s> for MenuSystem {
                             .and_then(|entity| ui_texts.get(entity))
                             .map(|ui_text| ui_text.text.clone())
                             .unwrap();
+                        let nickname = ui_finder
+                            .find(UI_LOBBY_NICKNAME_EDITABLE)
+                            .and_then(|entity| ui_texts.get(entity))
+                            .map(|ui_text| ui_text.text.clone())
+                            .unwrap();
                         // TODO: error validations.
                         server_command
                             .start(addr.parse().expect("Expected a valid address"))
                             .expect("Expected to start a server");
                         **menu_state = GameMenuState::MultiplayerRoomMenu;
+                        multiplayer_room_state.nickname = nickname;
+                        multiplayer_room_state.is_active = true;
                         self.set_fade_animation(
                             now,
                             LOBBY_MENU_ELEMENTS.to_vec(),
@@ -326,7 +338,15 @@ impl<'s> System<'s> for MenuSystem {
                         );
                         None
                     }
-                    _ => None,
+                    _ => {
+                        Self::update_players(
+                            &mut multiplayer_room_players,
+                            &mut ui_finder,
+                            &mut ui_texts,
+                            &mut hidden_propagates,
+                        );
+                        None
+                    }
                 }
             }
             (GameEngineState::Menu, ref mut menu_state @ GameMenuState::RestartMenu) => {
@@ -394,13 +414,13 @@ impl MenuSystem {
 
     fn run_fade_animation(
         &mut self,
-        ui_finder: &mut UiFinderMut<'_>,
-        ui_texts: &mut WriteStorage<'_, UiText>,
-        ui_images: &mut WriteStorage<'_, UiImage>,
-        ui_interactables: &mut WriteStorage<'_, Interactable>,
-        hidden: &mut WriteStorage<'_, Hidden>,
-        hidden_propagates: &mut WriteStorage<'_, HiddenPropagate>,
-        hierarchy: &ReadExpect<'_, ParentHierarchy>,
+        ui_finder: &mut UiFinderMut,
+        ui_texts: &mut WriteStorage<UiText>,
+        ui_images: &mut WriteStorage<UiImage>,
+        ui_interactables: &mut WriteStorage<Interactable>,
+        hidden: &mut WriteStorage<Hidden>,
+        hidden_propagates: &mut WriteStorage<HiddenPropagate>,
+        hierarchy: &ReadExpect<ParentHierarchy>,
         now: Duration,
     ) {
         let transition_completed =
@@ -498,9 +518,9 @@ impl MenuSystem {
     fn set_alpha_for(
         new_alpha: f32,
         ui_entity: Entity,
-        ui_texts: &mut WriteStorage<'_, UiText>,
-        ui_images: &mut WriteStorage<'_, UiImage>,
-        hierarchy: Option<&ReadExpect<'_, ParentHierarchy>>,
+        ui_texts: &mut WriteStorage<UiText>,
+        ui_images: &mut WriteStorage<UiImage>,
+        hierarchy: Option<&ReadExpect<ParentHierarchy>>,
     ) {
         if let Some(ui_text) = ui_texts.get_mut(ui_entity) {
             ui_text.color[3] = new_alpha;
@@ -511,6 +531,67 @@ impl MenuSystem {
         if let Some(hierarchy) = hierarchy {
             for ui_entity in hierarchy.children(ui_entity) {
                 Self::set_alpha_for(new_alpha, *ui_entity, ui_texts, ui_images, Some(hierarchy))
+            }
+        }
+    }
+
+    fn update_players(
+        multiplayer_room_players: &mut WriteExpect<MultiplayerRoomPlayers>,
+        ui_finder: &mut UiFinderMut,
+        ui_texts: &mut WriteStorage<UiText>,
+        hidden_propagates: &mut WriteStorage<HiddenPropagate>,
+    ) {
+        if let Some(players) = multiplayer_room_players.read_updated() {
+            let rows = [
+                (UI_MP_ROOM_PLAYER1_NUMBER, UI_MP_ROOM_PLAYER1_NICKNAME),
+                (UI_MP_ROOM_PLAYER2_NUMBER, UI_MP_ROOM_PLAYER2_NICKNAME),
+                (UI_MP_ROOM_PLAYER3_NUMBER, UI_MP_ROOM_PLAYER3_NICKNAME),
+                (UI_MP_ROOM_PLAYER4_NUMBER, UI_MP_ROOM_PLAYER4_NICKNAME),
+            ];
+            for (i, row) in rows.iter().enumerate() {
+                {
+                    let (ui_number_entity, ui_number_transform) =
+                        ui_finder.find_with_mut_transform(row.0).unwrap_or_else(|| {
+                            panic!("Expected a player number UiTransform for row {}", i)
+                        });
+                    let ui_number_text = ui_texts
+                        .get_mut(ui_number_entity)
+                        .unwrap_or_else(|| panic!("Expected a player number UiText for row {}", i));
+                    if players.get(i).is_some() {
+                        hidden_propagates.remove(ui_number_entity);
+                        ui_number_transform.local_z = 1.0;
+                        ui_number_text.color[3] = 1.0;
+                    } else {
+                        hidden_propagates
+                            .insert(ui_number_entity, HiddenPropagate)
+                            .expect("Expected to insert Hidden component");
+                        ui_number_transform.local_z = 0.5;
+                        ui_number_text.color[3] = 0.0;
+                    }
+                }
+
+                {
+                    let (ui_text_entity, ui_text_transform) =
+                        ui_finder.find_with_mut_transform(row.1).unwrap_or_else(|| {
+                            panic!("Expected a player nickname UiTransform for row {}", i)
+                        });
+                    let ui_nickname_text = ui_texts
+                        .get_mut(ui_text_entity)
+                        .unwrap_or_else(|| panic!("Expected a player number UiText for row {}", i));
+
+                    if let Some(player) = players.get(i) {
+                        hidden_propagates.remove(ui_text_entity);
+                        ui_text_transform.local_z = 1.0;
+                        ui_nickname_text.color[3] = 1.0;
+                        ui_nickname_text.text = player.nickname.clone();
+                    } else {
+                        hidden_propagates
+                            .insert(ui_text_entity, HiddenPropagate)
+                            .expect("Expected to insert Hidden component");
+                        ui_text_transform.local_z = 0.5;
+                        ui_nickname_text.color[3] = 0.0;
+                    }
+                }
             }
         }
     }

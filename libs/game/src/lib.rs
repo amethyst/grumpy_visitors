@@ -8,18 +8,30 @@ use amethyst::{
     prelude::{GameDataBuilder, World},
 };
 
-use ha_core::ecs::components::damage_history::DamageHistory;
+use ha_core::ecs::{components::damage_history::DamageHistory, resources::MultiplayerRoomPlayers};
 
-use crate::ecs::systems::{missile::*, monster::*, player::*, *};
+use crate::ecs::{
+    resources::IncomingMessages,
+    systems::{missile::*, monster::*, player::*, *},
+};
 
 pub fn build_game_logic_systems<'a, 'b>(
     game_data_builder: GameDataBuilder<'a, 'b>,
     world: &mut World,
     is_server: bool,
 ) -> Result<GameDataBuilder<'a, 'b>, Error> {
+    world.add_resource(IncomingMessages(Vec::new()));
+    world.add_resource(MultiplayerRoomPlayers::new());
+
     world.register::<DamageHistory>();
     let mut damage_history_storage = world.write_storage::<DamageHistory>();
+
     let game_data_builder = game_data_builder
+        .with(
+            NetConnectionManagerSystem,
+            "net_connection_manager_system",
+            &["net_socket"],
+        )
         .with(LevelSystem::default(), "level_system", &[])
         .with(MonsterSpawnerSystem, "spawner_system", &["level_system"])
         .with(
