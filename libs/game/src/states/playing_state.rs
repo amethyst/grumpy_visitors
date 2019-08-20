@@ -1,25 +1,40 @@
 #[cfg(feature = "client")]
-use amethyst::prelude::{SimpleTrans, StateEvent, Trans};
 use amethyst::{
-    ecs::{Entity, World},
+    ecs::ReadExpect,
+    prelude::{SimpleTrans, StateEvent, Trans},
+};
+use amethyst::{
+    ecs::{World, WriteExpect, WriteStorage},
     prelude::{GameData, SimpleState, StateData},
     shred::SystemData,
 };
 
 #[cfg(feature = "client")]
+use std::mem::MaybeUninit;
+
+#[cfg(feature = "client")]
 use ha_client_shared::{
-    ecs::factories::CameraFactory,
+    ecs::{factories::CameraFactory, resources::MultiplayerRoomState},
     utils::{self, animation},
 };
+#[cfg(not(feature = "client"))]
+use ha_core::net::server_message::ServerMessagePayload;
+#[cfg(not(feature = "client"))]
+use ha_core::net::NetConnection;
 use ha_core::{
     actions::monster_spawn::{Count, SpawnAction, SpawnActions, SpawnType},
     ecs::{
-        resources::{GameEngineState, GameLevelState},
+        components::EntityNetMetadata,
+        resources::{
+            EntityNetMetadataService, GameEngineState, GameLevelState, MultiplayerRoomPlayers,
+        },
         system_data::time::GameTimeService,
     },
 };
 
 use crate::ecs::factories::{LandscapeFactory, PlayerFactory};
+#[cfg(not(feature = "client"))]
+use crate::utils::net::broadcast_message_reliable;
 
 #[derive(Default)]
 pub struct PlayingState;
@@ -35,8 +50,7 @@ impl SimpleState for PlayingState {
 
         GameTimeService::fetch(&world.res).set_level_started_at();
 
-        let player = world.exec(|mut player_factory: PlayerFactory| player_factory.create());
-        initialize_camera(world, player);
+        initialize_players(world);
 
         {
             let mut spawn_actions = world.write_resource::<SpawnActions>();
@@ -80,9 +94,82 @@ impl SimpleState for PlayingState {
 }
 
 #[cfg(feature = "client")]
-fn initialize_camera(world: &mut World, player: Entity) {
-    world.exec(move |mut camera_factory: CameraFactory| camera_factory.create(player));
+fn initialize_players(world: &mut World) {
+    let mut main_player = MaybeUninit::uninit();
+
+    world.exec(
+        |(
+            mut player_factory,
+            mut entity_net_metadata,
+            mut entity_net_metadata_service,
+            mut multiplayer_room_state,
+            multiplayer_room_players,
+        ): (
+            PlayerFactory,
+            WriteStorage<EntityNetMetadata>,
+            WriteExpect<EntityNetMetadataService>,
+            WriteExpect<MultiplayerRoomState>,
+            ReadExpect<MultiplayerRoomPlayers>,
+        )| {
+            for player in &multiplayer_room_players.players {
+                let player_entity = player_factory.create();
+                entity_net_metadata_service.set_net_id(player_entity, player.entity_net_id);
+                entity_net_metadata
+                    .insert(
+                        player_entity,
+                        EntityNetMetadata {
+                            id: player.entity_net_id,
+                        },
+                    )
+                    .expect("Expected to insert EntityNetMetadata component");
+
+                if player.connection_id == multiplayer_room_state.connection_id {
+                    multiplayer_room_state.player_id = player.entity_net_id;
+                    main_player.write(player_entity);
+                }
+            }
+        },
+    );
+
+    world.exec(move |mut camera_factory: CameraFactory| {
+        camera_factory.create(unsafe { main_player.assume_init() })
+    });
 }
 
 #[cfg(not(feature = "client"))]
-fn initialize_camera(_world: &mut World, _player: Entity) {}
+fn initialize_players(world: &mut World) {
+    world.exec(
+        |(
+            mut player_factory,
+            mut entity_net_metadata,
+            mut entity_net_metadata_service,
+            mut multiplayer_room_players,
+            mut net_connections,
+        ): (
+            PlayerFactory,
+            WriteStorage<EntityNetMetadata>,
+            WriteExpect<EntityNetMetadataService>,
+            WriteExpect<MultiplayerRoomPlayers>,
+            WriteStorage<NetConnection>,
+        )| {
+            let player_net_identifiers = multiplayer_room_players
+                .players
+                .iter_mut()
+                .map(|player| {
+                    let player_entity = player_factory.create();
+                    let entity_net_id =
+                        entity_net_metadata_service.register_new_entity(player_entity);
+                    player.entity_net_id = entity_net_id;
+                    entity_net_metadata
+                        .insert(player_entity, EntityNetMetadata { id: entity_net_id })
+                        .expect("Expected to insert EntityNetMetadata component");
+                    entity_net_id
+                })
+                .collect();
+            broadcast_message_reliable(
+                &mut net_connections,
+                &ServerMessagePayload::StartGame(player_net_identifiers),
+            );
+        },
+    );
+}

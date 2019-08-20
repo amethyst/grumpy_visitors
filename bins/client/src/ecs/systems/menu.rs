@@ -8,15 +8,13 @@ use lazy_static::lazy_static;
 
 use std::time::Duration;
 
+use ha_client_shared::ecs::resources::MultiplayerRoomState;
 use ha_core::ecs::{
     resources::{GameEngineState, GameLevelState, MultiplayerRoomPlayers, NewGameEngineState},
     system_data::time::GameTimeService,
 };
 
-use crate::ecs::{
-    resources::{MultiplayerRoomState, ServerCommand},
-    system_data::ui::UiFinderMut,
-};
+use crate::ecs::{resources::ServerCommand, system_data::ui::UiFinderMut};
 
 const MENU_FADE_OUT_DURATION_MS: u64 = 500;
 const CONTAINER_TAG: &str = "_container";
@@ -83,8 +81,19 @@ lazy_static! {
         UI_LOBBY_JOIN_BUTTON,
         UI_MAIN_MENU_BUTTON,
     ];
-    static ref MP_ROOM_MENU_ELEMENTS_INITIAL: &'static [&'static str] = &[
+    static ref MP_ROOM_MENU_ELEMENTS_HOST: &'static [&'static str] = &[
         UI_MP_ROOM_START_BUTTON,
+        UI_MP_ROOM_LOBBY_BUTTON,
+        UI_MP_ROOM_PLAYER1_CONTAINER,
+        UI_MP_ROOM_PLAYER1_BG,
+        UI_MP_ROOM_PLAYER2_CONTAINER,
+        UI_MP_ROOM_PLAYER2_BG,
+        UI_MP_ROOM_PLAYER3_CONTAINER,
+        UI_MP_ROOM_PLAYER3_BG,
+        UI_MP_ROOM_PLAYER4_CONTAINER,
+        UI_MP_ROOM_PLAYER4_BG,
+    ];
+    static ref MP_ROOM_MENU_ELEMENTS_JOIN: &'static [&'static str] = &[
         UI_MP_ROOM_LOBBY_BUTTON,
         UI_MP_ROOM_PLAYER1_CONTAINER,
         UI_MP_ROOM_PLAYER1_BG,
@@ -299,9 +308,15 @@ impl<'s> System<'s> for MenuSystem {
                         );
                         None
                     }
-                    Some(UI_LOBBY_HOST_BUTTON) => {
+                    Some(b @ UI_LOBBY_HOST_BUTTON) | Some(b @ UI_LOBBY_JOIN_BUTTON) => {
+                        let is_host = b == UI_LOBBY_HOST_BUTTON;
+                        let address_field = if is_host {
+                            UI_LOBBY_HOST_IP_EDITABLE
+                        } else {
+                            UI_LOBBY_JOIN_IP_EDITABLE
+                        };
                         let addr = ui_finder
-                            .find(UI_LOBBY_HOST_IP_EDITABLE)
+                            .find(address_field)
                             .and_then(|entity| ui_texts.get(entity))
                             .map(|ui_text| ui_text.text.clone())
                             .unwrap();
@@ -311,16 +326,25 @@ impl<'s> System<'s> for MenuSystem {
                             .map(|ui_text| ui_text.text.clone())
                             .unwrap();
                         // TODO: error validations.
-                        server_command
-                            .start(addr.parse().expect("Expected a valid address"))
-                            .expect("Expected to start a server");
+                        let server_addr = addr.parse().expect("Expected a valid address");
+                        if is_host {
+                            server_command
+                                .start(server_addr)
+                                .expect("Expected to start a server");
+                        }
                         **menu_state = GameMenuState::MultiplayerRoomMenu;
                         multiplayer_room_state.nickname = nickname;
                         multiplayer_room_state.is_active = true;
+                        multiplayer_room_state.server_addr = server_addr;
+                        multiplayer_room_state.is_host = is_host;
                         self.set_fade_animation(
                             now,
                             LOBBY_MENU_ELEMENTS.to_vec(),
-                            MP_ROOM_MENU_ELEMENTS_INITIAL.to_vec(),
+                            if is_host {
+                                MP_ROOM_MENU_ELEMENTS_HOST.to_vec()
+                            } else {
+                                MP_ROOM_MENU_ELEMENTS_JOIN.to_vec()
+                            },
                         );
                         None
                     }
@@ -338,6 +362,10 @@ impl<'s> System<'s> for MenuSystem {
                         );
                         None
                     }
+                    Some(UI_MP_ROOM_START_BUTTON) => {
+                        multiplayer_room_state.has_started = true;
+                        None
+                    },
                     _ => {
                         Self::update_players(
                             &mut multiplayer_room_players,
@@ -372,7 +400,14 @@ impl<'s> System<'s> for MenuSystem {
                     _ => None,
                 }
             }
-            (GameEngineState::Playing, ref mut menu_state) if game_level_state.is_over => {
+            (GameEngineState::Playing, ref mut menu_state @ GameMenuState::MultiplayerRoomMenu) => {
+                **menu_state = GameMenuState::Hidden;
+                self.set_fade_animation(now, with_background(*MP_ROOM_MENU_ELEMENTS), Vec::new());
+                None
+            }
+            (GameEngineState::Playing, ref mut menu_state)
+                if game_level_state.is_over && multiplayer_room_state.is_host =>
+            {
                 **menu_state = GameMenuState::RestartMenu;
                 self.set_fade_animation(now, Vec::new(), with_background(*RESTART_MENU_ELEMENTS));
                 Some(GameEngineState::Menu)

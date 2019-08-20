@@ -9,11 +9,11 @@ use ha_client_shared::{
     ecs::resources::EntityGraphics,
     utils::graphic_helpers::{create_color_material, create_mesh, generate_circle_vertices},
 };
-use ha_core::actions::mob::MobAttackType;
 #[cfg(not(feature = "client"))]
-use ha_core::net::client_message::ClientMessage;
+use ha_core::net::client_message::ClientMessagePayload;
 #[cfg(feature = "client")]
-use ha_core::net::server_message::ServerMessage;
+use ha_core::net::server_message::ServerMessagePayload;
+use ha_core::{actions::mob::MobAttackType, net::ConnectionNetEvent};
 
 pub struct GameTime {
     pub level_started_at: Duration,
@@ -85,6 +85,6 @@ impl MonsterDefinitions {
 }
 
 #[cfg(feature = "client")]
-pub struct IncomingMessages(pub Vec<ServerMessage>);
+pub struct ConnectionEvents(pub Vec<ConnectionNetEvent<ServerMessagePayload>>);
 #[cfg(not(feature = "client"))]
-pub struct IncomingMessages(pub Vec<ClientMessage>);
+pub struct ConnectionEvents(pub Vec<ConnectionNetEvent<ClientMessagePayload>>);

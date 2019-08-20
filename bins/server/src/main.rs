@@ -44,7 +44,7 @@ fn main() -> amethyst::Result<()> {
     let mut game_data_builder = GameDataBuilder::default()
         .with_bundle(NetworkBundle::<EncodedMessage>::new(socket_addr.parse()?))?
         .with(
-            ServerNetworkSystem,
+            ServerNetworkSystem::new(),
             "server_network_system",
             &["net_socket"],
         );

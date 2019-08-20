@@ -21,15 +21,12 @@ use amethyst::{
 };
 
 use ha_animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
-use ha_client_shared::settings::Settings;
+use ha_client_shared::{ecs::resources::MultiplayerRoomState, settings::Settings};
 use ha_core::net::EncodedMessage;
 use ha_game::{build_game_logic_systems, states::LoadingState};
 
 use crate::{
-    ecs::{
-        resources::{MultiplayerRoomState, ServerCommand},
-        systems::*,
-    },
+    ecs::{resources::ServerCommand, systems::*},
     rendering::HealthUiPlugin,
 };
 

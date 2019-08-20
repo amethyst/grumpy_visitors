@@ -1,34 +1,74 @@
 use amethyst::ecs::{System, WriteExpect, WriteStorage};
 
 use ha_core::{
-    ecs::resources::{MultiplayerRoomPlayer, MultiplayerRoomPlayers},
-    net::{client_message::ClientMessage, server_message::ServerMessage, NetConnection},
+    ecs::resources::{
+        GameEngineState, MultiplayerRoomPlayer, MultiplayerRoomPlayers, NewGameEngineState,
+    },
+    net::{
+        client_message::ClientMessagePayload, server_message::ServerMessagePayload,
+        ConnectionIdentifier, NetConnection, NetEvent,
+    },
 };
-use ha_game::{ecs::resources::IncomingMessages, utils::net::broadcast_message_reliable};
+use ha_game::{ecs::resources::ConnectionEvents, utils::net::broadcast_message_reliable};
 
-pub struct ServerNetworkSystem;
+pub struct ServerNetworkSystem {
+    host_connection_id: ConnectionIdentifier,
+}
+
+impl ServerNetworkSystem {
+    pub fn new() -> Self {
+        Self {
+            host_connection_id: 0,
+        }
+    }
+}
 
 impl<'s> System<'s> for ServerNetworkSystem {
     type SystemData = (
-        WriteExpect<'s, IncomingMessages>,
+        WriteExpect<'s, ConnectionEvents>,
         WriteExpect<'s, MultiplayerRoomPlayers>,
+        WriteExpect<'s, NewGameEngineState>,
         WriteStorage<'s, NetConnection>,
     );
 
     fn run(
         &mut self,
-        (mut incoming_messages, mut multiplayer_room_players, mut net_connections): Self::SystemData,
+        (
+            mut connection_events,
+            mut multiplayer_room_players,
+            mut new_game_engine_state,
+            mut net_connections,
+        ): Self::SystemData,
     ) {
-        // TODO: process disconnects.
-        for message in incoming_messages.0.drain(..) {
-            #[allow(clippy::single_match)]
-            match message {
-                ClientMessage::JoinRoom { nickname } => {
-                    // TODO: we'll need a better way to determine the host in future.
-                    let is_host = multiplayer_room_players.players.is_empty();
+        for connection_event in connection_events.0.drain(..) {
+            let connection_id = connection_event.connection_id;
+            match connection_event.event {
+                NetEvent::Message(ClientMessagePayload::JoinRoom { nickname }) => {
+                    // TODO: we'll need a more reliable way to determine the host in future.
+                    let is_host = if multiplayer_room_players.players.is_empty() {
+                        self.host_connection_id = connection_id;
+                        true
+                    } else {
+                        self.host_connection_id == connection_id
+                    };
                     multiplayer_room_players
                         .update()
-                        .push(MultiplayerRoomPlayer { nickname, is_host });
+                        .push(MultiplayerRoomPlayer {
+                            connection_id,
+                            entity_net_id: 0,
+                            nickname,
+                            is_host,
+                        });
+                }
+                NetEvent::Message(ClientMessagePayload::StartHostedGame)
+                    if connection_id == self.host_connection_id =>
+                {
+                    new_game_engine_state.0 = GameEngineState::Playing;
+                }
+                NetEvent::Disconnected => {
+                    multiplayer_room_players
+                        .update()
+                        .retain(|player| player.connection_id == connection_id);
                 }
                 _ => {}
             }
@@ -37,7 +77,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
         if let Some(players) = multiplayer_room_players.read_updated() {
             broadcast_message_reliable(
                 &mut net_connections,
-                &ServerMessage::UpdateRoomPlayers(players.to_owned()),
+                &ServerMessagePayload::UpdateRoomPlayers(players.to_owned()),
             );
         }
     }

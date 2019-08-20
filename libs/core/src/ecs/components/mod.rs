@@ -15,8 +15,9 @@ use crate::{
         player::{PlayerCastAction, PlayerLookAction, PlayerWalkAction},
     },
     math::{Vector2, ZeroVector},
-    net::EncodedMessage,
+    net::{ConnectionIdentifier, EncodedMessage},
 };
+use crate::net::EntityNetIdentifier;
 
 #[derive(Shrinkwrap)]
 #[shrinkwrap(mutable)]
@@ -99,14 +100,16 @@ impl Component for Dead {
 }
 
 pub struct NetConnectionModel {
+    pub id: ConnectionIdentifier,
     pub reader: ReaderId<NetEvent<EncodedMessage>>,
     pub created_at: Instant,
     pub last_pinged_at: Instant,
 }
 
 impl NetConnectionModel {
-    pub fn new(reader: ReaderId<NetEvent<EncodedMessage>>) -> Self {
+    pub fn new(id: ConnectionIdentifier, reader: ReaderId<NetEvent<EncodedMessage>>) -> Self {
         Self {
+            id,
             reader,
             created_at: Instant::now(),
             last_pinged_at: Instant::now(),
@@ -116,4 +119,12 @@ impl NetConnectionModel {
 
 impl Component for NetConnectionModel {
     type Storage = DenseVecStorage<Self>;
+}
+
+pub struct EntityNetMetadata {
+    pub id: EntityNetIdentifier,
+}
+
+impl Component for EntityNetMetadata {
+    type Storage = VecStorage<Self>;
 }

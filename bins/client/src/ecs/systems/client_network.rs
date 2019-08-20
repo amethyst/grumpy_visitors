@@ -1,39 +1,77 @@
-use amethyst::ecs::{Join, System, WriteExpect, WriteStorage};
+use amethyst::ecs::{Entities, Join, System, WriteExpect, WriteStorage};
 
+use ha_client_shared::ecs::resources::MultiplayerRoomState;
 use ha_core::{
-    ecs::resources::MultiplayerRoomPlayers,
-    net::{client_message::ClientMessage, server_message::ServerMessage, NetConnection},
+    ecs::resources::{GameEngineState, MultiplayerRoomPlayers, NewGameEngineState},
+    net::{
+        client_message::ClientMessagePayload, server_message::ServerMessagePayload, NetConnection,
+        NetEvent,
+    },
 };
-use ha_game::{ecs::resources::IncomingMessages, utils::net::send_message_reliable};
-
-use crate::ecs::resources::MultiplayerRoomState;
+use ha_game::{ecs::resources::ConnectionEvents, utils::net::send_message_reliable};
 
 pub struct ClientNetworkSystem;
 
 impl<'s> System<'s> for ClientNetworkSystem {
     type SystemData = (
-        WriteExpect<'s, IncomingMessages>,
+        Entities<'s>,
+        WriteExpect<'s, ConnectionEvents>,
         WriteExpect<'s, MultiplayerRoomState>,
         WriteExpect<'s, MultiplayerRoomPlayers>,
+        WriteExpect<'s, NewGameEngineState>,
         WriteStorage<'s, NetConnection>,
     );
 
     fn run(
         &mut self,
         (
-            mut incoming_messages,
+            entities,
+            mut connection_events,
             mut multiplayer_room_state,
             mut multiplayer_room_players,
+            mut new_game_engine_sate,
             mut connections,
         ): Self::SystemData,
     ) {
-        for message in incoming_messages.0.drain(..) {
-            match message {
-                ServerMessage::UpdateRoomPlayers(players) => {
+        if connections.count() == 0
+            && multiplayer_room_state.is_active
+            && !multiplayer_room_state.is_host
+        {
+            entities
+                .build_entity()
+                .with(
+                    NetConnection::new(multiplayer_room_state.server_addr),
+                    &mut connections,
+                )
+                .build();
+            return;
+        }
+
+        if multiplayer_room_state.is_host
+            && multiplayer_room_state.has_started
+            && !multiplayer_room_state.has_sent_start_package
+        {
+            multiplayer_room_state.has_sent_start_package = true;
+            let connection = (&mut connections)
+                .join()
+                .next()
+                .expect("Expected a server connection");
+            send_message_reliable(connection, &ClientMessagePayload::StartHostedGame);
+        }
+
+        for connection_event in connection_events.0.drain(..) {
+            match connection_event.event {
+                NetEvent::Message(ServerMessagePayload::UpdateRoomPlayers(players)) => {
                     log::info!("Updated room players");
                     *multiplayer_room_players.update() = players;
                 }
-                ServerMessage::Ping => {
+                NetEvent::Message(ServerMessagePayload::StartGame(entity_net_identifiers)) => {
+                    for (i, player) in multiplayer_room_players.update().iter_mut().enumerate() {
+                        player.entity_net_id = entity_net_identifiers[i];
+                    }
+                    new_game_engine_sate.0 = GameEngineState::Playing;
+                }
+                NetEvent::Message(ServerMessagePayload::Ping) => {
                     let connection = (&mut connections)
                         .join()
                         .next()
@@ -43,12 +81,14 @@ impl<'s> System<'s> for ClientNetworkSystem {
                         multiplayer_room_state.has_sent_join_package = true;
                         send_message_reliable(
                             connection,
-                            &ClientMessage::JoinRoom {
+                            &ClientMessagePayload::JoinRoom {
                                 nickname: multiplayer_room_state.nickname.clone(),
                             },
                         );
                     }
                 }
+                // TODO: handle disconnects.
+                _ => {}
             }
         }
     }

@@ -1,3 +1,4 @@
+#![feature(maybe_uninit_extra)]
 #![allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub mod ecs;
 pub mod states;
@@ -8,10 +9,13 @@ use amethyst::{
     prelude::{GameDataBuilder, World},
 };
 
-use ha_core::ecs::{components::damage_history::DamageHistory, resources::MultiplayerRoomPlayers};
+use ha_core::ecs::{
+    components::damage_history::DamageHistory,
+    resources::{EntityNetMetadataService, MultiplayerRoomPlayers},
+};
 
 use crate::ecs::{
-    resources::IncomingMessages,
+    resources::ConnectionEvents,
     systems::{missile::*, monster::*, player::*, *},
 };
 
@@ -20,15 +24,16 @@ pub fn build_game_logic_systems<'a, 'b>(
     world: &mut World,
     is_server: bool,
 ) -> Result<GameDataBuilder<'a, 'b>, Error> {
-    world.add_resource(IncomingMessages(Vec::new()));
+    world.add_resource(ConnectionEvents(Vec::new()));
     world.add_resource(MultiplayerRoomPlayers::new());
+    world.add_resource(EntityNetMetadataService::new());
 
     world.register::<DamageHistory>();
     let mut damage_history_storage = world.write_storage::<DamageHistory>();
 
     let game_data_builder = game_data_builder
         .with(
-            NetConnectionManagerSystem,
+            NetConnectionManagerSystem::new(),
             "net_connection_manager_system",
             &["net_socket"],
         )

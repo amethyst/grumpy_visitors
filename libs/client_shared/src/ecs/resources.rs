@@ -5,8 +5,13 @@ use amethyst::{
     ui::FontHandle,
 };
 
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+
 use ha_animation_prefabs::GameSpriteAnimationPrefab;
-use ha_core::math::Vector3;
+use ha_core::{
+    math::Vector3,
+    net::{ConnectionIdentifier, EntityNetIdentifier},
+};
 
 use crate::utils::graphic_helpers::{
     create_color_material, create_mesh, generate_circle_vertices, generate_rectangle_vertices,
@@ -63,4 +68,38 @@ impl HealthUiMesh {
 pub struct EntityGraphics {
     pub material: Handle<Material>,
     pub mesh: Handle<Mesh>,
+}
+
+pub struct MultiplayerRoomState {
+    pub nickname: String,
+    pub is_active: bool,
+    pub has_sent_join_package: bool,
+    pub has_started: bool,
+    pub has_sent_start_package: bool,
+    pub server_addr: SocketAddr,
+    pub is_host: bool,
+    pub connection_id: ConnectionIdentifier,
+    pub player_id: EntityNetIdentifier,
+}
+
+impl MultiplayerRoomState {
+    pub fn new() -> Self {
+        Self {
+            nickname: "Player".to_owned(),
+            is_active: false,
+            has_sent_join_package: false,
+            has_started: false,
+            has_sent_start_package: false,
+            server_addr: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 0), 3455)),
+            is_host: false,
+            connection_id: 0,
+            player_id: 0,
+        }
+    }
+}
+
+impl Default for MultiplayerRoomState {
+    fn default() -> Self {
+        Self::new()
+    }
 }

@@ -1,8 +1,12 @@
+use amethyst::ecs::Entity;
 use serde_derive::{Deserialize, Serialize};
 
-use std::time::Duration;
+use std::{collections::HashMap, ops::Range, time::Duration};
 
-use crate::math::Vector2;
+use crate::{
+    math::Vector2,
+    net::{ConnectionIdentifier, EntityNetIdentifier},
+};
 
 pub struct GameTime {
     pub level_started_at: Duration,
@@ -57,6 +61,8 @@ pub enum GameEngineState {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MultiplayerRoomPlayer {
+    pub connection_id: ConnectionIdentifier,
+    pub entity_net_id: EntityNetIdentifier,
     pub nickname: String,
     pub is_host: bool,
 }
@@ -87,5 +93,47 @@ impl MultiplayerRoomPlayers {
     pub fn update(&mut self) -> &mut Vec<MultiplayerRoomPlayer> {
         self.updated = true;
         &mut self.players
+    }
+}
+
+pub struct EntityNetMetadataService {
+    range: Range<EntityNetIdentifier>,
+    mapping: HashMap<EntityNetIdentifier, Entity>,
+}
+
+impl EntityNetMetadataService {
+    pub fn new() -> Self {
+        Self {
+            range: 0..EntityNetIdentifier::max_value(),
+            mapping: HashMap::new(),
+        }
+    }
+
+    pub fn get_entity(&self, entity_net_id: EntityNetIdentifier) -> Entity {
+        self.mapping[&entity_net_id]
+    }
+
+    pub fn register_new_entity(&mut self, entity: Entity) -> EntityNetIdentifier {
+        let entity_net_id = self
+            .range
+            .next()
+            .expect("Expected a new EntityNetIdentifier");
+        self.mapping.insert(entity_net_id, entity);
+        entity_net_id
+    }
+
+    pub fn set_net_id(&mut self, entity: Entity, entity_net_id: EntityNetIdentifier) {
+        self.mapping.insert(entity_net_id, entity);
+    }
+
+    pub fn reset(&mut self) {
+        self.range = 0..EntityNetIdentifier::max_value();
+        self.mapping.clear();
+    }
+}
+
+impl Default for EntityNetMetadataService {
+    fn default() -> Self {
+        Self::new()
     }
 }
