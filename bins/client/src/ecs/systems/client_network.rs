@@ -2,7 +2,7 @@ use amethyst::ecs::{Entities, Join, System, WriteExpect, WriteStorage};
 
 use ha_client_shared::ecs::resources::MultiplayerRoomState;
 use ha_core::{
-    ecs::resources::{GameEngineState, MultiplayerRoomPlayers, NewGameEngineState},
+    ecs::resources::{GameEngineState, MultiplayerGameState, NewGameEngineState},
     net::{
         client_message::ClientMessagePayload, server_message::ServerMessagePayload, NetConnection,
         NetEvent,
@@ -17,7 +17,7 @@ impl<'s> System<'s> for ClientNetworkSystem {
         Entities<'s>,
         WriteExpect<'s, ConnectionEvents>,
         WriteExpect<'s, MultiplayerRoomState>,
-        WriteExpect<'s, MultiplayerRoomPlayers>,
+        WriteExpect<'s, MultiplayerGameState>,
         WriteExpect<'s, NewGameEngineState>,
         WriteStorage<'s, NetConnection>,
     );
@@ -28,7 +28,7 @@ impl<'s> System<'s> for ClientNetworkSystem {
             entities,
             mut connection_events,
             mut multiplayer_room_state,
-            mut multiplayer_room_players,
+            mut multiplayer_game_state,
             mut new_game_engine_sate,
             mut connections,
         ): Self::SystemData,
@@ -63,12 +63,17 @@ impl<'s> System<'s> for ClientNetworkSystem {
             match connection_event.event {
                 NetEvent::Message(ServerMessagePayload::UpdateRoomPlayers(players)) => {
                     log::info!("Updated room players");
-                    *multiplayer_room_players.update() = players;
+                    *multiplayer_game_state.update_players() = players;
                 }
                 NetEvent::Message(ServerMessagePayload::StartGame(entity_net_identifiers)) => {
-                    for (i, player) in multiplayer_room_players.update().iter_mut().enumerate() {
+                    for (i, player) in multiplayer_game_state
+                        .update_players()
+                        .iter_mut()
+                        .enumerate()
+                    {
                         player.entity_net_id = entity_net_identifiers[i];
                     }
+                    multiplayer_game_state.is_playing = true;
                     new_game_engine_sate.0 = GameEngineState::Playing;
                 }
                 NetEvent::Message(ServerMessagePayload::Ping) => {

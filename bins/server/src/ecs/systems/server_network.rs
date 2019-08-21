@@ -2,7 +2,7 @@ use amethyst::ecs::{System, WriteExpect, WriteStorage};
 
 use ha_core::{
     ecs::resources::{
-        GameEngineState, MultiplayerRoomPlayer, MultiplayerRoomPlayers, NewGameEngineState,
+        GameEngineState, MultiplayerGameState, MultiplayerRoomPlayer, NewGameEngineState,
     },
     net::{
         client_message::ClientMessagePayload, server_message::ServerMessagePayload,
@@ -26,7 +26,7 @@ impl ServerNetworkSystem {
 impl<'s> System<'s> for ServerNetworkSystem {
     type SystemData = (
         WriteExpect<'s, ConnectionEvents>,
-        WriteExpect<'s, MultiplayerRoomPlayers>,
+        WriteExpect<'s, MultiplayerGameState>,
         WriteExpect<'s, NewGameEngineState>,
         WriteStorage<'s, NetConnection>,
     );
@@ -35,7 +35,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
         &mut self,
         (
             mut connection_events,
-            mut multiplayer_room_players,
+            mut multiplayer_game_state,
             mut new_game_engine_state,
             mut net_connections,
         ): Self::SystemData,
@@ -45,14 +45,14 @@ impl<'s> System<'s> for ServerNetworkSystem {
             match connection_event.event {
                 NetEvent::Message(ClientMessagePayload::JoinRoom { nickname }) => {
                     // TODO: we'll need a more reliable way to determine the host in future.
-                    let is_host = if multiplayer_room_players.players.is_empty() {
+                    let is_host = if multiplayer_game_state.players.is_empty() {
                         self.host_connection_id = connection_id;
                         true
                     } else {
                         self.host_connection_id == connection_id
                     };
-                    multiplayer_room_players
-                        .update()
+                    multiplayer_game_state
+                        .update_players()
                         .push(MultiplayerRoomPlayer {
                             connection_id,
                             entity_net_id: 0,
@@ -63,18 +63,19 @@ impl<'s> System<'s> for ServerNetworkSystem {
                 NetEvent::Message(ClientMessagePayload::StartHostedGame)
                     if connection_id == self.host_connection_id =>
                 {
+                    multiplayer_game_state.is_playing = true;
                     new_game_engine_state.0 = GameEngineState::Playing;
                 }
                 NetEvent::Disconnected => {
-                    multiplayer_room_players
-                        .update()
+                    multiplayer_game_state
+                        .update_players()
                         .retain(|player| player.connection_id == connection_id);
                 }
                 _ => {}
             }
         }
 
-        if let Some(players) = multiplayer_room_players.read_updated() {
+        if let Some(players) = multiplayer_game_state.read_updated_players() {
             broadcast_message_reliable(
                 &mut net_connections,
                 &ServerMessagePayload::UpdateRoomPlayers(players.to_owned()),

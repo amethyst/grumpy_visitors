@@ -1,12 +1,12 @@
 use amethyst::ecs::{
-    prelude::ComponentEvent, BitSet, Entities, Join, ReadStorage, ReaderId, System, WriteExpect,
-    WriteStorage,
+    prelude::ComponentEvent, BitSet, Entities, Join, ReadExpect, ReadStorage, ReaderId, System,
+    WriteExpect, WriteStorage,
 };
 
 use ha_core::{
     ecs::{
         components::{damage_history::DamageHistory, Dead, Player},
-        resources::GameLevelState,
+        resources::{GameLevelState, MultiplayerGameState},
     },
     math::{Vector2, ZeroVector},
 };
@@ -29,6 +29,7 @@ impl<'s> System<'s> for PlayerDyingSystem {
     type SystemData = (
         Entities<'s>,
         ReadStorage<'s, DamageHistory>,
+        ReadExpect<'s, MultiplayerGameState>,
         WriteExpect<'s, GameLevelState>,
         WriteStorage<'s, Player>,
         WriteStorage<'s, Dead>,
@@ -36,7 +37,14 @@ impl<'s> System<'s> for PlayerDyingSystem {
 
     fn run(
         &mut self,
-        (entities, damage_histories, mut game_level_state, mut players, mut dead): Self::SystemData,
+        (
+            entities,
+            damage_histories,
+            multiplayer_game_state,
+            mut game_level_state,
+            mut players,
+            mut dead,
+        ): Self::SystemData,
     ) {
         self.players_hit.clear();
         let events = damage_histories
@@ -61,7 +69,9 @@ impl<'s> System<'s> for PlayerDyingSystem {
 
         for (player_entity, player, _) in (&entities, &mut players, &self.players_hit).join() {
             if player.health <= 0.001 {
-                game_level_state.is_over = true;
+                if !multiplayer_game_state.is_playing {
+                    game_level_state.is_over = true;
+                }
                 player.velocity = Vector2::zero();
                 dead.insert(player_entity, Dead)
                     .expect("Expected to insert Dead component");

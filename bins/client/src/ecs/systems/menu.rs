@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use ha_client_shared::ecs::resources::MultiplayerRoomState;
 use ha_core::ecs::{
-    resources::{GameEngineState, GameLevelState, MultiplayerRoomPlayers, NewGameEngineState},
+    resources::{GameEngineState, GameLevelState, MultiplayerGameState, NewGameEngineState},
     system_data::time::GameTimeService,
 };
 
@@ -203,7 +203,7 @@ impl<'s> System<'s> for MenuSystem {
         ReadExpect<'s, GameLevelState>,
         WriteExpect<'s, ServerCommand>,
         WriteExpect<'s, MultiplayerRoomState>,
-        WriteExpect<'s, MultiplayerRoomPlayers>,
+        WriteExpect<'s, MultiplayerGameState>,
         Write<'s, EventChannel<UiEvent>>,
         WriteStorage<'s, UiText>,
         WriteStorage<'s, UiImage>,
@@ -223,7 +223,7 @@ impl<'s> System<'s> for MenuSystem {
             game_level_state,
             mut server_command,
             mut multiplayer_room_state,
-            mut multiplayer_room_players,
+            mut multiplayer_game_state,
             mut ui_events,
             mut ui_texts,
             mut ui_images,
@@ -365,10 +365,10 @@ impl<'s> System<'s> for MenuSystem {
                     Some(UI_MP_ROOM_START_BUTTON) => {
                         multiplayer_room_state.has_started = true;
                         None
-                    },
+                    }
                     _ => {
                         Self::update_players(
-                            &mut multiplayer_room_players,
+                            &mut multiplayer_game_state,
                             &mut ui_finder,
                             &mut ui_texts,
                             &mut hidden_propagates,
@@ -405,9 +405,7 @@ impl<'s> System<'s> for MenuSystem {
                 self.set_fade_animation(now, with_background(*MP_ROOM_MENU_ELEMENTS), Vec::new());
                 None
             }
-            (GameEngineState::Playing, ref mut menu_state)
-                if game_level_state.is_over && multiplayer_room_state.is_host =>
-            {
+            (GameEngineState::Playing, ref mut menu_state) if game_level_state.is_over => {
                 **menu_state = GameMenuState::RestartMenu;
                 self.set_fade_animation(now, Vec::new(), with_background(*RESTART_MENU_ELEMENTS));
                 Some(GameEngineState::Menu)
@@ -571,12 +569,12 @@ impl MenuSystem {
     }
 
     fn update_players(
-        multiplayer_room_players: &mut WriteExpect<MultiplayerRoomPlayers>,
+        multiplayer_game_state: &mut WriteExpect<MultiplayerGameState>,
         ui_finder: &mut UiFinderMut,
         ui_texts: &mut WriteStorage<UiText>,
         hidden_propagates: &mut WriteStorage<HiddenPropagate>,
     ) {
-        if let Some(players) = multiplayer_room_players.read_updated() {
+        if let Some(players) = multiplayer_game_state.read_updated_players() {
             let rows = [
                 (UI_MP_ROOM_PLAYER1_NUMBER, UI_MP_ROOM_PLAYER1_NICKNAME),
                 (UI_MP_ROOM_PLAYER2_NUMBER, UI_MP_ROOM_PLAYER2_NICKNAME),

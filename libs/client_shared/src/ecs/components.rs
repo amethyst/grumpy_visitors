@@ -1,4 +1,4 @@
-use amethyst::ecs::{Component, DenseVecStorage, NullStorage};
+use amethyst::ecs::{Component, DenseVecStorage};
 
 use ha_core::math::Vector2;
 
@@ -10,16 +10,4 @@ pub struct HealthUiGraphics {
 
 impl Component for HealthUiGraphics {
     type Storage = DenseVecStorage<Self>;
-}
-
-pub struct ControllablePlayer;
-
-impl Component for ControllablePlayer {
-    type Storage = NullStorage<Self>;
-}
-
-impl Default for ControllablePlayer {
-    fn default() -> Self {
-        Self
-    }
 }

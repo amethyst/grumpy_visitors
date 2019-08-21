@@ -1,6 +1,6 @@
 use amethyst::{
-    core::{math::Point2, Transform},
-    ecs::{Join, ReadExpect, ReadStorage, System, WriteStorage},
+    core::{math::Point2, Parent, Transform},
+    ecs::{Entities, Entity, Join, ReadExpect, ReadStorage, System, WriteStorage},
     input::{InputHandler, StringBindings},
     renderer::Camera,
     window::ScreenDimensions,
@@ -21,10 +21,12 @@ pub struct InputSystem;
 
 impl<'s> System<'s> for InputSystem {
     type SystemData = (
+        Entities<'s>,
         ReadExpect<'s, InputHandler<StringBindings>>,
         ReadExpect<'s, ScreenDimensions>,
         ReadExpect<'s, GameEngineState>,
         ReadStorage<'s, Camera>,
+        ReadStorage<'s, Parent>,
         ReadStorage<'s, Transform>,
         ReadStorage<'s, WorldPosition>,
         WriteStorage<'s, PlayerActions>,
@@ -33,10 +35,12 @@ impl<'s> System<'s> for InputSystem {
     fn run(
         &mut self,
         (
+            entities,
             input,
             screen_dimensions,
             game_state,
             cameras,
+            parents,
             transforms,
             world_positions,
             mut player_actions,
@@ -47,13 +51,21 @@ impl<'s> System<'s> for InputSystem {
             return;
         }
 
-        let (player_actions, player_position) = (&mut player_actions, &world_positions)
+        let (camera_entity, camera_parent, _) = (&entities, &parents, &cameras)
             .join()
             .next()
-            .unwrap();
+            .expect("Expected a Camera attached to a Player");
+        let player_entity = camera_parent.entity;
+        let player_actions = player_actions
+            .get_mut(player_entity)
+            .expect("Expected PlayerActions");
+        let player_position = world_positions
+            .get(player_entity)
+            .expect("Expected a WorldPosition");
         self.process_mouse_input(
             &screen_dimensions,
             &*input,
+            camera_entity,
             &cameras,
             &transforms,
             &mut *player_actions,
@@ -68,6 +80,7 @@ impl InputSystem {
         &mut self,
         screen_dimensions: &ScreenDimensions,
         input: &InputHandler<StringBindings>,
+        camera_entity: Entity,
         cameras: &ReadStorage<'_, Camera>,
         transforms: &ReadStorage<'_, Transform>,
         player_actions: &mut PlayerActions,
@@ -80,11 +93,8 @@ impl InputSystem {
             }
             let (mouse_x, mouse_y) = mouse_position.unwrap();
 
-            let components = (cameras, transforms).join().next();
-            if components.is_none() {
-                return;
-            }
-            let (camera, camera_transform) = components.unwrap();
+            let camera = cameras.get(camera_entity).expect("Expected a Camera");
+            let camera_transform = transforms.get(camera_entity).expect("Expected a Transform");
 
             let position = camera.projection().screen_to_world(
                 Point2::new(mouse_x as f32, mouse_y as f32),

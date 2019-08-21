@@ -68,30 +68,32 @@ pub struct MultiplayerRoomPlayer {
 }
 
 #[derive(Clone, Serialize, Deserialize, Default)]
-pub struct MultiplayerRoomPlayers {
+pub struct MultiplayerGameState {
+    pub is_playing: bool,
     pub players: Vec<MultiplayerRoomPlayer>,
-    updated: bool,
+    players_updated: bool,
 }
 
-impl MultiplayerRoomPlayers {
+impl MultiplayerGameState {
     pub fn new() -> Self {
         Self {
+            is_playing: false,
             players: Vec::new(),
-            updated: false,
+            players_updated: false,
         }
     }
 
-    pub fn read_updated(&mut self) -> Option<&[MultiplayerRoomPlayer]> {
-        if self.updated {
-            self.updated = false;
+    pub fn read_updated_players(&mut self) -> Option<&[MultiplayerRoomPlayer]> {
+        if self.players_updated {
+            self.players_updated = false;
             Some(&self.players)
         } else {
             None
         }
     }
 
-    pub fn update(&mut self) -> &mut Vec<MultiplayerRoomPlayer> {
-        self.updated = true;
+    pub fn update_players(&mut self) -> &mut Vec<MultiplayerRoomPlayer> {
+        self.players_updated = true;
         &mut self.players
     }
 }

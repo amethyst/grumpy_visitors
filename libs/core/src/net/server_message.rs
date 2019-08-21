@@ -1,9 +1,6 @@
 use serde_derive::{Deserialize, Serialize};
 
-use crate::{
-    ecs::resources::MultiplayerRoomPlayer,
-    net::EntityNetIdentifier,
-};
+use crate::{ecs::resources::MultiplayerRoomPlayer, net::EntityNetIdentifier};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ServerMessagePayload {

@@ -10,8 +10,7 @@ use amethyst::{
 };
 
 #[cfg(feature = "client")]
-use std::mem::MaybeUninit;
-
+use ha_client_shared::ecs::factories::PlayerClientFactory;
 #[cfg(feature = "client")]
 use ha_client_shared::{
     ecs::{factories::CameraFactory, resources::MultiplayerRoomState},
@@ -26,7 +25,7 @@ use ha_core::{
     ecs::{
         components::EntityNetMetadata,
         resources::{
-            EntityNetMetadataService, GameEngineState, GameLevelState, MultiplayerRoomPlayers,
+            EntityNetMetadataService, GameEngineState, GameLevelState, MultiplayerGameState,
         },
         system_data::time::GameTimeService,
     },
@@ -95,23 +94,31 @@ impl SimpleState for PlayingState {
 
 #[cfg(feature = "client")]
 fn initialize_players(world: &mut World) {
-    let mut main_player = MaybeUninit::uninit();
+    let mut main_player = None;
 
     world.exec(
         |(
             mut player_factory,
+            mut player_client_factory,
             mut entity_net_metadata,
             mut entity_net_metadata_service,
             mut multiplayer_room_state,
-            multiplayer_room_players,
+            multiplayer_game_state,
         ): (
             PlayerFactory,
+            PlayerClientFactory,
             WriteStorage<EntityNetMetadata>,
             WriteExpect<EntityNetMetadataService>,
             WriteExpect<MultiplayerRoomState>,
-            ReadExpect<MultiplayerRoomPlayers>,
+            ReadExpect<MultiplayerGameState>,
         )| {
-            for player in &multiplayer_room_players.players {
+            if !multiplayer_game_state.is_playing {
+                let player_entity = player_factory.create();
+                player_client_factory.create(player_entity, true);
+                main_player = Some(player_entity);
+            }
+
+            for player in &multiplayer_game_state.players {
                 let player_entity = player_factory.create();
                 entity_net_metadata_service.set_net_id(player_entity, player.entity_net_id);
                 entity_net_metadata
@@ -124,15 +131,19 @@ fn initialize_players(world: &mut World) {
                     .expect("Expected to insert EntityNetMetadata component");
 
                 if player.connection_id == multiplayer_room_state.connection_id {
-                    multiplayer_room_state.player_id = player.entity_net_id;
-                    main_player.write(player_entity);
+                    player_client_factory.create(player_entity, true);
+                    multiplayer_room_state.player_net_id = player.entity_net_id;
+                    main_player = Some(player_entity);
+                } else {
+                    player_client_factory.create(player_entity, false);
                 }
             }
         },
     );
 
+    let main_player = main_player.expect("Expected an initialized main player");
     world.exec(move |mut camera_factory: CameraFactory| {
-        camera_factory.create(unsafe { main_player.assume_init() })
+        camera_factory.create(main_player);
     });
 }
 
@@ -143,16 +154,16 @@ fn initialize_players(world: &mut World) {
             mut player_factory,
             mut entity_net_metadata,
             mut entity_net_metadata_service,
-            mut multiplayer_room_players,
+            mut multiplayer_game_state,
             mut net_connections,
         ): (
             PlayerFactory,
             WriteStorage<EntityNetMetadata>,
             WriteExpect<EntityNetMetadataService>,
-            WriteExpect<MultiplayerRoomPlayers>,
+            WriteExpect<MultiplayerGameState>,
             WriteStorage<NetConnection>,
         )| {
-            let player_net_identifiers = multiplayer_room_players
+            let player_net_identifiers = multiplayer_game_state
                 .players
                 .iter_mut()
                 .map(|player| {

@@ -2,10 +2,9 @@
 
 #[cfg(feature = "client")]
 use amethyst::{
-    assets::{Handle, Prefab},
+    assets::Handle,
     ecs::ReadExpect,
     renderer::{Material, Mesh, SpriteRender},
-    window::ScreenDimensions,
 };
 use amethyst::{
     core::Transform,
@@ -17,12 +16,7 @@ use shred_derive::SystemData;
 use std::time::Duration;
 
 #[cfg(feature = "client")]
-use ha_animation_prefabs::GameSpriteAnimationPrefab;
-#[cfg(feature = "client")]
-use ha_client_shared::ecs::{
-    components::HealthUiGraphics,
-    resources::{AssetHandles, EntityGraphics, MissileGraphics, HEALTH_UI_SCREEN_PADDING},
-};
+use ha_client_shared::ecs::resources::{AssetHandles, EntityGraphics, MissileGraphics};
 use ha_core::{
     actions::mob::MobAction,
     ecs::{
@@ -37,60 +31,14 @@ use crate::ecs::resources::MonsterDefinition;
 #[derive(SystemData)]
 pub struct PlayerFactory<'s> {
     entities: Entities<'s>,
-    #[cfg(feature = "client")]
-    asset_handles: ReadExpect<'s, AssetHandles>,
-    #[cfg(feature = "client")]
-    screen_dimensions: ReadExpect<'s, ScreenDimensions>,
     transforms: WriteStorage<'s, Transform>,
-    #[cfg(feature = "client")]
-    sprite_animation_handles: WriteStorage<'s, Handle<Prefab<GameSpriteAnimationPrefab>>>,
     player_actions: WriteStorage<'s, PlayerActions>,
     world_positions: WriteStorage<'s, WorldPosition>,
     players: WriteStorage<'s, Player>,
     damage_histories: WriteStorage<'s, DamageHistory>,
-    #[cfg(feature = "client")]
-    health_ui_graphics: WriteStorage<'s, HealthUiGraphics>,
 }
 
 impl<'s> PlayerFactory<'s> {
-    #[cfg(feature = "client")]
-    pub fn create(&mut self) -> Entity {
-        let AssetHandles { hero_prefab, .. } = self.asset_handles.clone();
-
-        let mut transform = Transform::default();
-        transform.set_translation_z(10.0);
-
-        let (half_screen_width, half_screen_height) = (
-            self.screen_dimensions.width() / 2.0,
-            self.screen_dimensions.height() / 2.0,
-        );
-
-        self.entities
-            .build_entity()
-            .with(transform, &mut self.transforms)
-            .with(hero_prefab, &mut self.sprite_animation_handles)
-            .with(PlayerActions::default(), &mut self.player_actions)
-            .with(
-                WorldPosition::new(Vector2::zero()),
-                &mut self.world_positions,
-            )
-            .with(Player::new(), &mut self.players)
-            .with(DamageHistory::default(), &mut self.damage_histories)
-            .with(
-                HealthUiGraphics {
-                    screen_position: Vector2::new(
-                        -half_screen_width + HEALTH_UI_SCREEN_PADDING,
-                        -half_screen_height + HEALTH_UI_SCREEN_PADDING,
-                    ),
-                    scale_ratio: 1.0,
-                    health: 1.0,
-                },
-                &mut self.health_ui_graphics,
-            )
-            .build()
-    }
-
-    #[cfg(not(feature = "client"))]
     pub fn create(&mut self) -> Entity {
         let mut transform = Transform::default();
         transform.set_translation_z(10.0);

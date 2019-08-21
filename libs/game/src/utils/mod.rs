@@ -1,2 +1,2 @@
-pub mod world;
 pub mod net;
+pub mod world;

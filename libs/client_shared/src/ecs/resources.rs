@@ -79,7 +79,7 @@ pub struct MultiplayerRoomState {
     pub server_addr: SocketAddr,
     pub is_host: bool,
     pub connection_id: ConnectionIdentifier,
-    pub player_id: EntityNetIdentifier,
+    pub player_net_id: EntityNetIdentifier,
 }
 
 impl MultiplayerRoomState {
@@ -93,7 +93,7 @@ impl MultiplayerRoomState {
             server_addr: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 0), 3455)),
             is_host: false,
             connection_id: 0,
-            player_id: 0,
+            player_net_id: 0,
         }
     }
 }

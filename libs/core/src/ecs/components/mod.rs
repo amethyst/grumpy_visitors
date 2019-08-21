@@ -15,9 +15,8 @@ use crate::{
         player::{PlayerCastAction, PlayerLookAction, PlayerWalkAction},
     },
     math::{Vector2, ZeroVector},
-    net::{ConnectionIdentifier, EncodedMessage},
+    net::{ConnectionIdentifier, EncodedMessage, EntityNetIdentifier},
 };
-use crate::net::EntityNetIdentifier;
 
 #[derive(Shrinkwrap)]
 #[shrinkwrap(mutable)]
