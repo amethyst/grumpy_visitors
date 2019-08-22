@@ -1,12 +1,10 @@
-use amethyst::{
-    core::Time,
-    ecs::{Entities, Join, ReadExpect, ReadStorage, System, WriteStorage},
-};
+use amethyst::ecs::{Entities, Join, ReadStorage, System, WriteStorage};
 
 use std::time::Duration;
 
-use ha_core::ecs::components::{
-    missile::MissileTarget, Dead, Monster, PlayerActions, WorldPosition,
+use ha_core::ecs::{
+    components::{missile::MissileTarget, Dead, Monster, PlayerActions, WorldPosition},
+    system_data::time::GameTimeService,
 };
 
 use crate::{
@@ -20,7 +18,7 @@ const SPELL_CAST_COOLDOWN: Duration = Duration::from_millis(500);
 
 impl<'s> System<'s> for MissileSpawnerSystem {
     type SystemData = (
-        ReadExpect<'s, Time>,
+        GameTimeService<'s>,
         Entities<'s>,
         MissileFactory<'s>,
         ReadStorage<'s, Monster>,
@@ -32,7 +30,7 @@ impl<'s> System<'s> for MissileSpawnerSystem {
     fn run(
         &mut self,
         (
-            time,
+            game_time_service,
             entities,
             mut missile_factory,
             monsters,
@@ -41,10 +39,13 @@ impl<'s> System<'s> for MissileSpawnerSystem {
             mut player_actions,
         ): Self::SystemData,
     ) {
-        let now = time.absolute_time();
+        let now = game_time_service.level_duration();
 
         for (player_actions, _) in (&mut player_actions, !&dead).join() {
-            for cast_action in player_actions.cast_actions.drain(..) {
+            if let Some(cast_action) = player_actions.cast_action.action.as_ref() {
+                if player_actions.cast_action.frame_number < game_time_service.game_frame_number() {
+                    continue;
+                }
                 if player_actions.last_spell_cast + SPELL_CAST_COOLDOWN > now {
                     continue;
                 }

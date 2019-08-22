@@ -18,7 +18,7 @@ use std::time::Duration;
 #[cfg(feature = "client")]
 use ha_client_shared::ecs::resources::{AssetHandles, EntityGraphics, MissileGraphics};
 use ha_core::{
-    actions::mob::MobAction,
+    actions::{mob::MobAction, Action},
     ecs::{
         components::{damage_history::DamageHistory, missile::*, *},
         tags::*,
@@ -123,7 +123,7 @@ impl<'s> MonsterFactory<'s> {
         definition: MonsterDefinition,
         position: Vector2,
         destination: Vector2,
-        action: MobAction,
+        action: Action<MobAction>,
     ) -> Entity {
         let mut transform = Transform::default();
         transform.set_translation_xyz(position.x, position.y, 5.0);
@@ -166,7 +166,7 @@ impl<'s> MonsterFactory<'s> {
         definition: MonsterDefinition,
         position: Vector2,
         destination: Vector2,
-        action: MobAction,
+        action: Action<MobAction>,
     ) -> Entity {
         let mut transform = Transform::default();
         transform.set_translation_xyz(position.x, position.y, 5.0);

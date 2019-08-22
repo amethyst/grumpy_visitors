@@ -8,10 +8,14 @@ use amethyst::{
 };
 
 use ha_core::{
-    actions::player::{PlayerCastAction, PlayerLookAction, PlayerWalkAction},
+    actions::{
+        player::{PlayerCastAction, PlayerLookAction, PlayerWalkAction},
+        Action,
+    },
     ecs::{
         components::{PlayerActions, WorldPosition},
         resources::GameEngineState,
+        system_data::time::GameTimeService,
     },
     math::Vector2,
 };
@@ -22,6 +26,7 @@ pub struct InputSystem;
 impl<'s> System<'s> for InputSystem {
     type SystemData = (
         Entities<'s>,
+        GameTimeService<'s>,
         ReadExpect<'s, InputHandler<StringBindings>>,
         ReadExpect<'s, ScreenDimensions>,
         ReadExpect<'s, GameEngineState>,
@@ -36,6 +41,7 @@ impl<'s> System<'s> for InputSystem {
         &mut self,
         (
             entities,
+            game_time_service,
             input,
             screen_dimensions,
             game_state,
@@ -63,6 +69,7 @@ impl<'s> System<'s> for InputSystem {
             .get(player_entity)
             .expect("Expected a WorldPosition");
         self.process_mouse_input(
+            &game_time_service,
             &screen_dimensions,
             &*input,
             camera_entity,
@@ -71,13 +78,14 @@ impl<'s> System<'s> for InputSystem {
             &mut *player_actions,
             **player_position,
         );
-        self.process_keyboard_input(&*input, &mut *player_actions);
+        self.process_keyboard_input(&game_time_service, &*input, &mut *player_actions);
     }
 }
 
 impl InputSystem {
     fn process_mouse_input(
         &mut self,
+        game_time_service: &GameTimeService,
         screen_dimensions: &ScreenDimensions,
         input: &InputHandler<StringBindings>,
         camera_entity: Entity,
@@ -104,27 +112,37 @@ impl InputSystem {
             Vector2::new(position.x, position.y)
         };
 
-        player_actions.look_actions.push(PlayerLookAction {
-            direction: mouse_world_position - player_position,
-        });
+        player_actions.look_action = Action {
+            frame_number: game_time_service.game_frame_number(),
+            action: Some(PlayerLookAction {
+                direction: mouse_world_position - player_position,
+            }),
+        };
 
         if input.mouse_button_is_down(MouseButton::Left) {
-            player_actions.cast_actions.push(PlayerCastAction {
-                cast_position: player_position,
-                target_position: mouse_world_position,
-            });
+            player_actions.cast_action = Action {
+                frame_number: game_time_service.game_frame_number(),
+                action: Some(PlayerCastAction {
+                    cast_position: player_position,
+                    target_position: mouse_world_position,
+                }),
+            };
         }
     }
 
     fn process_keyboard_input(
         &mut self,
+        game_time_service: &GameTimeService,
         input: &InputHandler<StringBindings>,
         player_actions: &mut PlayerActions,
     ) {
         if let (Some(x), Some(y)) = (input.axis_value("horizontal"), input.axis_value("vertical")) {
-            player_actions.walk_actions.push(PlayerWalkAction {
-                direction: Vector2::new(x, y),
-            });
+            player_actions.walk_action = Action {
+                frame_number: game_time_service.game_frame_number(),
+                action: Some(PlayerWalkAction {
+                    direction: Vector2::new(x, y),
+                }),
+            };
         }
     }
 }

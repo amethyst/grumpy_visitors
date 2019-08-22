@@ -1,8 +1,5 @@
 use amethyst::{
-    core::{
-        math::{clamp, Rotation2},
-        Time,
-    },
+    core::math::{clamp, Rotation2},
     ecs::{Entities, Join, ReadExpect, System, WriteStorage},
 };
 
@@ -15,6 +12,7 @@ use ha_core::ecs::{
         Monster, WorldPosition,
     },
     resources::GameLevelState,
+    system_data::time::GameTimeService,
 };
 
 use crate::utils::world::{closest_monster, find_first_hit_monster, random_scene_position};
@@ -35,7 +33,7 @@ pub struct MissileSystem;
 
 impl<'s> System<'s> for MissileSystem {
     type SystemData = (
-        ReadExpect<'s, Time>,
+        GameTimeService<'s>,
         ReadExpect<'s, GameLevelState>,
         Entities<'s>,
         WriteStorage<'s, Monster>,
@@ -47,7 +45,7 @@ impl<'s> System<'s> for MissileSystem {
     fn run(
         &mut self,
         (
-            time,
+            game_time_service,
             game_scene,
             entities,
             monsters,
@@ -56,7 +54,7 @@ impl<'s> System<'s> for MissileSystem {
             mut world_positions,
         ): Self::SystemData,
     ) {
-        let now = time.absolute_time();
+        let now = game_time_service.level_duration();
 
         for (missile_entity, mut missile) in (&entities, &mut missiles).join() {
             let missile_position = **world_positions
@@ -117,7 +115,7 @@ impl<'s> System<'s> for MissileSystem {
                         .get_mut(hit_monster)
                         .expect("Expected a DamageHistory")
                         .add_entry(
-                            now,
+                            game_time_service.game_frame_number(),
                             DamageHistoryEntry {
                                 damage: missile.damage,
                             },
@@ -146,7 +144,8 @@ impl<'s> System<'s> for MissileSystem {
             let missile_position = world_positions
                 .get_mut(missile_entity)
                 .expect("Expected a Missile");
-            **missile_position += missile.velocity * time.fixed_seconds();
+            **missile_position +=
+                missile.velocity * game_time_service.engine_time().fixed_seconds();
         }
     }
 }

@@ -1,32 +1,31 @@
-use amethyst::{
-    core::Time,
-    ecs::{Entities, Entity, Join, ReadExpect, ReadStorage, System, WriteStorage},
-};
-
-use std::time::Duration;
+use amethyst::ecs::{Entities, Entity, Join, ReadExpect, ReadStorage, System, WriteStorage};
 
 use ha_core::{
-    actions::mob::{MobAction, MobActionType, MobAttackAction, MobAttackType},
+    actions::{
+        mob::{MobAction, MobAttackAction, MobAttackType},
+        Action,
+    },
     ecs::{
         components::{
             damage_history::{DamageHistory, DamageHistoryEntry},
             Monster, Player, WorldPosition,
         },
         resources::GameLevelState,
+        system_data::time::GameTimeService,
     },
     math::Vector2,
 };
 
 use crate::{ecs::resources::MonsterDefinitions, utils::world::random_scene_position};
 
-const IDLE_TIME_SECS: f32 = 0.5;
+const MAX_IDLE_TIME_SECS: f32 = 0.5;
 
 pub struct MonsterActionSystem;
 
 impl<'s> System<'s> for MonsterActionSystem {
     type SystemData = (
         Entities<'s>,
-        ReadExpect<'s, Time>,
+        GameTimeService<'s>,
         ReadExpect<'s, MonsterDefinitions>,
         ReadExpect<'s, GameLevelState>,
         ReadStorage<'s, Player>,
@@ -39,7 +38,7 @@ impl<'s> System<'s> for MonsterActionSystem {
         &mut self,
         (
             entities,
-            time,
+            game_time_service,
             monster_definitions,
             game_scene,
             players,
@@ -54,39 +53,38 @@ impl<'s> System<'s> for MonsterActionSystem {
                 .get(&monster.name)
                 .expect("Expected a monster definition");
 
-            let new_action_type = match monster.action.action_type {
-                MobActionType::Idle => {
+            let new_action = match monster.action.action {
+                Some(MobAction::Idle) | None => {
                     if let Some((entity, _player_position)) = find_player_in_radius(
                         (&entities, &players, &world_positions).join(),
                         **monster_position,
                         200.0,
                     ) {
-                        Some(MobActionType::Chase(entity))
+                        Some(MobAction::Chase(entity))
                     } else {
-                        let time_being_idle = time.absolute_time() - monster.action.started_at;
-                        let max_idle_duration =
-                            Duration::from_millis((IDLE_TIME_SECS as f32 * 1000.0).round() as u64);
-                        if time_being_idle > max_idle_duration {
-                            Some(MobActionType::Move(random_scene_position(&*game_scene)))
+                        let time_being_idle =
+                            game_time_service.seconds_to_frame(monster.action.frame_number);
+                        if MAX_IDLE_TIME_SECS < time_being_idle {
+                            Some(MobAction::Move(random_scene_position(&*game_scene)))
                         } else {
                             None
                         }
                     }
                 }
-                MobActionType::Move(destination) => {
+                Some(MobAction::Move(destination)) => {
                     if let Some((entity, _player_position)) = find_player_in_radius(
                         (&entities, &players, &world_positions).join(),
                         **monster_position,
                         200.0,
                     ) {
-                        Some(MobActionType::Chase(entity))
+                        Some(MobAction::Chase(entity))
                     } else if (**monster_position - destination).norm_squared() < 0.01 {
-                        Some(MobActionType::Idle)
+                        Some(MobAction::Idle)
                     } else {
                         None
                     }
                 }
-                MobActionType::Chase(_) => {
+                Some(MobAction::Chase(_)) => {
                     if let Some((target, _player_position)) = find_player_in_radius(
                         (&entities, &players, &world_positions).join(),
                         **monster_position,
@@ -96,12 +94,12 @@ impl<'s> System<'s> for MonsterActionSystem {
                             .get_mut(target)
                             .expect("Expected player's DamageHistory");
                         damage_history.add_entry(
-                            time.absolute_time(),
+                            game_time_service.game_frame_number(),
                             DamageHistoryEntry {
                                 damage: monster.attack_damage,
                             },
                         );
-                        Some(MobActionType::Attack(MobAttackAction {
+                        Some(MobAction::Attack(MobAttackAction {
                             target,
                             attack_type: monster_definition.attack_type.randomize_params(0.2),
                         }))
@@ -109,11 +107,11 @@ impl<'s> System<'s> for MonsterActionSystem {
                         None
                     }
                 }
-                MobActionType::Attack(ref attack_action) => {
+                Some(MobAction::Attack(ref attack_action)) => {
                     let is_cooling_down = match attack_action.attack_type {
                         MobAttackType::SlowMelee { cooldown } => {
-                            time.absolute_time() - monster.action.started_at
-                                < Duration::from_millis((cooldown as f32 * 1000.0).round() as u64)
+                            game_time_service.seconds_to_frame(monster.action.frame_number)
+                                < cooldown
                         }
                         _ => false,
                     };
@@ -126,21 +124,21 @@ impl<'s> System<'s> for MonsterActionSystem {
                         // TODO: implement cooling down for other attacks as well.
                         (MobAttackType::SlowMelee { .. }, _) if is_cooling_down => None,
                         (_, Some((target, _player_position))) => {
-                            Some(MobActionType::Attack(MobAttackAction {
+                            Some(MobAction::Attack(MobAttackAction {
                                 target,
                                 attack_type: monster_definition.attack_type.randomize_params(0.2),
                             }))
                         }
-                        (_, None) => Some(MobActionType::Idle),
+                        (_, None) => Some(MobAction::Idle),
                     }
                 }
             };
 
-            let new_destination = if let Some(ref new_action_type) = new_action_type {
-                match new_action_type {
-                    MobActionType::Move(position) => Some(*position),
-                    MobActionType::Chase(entity) => Some(**world_positions.get(*entity).unwrap()),
-                    MobActionType::Attack(MobAttackAction {
+            let new_destination = if let Some(ref new_action) = new_action {
+                match new_action {
+                    MobAction::Move(position) => Some(*position),
+                    MobAction::Chase(entity) => Some(**world_positions.get(*entity).unwrap()),
+                    MobAction::Attack(MobAttackAction {
                         target,
                         attack_type,
                     }) => match attack_type {
@@ -150,8 +148,8 @@ impl<'s> System<'s> for MonsterActionSystem {
                     _ => None,
                 }
             } else {
-                match monster.action.action_type {
-                    MobActionType::Chase(entity) => Some(**world_positions.get(entity).unwrap()),
+                match monster.action.action {
+                    Some(MobAction::Chase(entity)) => Some(**world_positions.get(entity).unwrap()),
                     _ => None,
                 }
             };
@@ -160,10 +158,10 @@ impl<'s> System<'s> for MonsterActionSystem {
                 monster.destination = destination;
             }
 
-            if let Some(action_type) = new_action_type {
-                monster.action = MobAction {
-                    started_at: time.absolute_time(),
-                    action_type,
+            if let Some(action) = new_action {
+                monster.action = Action {
+                    frame_number: game_time_service.game_frame_number(),
+                    action: Some(action),
                 }
             }
         }

@@ -1,10 +1,10 @@
-use amethyst::{
-    core::Time,
-    ecs::{Join, ReadExpect, System, WriteStorage},
-};
+use amethyst::ecs::{Join, ReadExpect, System, WriteStorage};
 
 use ha_core::{
-    ecs::components::{Monster, WorldPosition},
+    ecs::{
+        components::{Monster, WorldPosition},
+        system_data::time::GameTimeService,
+    },
     math::{Vector2, ZeroVector},
 };
 
@@ -14,7 +14,7 @@ pub struct MonsterMovementSystem;
 
 impl<'s> System<'s> for MonsterMovementSystem {
     type SystemData = (
-        ReadExpect<'s, Time>,
+        GameTimeService<'s>,
         ReadExpect<'s, MonsterDefinitions>,
         WriteStorage<'s, Monster>,
         WriteStorage<'s, WorldPosition>,
@@ -22,14 +22,19 @@ impl<'s> System<'s> for MonsterMovementSystem {
 
     fn run(
         &mut self,
-        (time, monster_definitions, mut monsters, mut world_positions): Self::SystemData,
+        (
+            game_time_service,
+            monster_definitions,
+            mut monsters,
+            mut world_positions,
+        ): Self::SystemData,
     ) {
         for (monster, world_position) in (&mut monsters, &mut world_positions).join() {
             let monster_definition = monster_definitions.0.get(&monster.name).unwrap();
 
             let monster_position = &mut **world_position;
             let monster_speed = monster_definition.base_speed;
-            let time = time.fixed_seconds();
+            let time = game_time_service.engine_time().fixed_seconds();
             let travel_distance_squared = monster_speed * monster_speed * time * time;
 
             let displacement = monster.destination - *monster_position;

@@ -13,6 +13,7 @@ use crate::{
     actions::{
         mob::MobAction,
         player::{PlayerCastAction, PlayerLookAction, PlayerWalkAction},
+        Action,
     },
     math::{Vector2, ZeroVector},
     net::{ConnectionIdentifier, EncodedMessage, EntityNetIdentifier},
@@ -67,9 +68,9 @@ impl Component for Player {
 
 #[derive(Default)]
 pub struct PlayerActions {
-    pub walk_actions: Vec<PlayerWalkAction>,
-    pub look_actions: Vec<PlayerLookAction>,
-    pub cast_actions: Vec<PlayerCastAction>,
+    pub walk_action: Action<PlayerWalkAction>,
+    pub look_action: Action<PlayerLookAction>,
+    pub cast_action: Action<PlayerCastAction>,
     pub last_spell_cast: Duration,
 }
 
@@ -82,7 +83,7 @@ pub struct Monster {
     pub attack_damage: f32,
     pub destination: Vector2,
     pub velocity: Vector2,
-    pub action: MobAction,
+    pub action: Action<MobAction>,
     pub name: String,
     pub radius: f32,
 }

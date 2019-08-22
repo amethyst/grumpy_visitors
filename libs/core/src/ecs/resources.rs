@@ -10,12 +10,14 @@ use crate::{
 
 pub struct GameTime {
     pub level_started_at: Duration,
+    pub started_at_frame_number: u64,
 }
 
 impl Default for GameTime {
     fn default() -> Self {
         Self {
             level_started_at: Duration::new(0, 0),
+            started_at_frame_number: 0,
         }
     }
 }

@@ -1,7 +1,5 @@
 use amethyst::ecs::prelude::{Component, DenseVecStorage, FlaggedStorage};
 
-use std::time::Duration;
-
 #[derive(Default)]
 pub struct DamageHistory {
     history: Vec<DamageHistoryEntries>,
@@ -12,18 +10,18 @@ impl Component for DamageHistory {
 }
 
 impl DamageHistory {
-    pub fn add_entry(&mut self, time: Duration, entry: DamageHistoryEntry) {
+    pub fn add_entry(&mut self, frame_number: u64, entry: DamageHistoryEntry) {
         let last_entries = &mut self.history.last_mut();
         if let Some(last_entries) = last_entries {
-            if last_entries.time > time {
+            if last_entries.frame_number > frame_number {
                 panic!(
                     "Adding timed out entries is not supported (at least not before multiplayer)"
                 )
-            } else if last_entries.time == time {
+            } else if last_entries.frame_number == frame_number {
                 last_entries.entries.push(entry);
             }
         } else {
-            let mut last_entries = DamageHistoryEntries::new(time);
+            let mut last_entries = DamageHistoryEntries::new(frame_number);
             last_entries.entries.push(entry);
             self.history.push(last_entries);
         }
@@ -35,14 +33,14 @@ impl DamageHistory {
 }
 
 pub struct DamageHistoryEntries {
-    pub time: Duration,
+    pub frame_number: u64,
     pub entries: Vec<DamageHistoryEntry>,
 }
 
 impl DamageHistoryEntries {
-    pub fn new(time: Duration) -> Self {
+    pub fn new(frame_number: u64) -> Self {
         Self {
-            time,
+            frame_number,
             entries: Vec::new(),
         }
     }

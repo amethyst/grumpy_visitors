@@ -1,7 +1,4 @@
-use amethyst::{
-    core::Time,
-    ecs::{ReadExpect, System, WriteExpect},
-};
+use amethyst::ecs::{ReadExpect, System, WriteExpect};
 use num;
 use rand::{
     distributions::{Distribution, Standard},
@@ -10,10 +7,11 @@ use rand::{
 
 use ha_core::{
     actions::{
-        mob::{MobAction, MobActionType},
+        mob::MobAction,
         monster_spawn::{SpawnActions, SpawnType},
+        Action,
     },
-    ecs::resources::GameLevelState,
+    ecs::{resources::GameLevelState, system_data::time::GameTimeService},
     math::{Vector2, ZeroVector},
 };
 
@@ -26,7 +24,7 @@ pub struct MonsterSpawnerSystem;
 
 impl<'s> System<'s> for MonsterSpawnerSystem {
     type SystemData = (
-        ReadExpect<'s, Time>,
+        GameTimeService<'s>,
         ReadExpect<'s, MonsterDefinitions>,
         ReadExpect<'s, GameLevelState>,
         WriteExpect<'s, SpawnActions>,
@@ -36,7 +34,7 @@ impl<'s> System<'s> for MonsterSpawnerSystem {
     fn run(
         &mut self,
         (
-            time,
+            game_time_service,
             monster_definitions,
             game_level_state,
             mut spawn_actions,
@@ -52,8 +50,10 @@ impl<'s> System<'s> for MonsterSpawnerSystem {
                 .expect("Failed to get Ghoul monster definition");
 
             let mut spawn_monster =
-                |position: Vector2, action: MobAction, monster_definition: &MonsterDefinition| {
-                    let destination = if let MobActionType::Move(destination) = action.action_type {
+                |position: Vector2,
+                 action: Action<MobAction>,
+                 monster_definition: &MonsterDefinition| {
+                    let destination = if let Some(MobAction::Move(destination)) = action.action {
                         destination
                     } else {
                         Vector2::zero()
@@ -85,7 +85,7 @@ impl<'s> System<'s> for MonsterSpawnerSystem {
                             },
                         );
                         let position = side_start + random_displacement;
-                        spawn_monster(position, MobAction::idle(time.absolute_time()), ghoul);
+                        spawn_monster(position, Action::default(), ghoul);
                     }
                 }
                 SpawnType::Borderline => {
@@ -98,9 +98,9 @@ impl<'s> System<'s> for MonsterSpawnerSystem {
 
                     let mut position = side_start;
                     for _ in 0..monsters_to_spawn {
-                        let action = MobAction {
-                            started_at: time.absolute_time(),
-                            action_type: MobActionType::Move(position + destination),
+                        let action = Action {
+                            frame_number: game_time_service.game_frame_number(),
+                            action: Some(MobAction::Move(position + destination)),
                         };
                         spawn_monster(position, action, ghoul);
                         position += spawn_distance;

@@ -26,4 +26,16 @@ impl<'a> GameTimeService<'a> {
     pub fn level_duration(&self) -> Duration {
         self.engine_time.absolute_time() - self.game_time.level_started_at
     }
+
+    pub fn game_frame_number(&self) -> u64 {
+        self.engine_time.frame_number() - self.game_time.started_at_frame_number
+    }
+
+    pub fn seconds_to_frame(&self, frame_number: u64) -> f32 {
+        self.seconds_between_frames(self.game_time.started_at_frame_number, frame_number)
+    }
+
+    pub fn seconds_between_frames(&self, lhs: u64, rhs: u64) -> f32 {
+        (lhs as f32 - rhs as f32).abs() * self.engine_time.fixed_seconds()
+    }
 }
