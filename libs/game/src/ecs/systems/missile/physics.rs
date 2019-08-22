@@ -146,7 +146,7 @@ impl<'s> System<'s> for MissileSystem {
             let missile_position = world_positions
                 .get_mut(missile_entity)
                 .expect("Expected a Missile");
-            **missile_position += missile.velocity * time.delta_seconds();
+            **missile_position += missile.velocity * time.fixed_seconds();
         }
     }
 }

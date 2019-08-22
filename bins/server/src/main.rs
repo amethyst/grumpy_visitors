@@ -57,7 +57,7 @@ fn main() -> amethyst::Result<()> {
     let mut game = builder
         .with_frame_limit(
             FrameRateLimitStrategy::SleepAndYield(Duration::from_millis(2)),
-            144,
+            60,
         )
         .build(game_data_builder)?;
     game.run();

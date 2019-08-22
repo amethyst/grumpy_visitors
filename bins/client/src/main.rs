@@ -7,7 +7,9 @@ mod utils;
 use amethyst::{
     animation::AnimationBundle,
     assets::PrefabLoaderSystem,
-    core::{transform::TransformBundle, HideHierarchySystem},
+    core::{
+        frame_limiter::FrameRateLimitStrategy, transform::TransformBundle, HideHierarchySystem,
+    },
     input::{InputBundle, StringBindings},
     network::NetworkBundle,
     prelude::{Application, GameDataBuilder},
@@ -19,6 +21,8 @@ use amethyst::{
     ui::{RenderUi, UiBundle},
     LogLevelFilter, Logger,
 };
+
+use std::time::Duration;
 
 use ha_animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
 use ha_client_shared::{ecs::resources::MultiplayerRoomState, settings::Settings};
@@ -117,7 +121,12 @@ fn main() -> amethyst::Result<()> {
                 .with_plugin(RenderUi::default()),
         )?;
 
-    let mut game = builder.build(game_data_builder)?;
+    let mut game = builder
+        .with_frame_limit(
+            FrameRateLimitStrategy::SleepAndYield(Duration::from_millis(2)),
+            60,
+        )
+        .build(game_data_builder)?;
 
     game.run();
 

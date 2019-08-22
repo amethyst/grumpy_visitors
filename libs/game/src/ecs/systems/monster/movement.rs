@@ -29,7 +29,7 @@ impl<'s> System<'s> for MonsterMovementSystem {
 
             let monster_position = &mut **world_position;
             let monster_speed = monster_definition.base_speed;
-            let time = time.delta_seconds();
+            let time = time.fixed_seconds();
             let travel_distance_squared = monster_speed * monster_speed * time * time;
 
             let displacement = monster.destination - *monster_position;

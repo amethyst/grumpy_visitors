@@ -48,7 +48,7 @@ impl<'s> System<'s> for PlayerMovementSystem {
                         Vector2::zero()
                     }
                 }
-                **player_position += player.velocity * time.delta_seconds();
+                **player_position += player.velocity * time.fixed_seconds();
 
                 let scene_half_size_x = game_scene.dimensions.x / 2.0;
                 let scene_half_size_y = game_scene.dimensions.y / 2.0;
