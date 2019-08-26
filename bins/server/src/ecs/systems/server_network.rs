@@ -2,7 +2,8 @@ use amethyst::ecs::{System, WriteExpect, WriteStorage};
 
 use ha_core::{
     ecs::resources::{
-        GameEngineState, MultiplayerGameState, MultiplayerRoomPlayer, NewGameEngineState,
+        net::{MultiplayerGameState, MultiplayerRoomPlayer},
+        GameEngineState, NewGameEngineState,
     },
     net::{
         client_message::ClientMessagePayload, server_message::ServerMessagePayload,

@@ -26,7 +26,10 @@ use std::time::Duration;
 
 use ha_animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
 use ha_client_shared::{ecs::resources::MultiplayerRoomState, settings::Settings};
-use ha_core::net::EncodedMessage;
+use ha_core::{
+    ecs::resources::world::{FramedUpdates, ServerWorldUpdate},
+    net::EncodedMessage,
+};
 use ha_game::{build_game_logic_systems, states::LoadingState};
 
 use crate::{
@@ -61,6 +64,9 @@ fn main() -> amethyst::Result<()> {
     builder.world.add_resource(settings);
     builder.world.add_resource(ServerCommand::new());
     builder.world.add_resource(MultiplayerRoomState::new());
+    builder
+        .world
+        .add_resource(FramedUpdates::<ServerWorldUpdate>::default());
 
     let mut game_data_builder = GameDataBuilder::default()
         .with_bundle(NetworkBundle::<EncodedMessage>::new(socket_addr.parse()?))?

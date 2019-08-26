@@ -25,7 +25,8 @@ use ha_core::{
     ecs::{
         components::EntityNetMetadata,
         resources::{
-            EntityNetMetadataService, GameEngineState, GameLevelState, MultiplayerGameState,
+            net::{EntityNetMetadataService, MultiplayerGameState},
+            GameEngineState, GameLevelState,
         },
         system_data::time::GameTimeService,
     },
@@ -126,6 +127,7 @@ fn initialize_players(world: &mut World) {
                         player_entity,
                         EntityNetMetadata {
                             id: player.entity_net_id,
+                            spawned_frame_number: 0,
                         },
                     )
                     .expect("Expected to insert EntityNetMetadata component");
@@ -172,7 +174,13 @@ fn initialize_players(world: &mut World) {
                         entity_net_metadata_service.register_new_entity(player_entity);
                     player.entity_net_id = entity_net_id;
                     entity_net_metadata
-                        .insert(player_entity, EntityNetMetadata { id: entity_net_id })
+                        .insert(
+                            player_entity,
+                            EntityNetMetadata {
+                                id: entity_net_id,
+                                spawned_frame_number: 0,
+                            },
+                        )
                         .expect("Expected to insert EntityNetMetadata component");
                     entity_net_id
                 })

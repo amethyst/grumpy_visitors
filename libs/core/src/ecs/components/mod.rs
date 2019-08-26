@@ -1,8 +1,10 @@
+use serde_derive::{Deserialize, Serialize};
+
 pub mod damage_history;
 pub mod missile;
 
 use amethyst::{
-    ecs::{Component, DenseVecStorage, FlaggedStorage, NullStorage, ReaderId, VecStorage},
+    ecs::{Component, DenseVecStorage, Entity, FlaggedStorage, NullStorage, ReaderId, VecStorage},
     network::NetEvent,
 };
 use shrinkwraprs::Shrinkwrap;
@@ -19,7 +21,7 @@ use crate::{
     net::{ConnectionIdentifier, EncodedMessage, EntityNetIdentifier},
 };
 
-#[derive(Shrinkwrap)]
+#[derive(Clone, Debug, Serialize, Deserialize, Shrinkwrap)]
 #[shrinkwrap(mutable)]
 pub struct WorldPosition {
     #[shrinkwrap(main_field)]
@@ -36,6 +38,7 @@ impl Component for WorldPosition {
     type Storage = VecStorage<Self>;
 }
 
+#[derive(Clone, Debug)]
 pub struct Player {
     pub health: f32,
     pub velocity: Vector2,
@@ -66,24 +69,33 @@ impl Component for Player {
     type Storage = DenseVecStorage<Self>;
 }
 
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PlayerActions {
     pub walk_action: Action<PlayerWalkAction>,
     pub look_action: Action<PlayerLookAction>,
     pub cast_action: Action<PlayerCastAction>,
-    pub last_spell_cast: Duration,
 }
 
 impl Component for PlayerActions {
     type Storage = DenseVecStorage<Self>;
 }
 
+#[derive(Default)]
+pub struct PlayerLastCastedSpells {
+    pub missile: Duration,
+}
+
+impl Component for PlayerLastCastedSpells {
+    type Storage = DenseVecStorage<Self>;
+}
+
+#[derive(Clone, Debug)]
 pub struct Monster {
     pub health: f32,
     pub attack_damage: f32,
     pub destination: Vector2,
     pub velocity: Vector2,
-    pub action: Action<MobAction>,
+    pub action: Action<MobAction<Entity>>,
     pub name: String,
     pub radius: f32,
 }
@@ -123,6 +135,7 @@ impl Component for NetConnectionModel {
 
 pub struct EntityNetMetadata {
     pub id: EntityNetIdentifier,
+    pub spawned_frame_number: u64,
 }
 
 impl Component for EntityNetMetadata {

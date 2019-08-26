@@ -1,28 +1,28 @@
-use amethyst::ecs::Entity;
 use rand::Rng;
+use serde_derive::{Deserialize, Serialize};
 
 use crate::math::Vector2;
 
-#[derive(Debug)]
-pub enum MobAction {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum MobAction<T> {
     /// Just spawned.
     Idle,
     /// Moving to the specified position.
     Move(Vector2),
     /// Chasing an entity with the specified id.
-    Chase(Entity),
+    Chase(T),
     /// Attacking a target.
-    Attack(MobAttackAction),
+    Attack(MobAttackAction<T>),
 }
 
-#[derive(Debug)]
-pub struct MobAttackAction {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MobAttackAction<T> {
     /// Entity id.
-    pub target: Entity,
+    pub target: T,
     pub attack_type: MobAttackType,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MobAttackType {
     #[allow(dead_code)]
     Melee,

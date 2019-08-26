@@ -1,4 +1,4 @@
-use amethyst::ecs::{ReadExpect, System, WriteExpect};
+use amethyst::ecs::{Entity, ReadExpect, System, WriteExpect};
 use num;
 use rand::{
     distributions::{Distribution, Standard},
@@ -51,7 +51,7 @@ impl<'s> System<'s> for MonsterSpawnerSystem {
 
             let mut spawn_monster =
                 |position: Vector2,
-                 action: Action<MobAction>,
+                 action: Action<MobAction<Entity>>,
                  monster_definition: &MonsterDefinition| {
                     let destination = if let Some(MobAction::Move(destination)) = action.action {
                         destination

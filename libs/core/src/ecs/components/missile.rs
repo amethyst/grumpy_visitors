@@ -4,9 +4,10 @@ use std::time::Duration;
 
 use crate::math::Vector2;
 
+#[derive(Clone, Debug)]
 pub struct Missile {
     pub radius: f32,
-    pub target: MissileTarget,
+    pub target: MissileTarget<Entity>,
     pub velocity: Vector2,
     pub time_spawned: Duration,
     pub damage: f32,
@@ -15,7 +16,7 @@ pub struct Missile {
 impl Missile {
     pub fn new(
         radius: f32,
-        target: MissileTarget,
+        target: MissileTarget<Entity>,
         velocity: Vector2,
         time_spawned: Duration,
     ) -> Self {
@@ -33,8 +34,8 @@ impl Component for Missile {
     type Storage = DenseVecStorage<Self>;
 }
 
-#[derive(Clone)]
-pub enum MissileTarget {
-    Target(Entity),
+#[derive(Clone, Debug)]
+pub enum MissileTarget<T> {
+    Target(T),
     Destination(Vector2),
 }

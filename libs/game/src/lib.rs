@@ -11,7 +11,10 @@ use amethyst::{
 
 use ha_core::ecs::{
     components::damage_history::DamageHistory,
-    resources::{EntityNetMetadataService, MultiplayerGameState},
+    resources::{
+        net::{EntityNetMetadataService, MultiplayerGameState},
+        world::WorldStates,
+    },
 };
 
 use crate::ecs::{
@@ -24,6 +27,7 @@ pub fn build_game_logic_systems<'a, 'b>(
     world: &mut World,
     is_server: bool,
 ) -> Result<GameDataBuilder<'a, 'b>, Error> {
+    world.add_resource(WorldStates::default());
     world.add_resource(ConnectionEvents(Vec::new()));
     world.add_resource(MultiplayerGameState::new());
     world.add_resource(EntityNetMetadataService::new());

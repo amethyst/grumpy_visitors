@@ -35,6 +35,7 @@ pub struct PlayerFactory<'s> {
     player_actions: WriteStorage<'s, PlayerActions>,
     world_positions: WriteStorage<'s, WorldPosition>,
     players: WriteStorage<'s, Player>,
+    player_last_casted_spells: WriteStorage<'s, PlayerLastCastedSpells>,
     damage_histories: WriteStorage<'s, DamageHistory>,
 }
 
@@ -52,6 +53,10 @@ impl<'s> PlayerFactory<'s> {
                 &mut self.world_positions,
             )
             .with(Player::new(), &mut self.players)
+            .with(
+                PlayerLastCastedSpells::default(),
+                &mut self.player_last_casted_spells,
+            )
             .with(DamageHistory::default(), &mut self.damage_histories)
             .build()
     }
@@ -123,7 +128,7 @@ impl<'s> MonsterFactory<'s> {
         definition: MonsterDefinition,
         position: Vector2,
         destination: Vector2,
-        action: Action<MobAction>,
+        action: Action<MobAction<Entity>>,
     ) -> Entity {
         let mut transform = Transform::default();
         transform.set_translation_xyz(position.x, position.y, 5.0);
@@ -166,7 +171,7 @@ impl<'s> MonsterFactory<'s> {
         definition: MonsterDefinition,
         position: Vector2,
         destination: Vector2,
-        action: Action<MobAction>,
+        action: Action<MobAction<Entity>>,
     ) -> Entity {
         let mut transform = Transform::default();
         transform.set_translation_xyz(position.x, position.y, 5.0);
@@ -220,7 +225,7 @@ impl<'s> MissileFactory<'s> {
         &mut self,
         world_positions: &mut WriteStorage<'s, WorldPosition>,
         radius: f32,
-        target: MissileTarget,
+        target: MissileTarget<Entity>,
         velocity: Vector2,
         time_spawned: Duration,
         position: Vector2,
@@ -248,7 +253,7 @@ impl<'s> MissileFactory<'s> {
         &mut self,
         world_positions: &mut WriteStorage<'s, WorldPosition>,
         radius: f32,
-        target: MissileTarget,
+        target: MissileTarget<Entity>,
         velocity: Vector2,
         time_spawned: Duration,
         position: Vector2,

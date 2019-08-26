@@ -3,7 +3,9 @@ use amethyst::ecs::{Entities, Join, ReadStorage, System, WriteStorage};
 use std::time::Duration;
 
 use ha_core::ecs::{
-    components::{missile::MissileTarget, Dead, Monster, PlayerActions, WorldPosition},
+    components::{
+        missile::MissileTarget, Dead, Monster, PlayerActions, PlayerLastCastedSpells, WorldPosition,
+    },
     system_data::time::GameTimeService,
 };
 
@@ -25,6 +27,7 @@ impl<'s> System<'s> for MissileSpawnerSystem {
         ReadStorage<'s, Dead>,
         WriteStorage<'s, WorldPosition>,
         WriteStorage<'s, PlayerActions>,
+        WriteStorage<'s, PlayerLastCastedSpells>,
     );
 
     fn run(
@@ -37,19 +40,22 @@ impl<'s> System<'s> for MissileSpawnerSystem {
             dead,
             mut world_positions,
             mut player_actions,
+            mut player_last_casted_spells,
         ): Self::SystemData,
     ) {
         let now = game_time_service.level_duration();
 
-        for (player_actions, _) in (&mut player_actions, !&dead).join() {
+        for (player_actions, player_last_casted_spells, _) in
+            (&mut player_actions, &mut player_last_casted_spells, !&dead).join()
+        {
             if let Some(cast_action) = player_actions.cast_action.action.as_ref() {
                 if player_actions.cast_action.frame_number < game_time_service.game_frame_number() {
                     continue;
                 }
-                if player_actions.last_spell_cast + SPELL_CAST_COOLDOWN > now {
+                if player_last_casted_spells.missile + SPELL_CAST_COOLDOWN > now {
                     continue;
                 }
-                player_actions.last_spell_cast = now;
+                player_last_casted_spells.missile = now;
 
                 let search_result = closest_monster(
                     cast_action.target_position,

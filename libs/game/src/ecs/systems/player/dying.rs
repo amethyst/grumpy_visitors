@@ -6,7 +6,7 @@ use amethyst::ecs::{
 use ha_core::{
     ecs::{
         components::{damage_history::DamageHistory, Dead, Player},
-        resources::{GameLevelState, MultiplayerGameState},
+        resources::{net::MultiplayerGameState, GameLevelState},
     },
     math::{Vector2, ZeroVector},
 };

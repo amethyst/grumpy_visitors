@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use ha_client_shared::ecs::resources::MultiplayerRoomState;
 use ha_core::ecs::{
-    resources::{GameEngineState, GameLevelState, MultiplayerGameState, NewGameEngineState},
+    resources::{net::MultiplayerGameState, GameEngineState, GameLevelState, NewGameEngineState},
     system_data::time::GameTimeService,
 };
 

@@ -1,4 +1,5 @@
 use amethyst::ecs::prelude::{Component, DenseVecStorage, FlaggedStorage};
+use serde_derive::{Deserialize, Serialize};
 
 #[derive(Default)]
 pub struct DamageHistory {
@@ -32,6 +33,7 @@ impl DamageHistory {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DamageHistoryEntries {
     pub frame_number: u64,
     pub entries: Vec<DamageHistoryEntry>,
@@ -46,6 +48,7 @@ impl DamageHistoryEntries {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DamageHistoryEntry {
     pub damage: f32,
 }
