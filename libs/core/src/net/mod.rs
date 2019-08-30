@@ -24,31 +24,31 @@ pub enum NetEvent<T> {
 }
 
 pub trait IdentifiableNetUpdate {
-    fn entity_net_identifier(&self) -> EntityNetIdentifier;
+    fn entity_net_id(&self) -> EntityNetIdentifier;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetUpdate<T> {
-    pub entity_net_identifier: EntityNetIdentifier,
+    pub entity_net_id: EntityNetIdentifier,
     pub data: T,
 }
 
 impl<T> IdentifiableNetUpdate for NetUpdate<T> {
-    fn entity_net_identifier(&self) -> EntityNetIdentifier {
-        self.entity_net_identifier
+    fn entity_net_id(&self) -> EntityNetIdentifier {
+        self.entity_net_id
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetUpdateWithPosition<T> {
-    pub entity_net_identifier: EntityNetIdentifier,
+    pub entity_net_id: EntityNetIdentifier,
     pub position: WorldPosition,
     pub data: T,
 }
 
 impl<T> IdentifiableNetUpdate for NetUpdateWithPosition<T> {
-    fn entity_net_identifier(&self) -> EntityNetIdentifier {
-        self.entity_net_identifier
+    fn entity_net_id(&self) -> EntityNetIdentifier {
+        self.entity_net_id
     }
 }
 
@@ -61,7 +61,7 @@ impl<T: IdentifiableNetUpdate> MergableNetUpdates for Vec<T> {
         self.retain(|update| {
             !other
                 .iter()
-                .any(|other| update.entity_net_identifier() == other.entity_net_identifier())
+                .any(|other| update.entity_net_id() == other.entity_net_id())
         });
         self.append(&mut other);
     }

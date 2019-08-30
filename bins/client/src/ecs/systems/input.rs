@@ -8,14 +8,10 @@ use amethyst::{
 };
 
 use ha_core::{
-    actions::{
-        player::{PlayerCastAction, PlayerLookAction, PlayerWalkAction},
-        Action,
-    },
+    actions::player::{PlayerCastAction, PlayerLookAction, PlayerWalkAction},
     ecs::{
-        components::{PlayerActions, WorldPosition},
+        components::{ClientPlayerActions, WorldPosition},
         resources::GameEngineState,
-        system_data::time::GameTimeService,
     },
     math::Vector2,
 };
@@ -26,7 +22,6 @@ pub struct InputSystem;
 impl<'s> System<'s> for InputSystem {
     type SystemData = (
         Entities<'s>,
-        GameTimeService<'s>,
         ReadExpect<'s, InputHandler<StringBindings>>,
         ReadExpect<'s, ScreenDimensions>,
         ReadExpect<'s, GameEngineState>,
@@ -34,26 +29,24 @@ impl<'s> System<'s> for InputSystem {
         ReadStorage<'s, Parent>,
         ReadStorage<'s, Transform>,
         ReadStorage<'s, WorldPosition>,
-        WriteStorage<'s, PlayerActions>,
+        WriteStorage<'s, ClientPlayerActions>,
     );
 
     fn run(
         &mut self,
         (
             entities,
-            game_time_service,
             input,
             screen_dimensions,
-            game_state,
+            game_engine_state,
             cameras,
             parents,
             transforms,
             world_positions,
-            mut player_actions,
+            mut client_player_actions,
         ): Self::SystemData,
     ) {
-        if let GameEngineState::Playing = *game_state {
-        } else {
+        if *game_engine_state != GameEngineState::Playing {
             return;
         }
 
@@ -62,36 +55,34 @@ impl<'s> System<'s> for InputSystem {
             .next()
             .expect("Expected a Camera attached to a Player");
         let player_entity = camera_parent.entity;
-        let player_actions = player_actions
+        let client_player_actions = client_player_actions
             .get_mut(player_entity)
-            .expect("Expected PlayerActions");
+            .expect("Expected a ClientPlayerActions component");
         let player_position = world_positions
             .get(player_entity)
             .expect("Expected a WorldPosition");
         self.process_mouse_input(
-            &game_time_service,
             &screen_dimensions,
             &*input,
             camera_entity,
             &cameras,
             &transforms,
-            &mut *player_actions,
+            &mut *client_player_actions,
             **player_position,
         );
-        self.process_keyboard_input(&game_time_service, &*input, &mut *player_actions);
+        self.process_keyboard_input(&*input, &mut *client_player_actions);
     }
 }
 
 impl InputSystem {
     fn process_mouse_input(
         &mut self,
-        game_time_service: &GameTimeService,
         screen_dimensions: &ScreenDimensions,
         input: &InputHandler<StringBindings>,
         camera_entity: Entity,
         cameras: &ReadStorage<'_, Camera>,
         transforms: &ReadStorage<'_, Transform>,
-        player_actions: &mut PlayerActions,
+        client_player_actions: &mut ClientPlayerActions,
         player_position: Vector2,
     ) {
         let mouse_world_position = {
@@ -112,37 +103,36 @@ impl InputSystem {
             Vector2::new(position.x, position.y)
         };
 
-        player_actions.look_action = Action {
-            frame_number: game_time_service.game_frame_number(),
-            action: Some(PlayerLookAction {
-                direction: mouse_world_position - player_position,
-            }),
-        };
+        client_player_actions.look_action = Some(PlayerLookAction {
+            direction: mouse_world_position - player_position,
+        });
 
         if input.mouse_button_is_down(MouseButton::Left) {
-            player_actions.cast_action = Action {
-                frame_number: game_time_service.game_frame_number(),
-                action: Some(PlayerCastAction {
-                    cast_position: player_position,
-                    target_position: mouse_world_position,
-                }),
-            };
+            client_player_actions.cast_action = Some(PlayerCastAction {
+                cast_position: player_position,
+                target_position: mouse_world_position,
+            });
         }
     }
 
     fn process_keyboard_input(
         &mut self,
-        game_time_service: &GameTimeService,
         input: &InputHandler<StringBindings>,
-        player_actions: &mut PlayerActions,
+        client_player_actions: &mut ClientPlayerActions,
     ) {
-        if let (Some(x), Some(y)) = (input.axis_value("horizontal"), input.axis_value("vertical")) {
-            player_actions.walk_action = Action {
-                frame_number: game_time_service.game_frame_number(),
-                action: Some(PlayerWalkAction {
-                    direction: Vector2::new(x, y),
-                }),
-            };
-        }
+        let direction = if let (Some(x), Some(y)) =
+            (input.axis_value("horizontal"), input.axis_value("vertical"))
+        {
+            if x == 0.0 && y == 0.0 {
+                None
+            } else {
+                Some(Vector2::new(x, y))
+            }
+        } else {
+            None
+        };
+
+        let action = direction.map(|direction| PlayerWalkAction { direction });
+        client_player_actions.walk_action = action;
     }
 }

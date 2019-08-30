@@ -12,7 +12,7 @@ use crate::ecs::resources::ServerCommand;
 pub struct LocalServerSystem;
 
 // TODO: omg, find another way to connect.
-const WAIT_FOR_SERVER_TO_START_SECS: u64 = 1;
+const WAIT_FOR_SERVER_TO_START_SECS: u64 = 2;
 
 impl<'s> System<'s> for LocalServerSystem {
     type SystemData = (

@@ -15,8 +15,9 @@ pub struct GameTimeService<'a> {
 }
 
 impl<'a> GameTimeService<'a> {
-    pub fn set_level_started_at(&mut self) {
+    pub fn set_game_start_time(&mut self) {
         self.game_time.level_started_at = self.engine_time.absolute_time();
+        self.game_time.started_at_frame_number = self.engine_time.frame_number();
     }
 
     pub fn engine_time(&self) -> &Time {

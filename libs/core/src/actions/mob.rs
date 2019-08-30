@@ -1,7 +1,10 @@
+use amethyst::ecs::Entity;
 use rand::Rng;
 use serde_derive::{Deserialize, Serialize};
 
-use crate::math::Vector2;
+use crate::{
+    ecs::resources::net::EntityNetMetadataStorage, math::Vector2, net::EntityNetIdentifier,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MobAction<T> {
@@ -13,6 +16,28 @@ pub enum MobAction<T> {
     Chase(T),
     /// Attacking a target.
     Attack(MobAttackAction<T>),
+}
+
+impl MobAction<EntityNetIdentifier> {
+    pub fn load_entity_by_net_id(
+        self,
+        entity_net_metadata_service: &EntityNetMetadataStorage,
+    ) -> MobAction<Entity> {
+        match self {
+            MobAction::Idle => MobAction::Idle,
+            MobAction::Move(destination) => MobAction::Move(destination),
+            MobAction::Chase(target) => {
+                MobAction::Chase(entity_net_metadata_service.get_entity(target))
+            }
+            MobAction::Attack(MobAttackAction {
+                target,
+                attack_type,
+            }) => MobAction::Attack(MobAttackAction {
+                target: entity_net_metadata_service.get_entity(target),
+                attack_type,
+            }),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

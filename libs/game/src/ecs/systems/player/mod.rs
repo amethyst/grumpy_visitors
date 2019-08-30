@@ -1,4 +1,7 @@
+mod action_subsystem;
 mod dying;
-mod movement;
 
-pub use self::{dying::PlayerDyingSystem, movement::PlayerMovementSystem};
+pub use self::{
+    action_subsystem::{ApplyWalkActionNetArgs, PlayerActionSubsystem},
+    dying::PlayerDyingSystem,
+};

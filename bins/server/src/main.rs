@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 mod ecs;
 
 use amethyst::{
@@ -10,8 +12,13 @@ use log::LevelFilter;
 
 use std::{env, io, path::PathBuf, str::FromStr, time::Duration};
 
-use ha_core::net::EncodedMessage;
-use ha_game::{build_game_logic_systems, states::LoadingState};
+use ha_core::{
+    ecs::resources::world::{FramedUpdates, PlayerActionUpdates, ServerWorldUpdates},
+    net::EncodedMessage,
+};
+use ha_game::{
+    build_game_logic_systems, ecs::systems::NetConnectionManagerSystem, states::LoadingState,
+};
 
 use crate::ecs::systems::*;
 
@@ -37,21 +44,35 @@ fn main() -> amethyst::Result<()> {
 
     Logger::from_config(Default::default())
         .level_for("gfx_backend_vulkan", LogLevelFilter::Warn)
-        .level_for(
-            "ha_game::ecs::systems::net_connection_manager",
-            LogLevelFilter::Trace,
-        )
+        // .level_for(
+        //     "ha_game::ecs::systems::net_connection_manager",
+        //     LogLevelFilter::Trace,
+        // )
         .start();
 
     let mut builder = Application::build("./", LoadingState::default())?;
+    builder
+        .world
+        .add_resource(FramedUpdates::<PlayerActionUpdates>::default());
+    builder.world.add_resource(ServerWorldUpdates::default());
     let mut game_data_builder = GameDataBuilder::default()
         .with_bundle(NetworkBundle::<EncodedMessage>::new(socket_addr.parse()?))?
         .with(
+            NetConnectionManagerSystem::new(),
+            "net_connection_manager_system",
+            &["net_socket"],
+        )
+        .with(
             ServerNetworkSystem::new(),
-            "server_network_system",
+            "game_network_system",
             &["net_socket"],
         );
     game_data_builder = build_game_logic_systems(game_data_builder, &mut builder.world, true)?
+        .with(
+            GameUpdatesBroadcastingSystem::default(),
+            "game_updates_broadcasting_system",
+            &["action_system"],
+        )
         .with_bundle(TransformBundle::new().with_dep(&["world_position_transform_system"]))?;
 
     let mut game = builder

@@ -27,10 +27,12 @@ use std::time::Duration;
 use ha_animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
 use ha_client_shared::{ecs::resources::MultiplayerRoomState, settings::Settings};
 use ha_core::{
-    ecs::resources::world::{FramedUpdates, ServerWorldUpdate},
+    ecs::resources::world::{ClientWorldUpdates, FramedUpdates, ServerWorldUpdate},
     net::EncodedMessage,
 };
-use ha_game::{build_game_logic_systems, states::LoadingState};
+use ha_game::{
+    build_game_logic_systems, ecs::systems::NetConnectionManagerSystem, states::LoadingState,
+};
 
 use crate::{
     ecs::{resources::ServerCommand, systems::*},
@@ -48,10 +50,10 @@ fn main() -> amethyst::Result<()> {
 
     Logger::from_config(Default::default())
         .level_for("gfx_backend_vulkan", LogLevelFilter::Warn)
-        .level_for(
-            "ha_game::ecs::systems::net_connection_manager",
-            LogLevelFilter::Trace,
-        )
+        // .level_for(
+        //     "ha_game::ecs::systems::net_connection_manager",
+        //     LogLevelFilter::Trace,
+        // )
         .start();
 
     let settings = Settings::new()?;
@@ -64,6 +66,7 @@ fn main() -> amethyst::Result<()> {
     builder.world.add_resource(settings);
     builder.world.add_resource(ServerCommand::new());
     builder.world.add_resource(MultiplayerRoomState::new());
+    builder.world.add_resource(ClientWorldUpdates::default());
     builder
         .world
         .add_resource(FramedUpdates::<ServerWorldUpdate>::default());
@@ -71,20 +74,26 @@ fn main() -> amethyst::Result<()> {
     let mut game_data_builder = GameDataBuilder::default()
         .with_bundle(NetworkBundle::<EncodedMessage>::new(socket_addr.parse()?))?
         .with(
-            ClientNetworkSystem,
-            "client_network_system",
+            NetConnectionManagerSystem::new(),
+            "net_connection_manager_system",
             &["net_socket"],
         )
-        .with_bundle(input_bundle)?
         .with(
-            InputSystem::default(),
-            "mouse_system",
-            &["client_network_system", "input_system"],
+            ClientNetworkSystem,
+            "game_network_system",
+            &["net_connection_manager_system"],
         )
+        .with_bundle(input_bundle)?
+        .with(InputSystem::default(), "mouse_system", &["input_system"])
         .with(MenuSystem::new(), "menu_system", &[])
         .with(LocalServerSystem, "local_server_system", &["menu_system"]);
 
     game_data_builder = build_game_logic_systems(game_data_builder, &mut builder.world, false)?
+        .with(
+            GameUpdatesBroadcastingSystem::default(),
+            "game_updates_broadcasting_system",
+            &["action_system"],
+        )
         .with(
             CameraTranslationSystem,
             "camera_translation_system",

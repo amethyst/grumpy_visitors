@@ -69,17 +69,35 @@ impl<'s> System<'s> for ClientNetworkSystem {
 
         for connection_event in connection_events.0.drain(..) {
             match connection_event.event {
+                NetEvent::Message(ServerMessagePayload::Handshake(connection_id)) => {
+                    log::info!("Received Handshake from a server ({})", connection_id);
+                    let connection = (&mut connections)
+                        .join()
+                        .next()
+                        .expect("Expected a server connection");
+                    multiplayer_room_state.connection_id = connection_id;
+
+                    send_message_reliable(
+                        connection,
+                        &ClientMessagePayload::JoinRoom {
+                            nickname: multiplayer_room_state.nickname.clone(),
+                        },
+                    );
+                }
                 NetEvent::Message(ServerMessagePayload::UpdateRoomPlayers(players)) => {
                     log::info!("Updated room players");
                     *multiplayer_game_state.update_players() = players;
                 }
-                NetEvent::Message(ServerMessagePayload::StartGame(entity_net_identifiers)) => {
+                NetEvent::Message(ServerMessagePayload::StartGame(entity_net_ids)) => {
                     for (i, player) in multiplayer_game_state
                         .update_players()
                         .iter_mut()
                         .enumerate()
                     {
-                        player.entity_net_id = entity_net_identifiers[i];
+                        player.entity_net_id = entity_net_ids[i];
+                        if player.connection_id == multiplayer_room_state.connection_id {
+                            multiplayer_room_state.player_net_id = player.entity_net_id;
+                        }
                     }
                     multiplayer_game_state.is_playing = true;
                     new_game_engine_sate.0 = GameEngineState::Playing;
@@ -95,22 +113,6 @@ impl<'s> System<'s> for ClientNetworkSystem {
                     );
                     apply_world_updates(&mut framed_updates, updates);
                 }
-                NetEvent::Message(ServerMessagePayload::Ping) => {
-                    if !multiplayer_room_state.has_sent_join_package {
-                        let connection = (&mut connections)
-                            .join()
-                            .next()
-                            .expect("Expected a server connection");
-
-                        multiplayer_room_state.has_sent_join_package = true;
-                        send_message_reliable(
-                            connection,
-                            &ClientMessagePayload::JoinRoom {
-                                nickname: multiplayer_room_state.nickname.clone(),
-                            },
-                        );
-                    }
-                }
                 // TODO: handle disconnects.
                 _ => {}
             }
@@ -120,8 +122,9 @@ impl<'s> System<'s> for ClientNetworkSystem {
 
 fn apply_world_updates(
     framed_updates: &mut FramedUpdates<ServerWorldUpdate>,
-    incoming_updates: Vec<ServerWorldUpdate>,
+    mut incoming_updates: Vec<ServerWorldUpdate>,
 ) {
+    incoming_updates.sort_by(|a, b| a.frame_number.cmp(&b.frame_number));
     let start_frame_number = incoming_updates.first().map(|update| update.frame_number);
     if let Some(start_frame_number) = start_frame_number {
         framed_updates.oldest_updated_frame = start_frame_number;

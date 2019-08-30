@@ -44,12 +44,12 @@ impl MultiplayerGameState {
     }
 }
 
-pub struct EntityNetMetadataService {
+pub struct EntityNetMetadataStorage {
     range: Range<EntityNetIdentifier>,
     mapping: HashMap<EntityNetIdentifier, Entity>,
 }
 
-impl EntityNetMetadataService {
+impl EntityNetMetadataStorage {
     pub fn new() -> Self {
         Self {
             range: 0..EntityNetIdentifier::max_value(),
@@ -80,7 +80,7 @@ impl EntityNetMetadataService {
     }
 }
 
-impl Default for EntityNetMetadataService {
+impl Default for EntityNetMetadataStorage {
     fn default() -> Self {
         Self::new()
     }

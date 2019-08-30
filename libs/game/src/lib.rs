@@ -12,7 +12,7 @@ use amethyst::{
 use ha_core::ecs::{
     components::damage_history::DamageHistory,
     resources::{
-        net::{EntityNetMetadataService, MultiplayerGameState},
+        net::{EntityNetMetadataStorage, MultiplayerGameState},
         world::WorldStates,
     },
 };
@@ -30,44 +30,33 @@ pub fn build_game_logic_systems<'a, 'b>(
     world.add_resource(WorldStates::default());
     world.add_resource(ConnectionEvents(Vec::new()));
     world.add_resource(MultiplayerGameState::new());
-    world.add_resource(EntityNetMetadataService::new());
+    world.add_resource(EntityNetMetadataStorage::new());
 
     world.register::<DamageHistory>();
     let mut damage_history_storage = world.write_storage::<DamageHistory>();
 
     let game_data_builder = game_data_builder
         .with(
-            NetConnectionManagerSystem::new(),
-            "net_connection_manager_system",
-            &["net_socket"],
+            LevelSystem::default(),
+            "level_system",
+            &["game_network_system"],
         )
-        .with(LevelSystem::default(), "level_system", &[])
         .with(MonsterSpawnerSystem, "spawner_system", &["level_system"])
-        .with(
-            PlayerMovementSystem,
-            "player_movement_system",
-            &dependencies_with_optional(&[], !is_server, &["input_system"]),
-        )
-        .with(
-            MonsterActionSystem,
-            "monster_action_system",
-            &["player_movement_system"],
-        )
-        .with(
-            MonsterMovementSystem,
-            "monster_movement_system",
-            &["monster_action_system"],
-        )
         .with(
             MissileSpawnerSystem,
             "missile_spawner_system",
-            &dependencies_with_optional(&[], !is_server, &["input_system"]),
+            &dependencies_with_optional(&["level_system"], !is_server, &["input_system"]),
         )
         .with(
-            MissileSystem,
-            "missile_system",
-            &["missile_spawner_system", "player_movement_system"],
+            ActionSystem,
+            "action_system",
+            &dependencies_with_optional(
+                &["missile_spawner_system", "spawner_system"],
+                !is_server,
+                &["input_system"],
+            ),
         )
+        .with(MissileSystem, "missile_system", &["action_system"])
         .with(
             MonsterDyingSystem::new(damage_history_storage.register_reader()),
             "monster_dying_system",
@@ -76,16 +65,12 @@ pub fn build_game_logic_systems<'a, 'b>(
         .with(
             PlayerDyingSystem::new(damage_history_storage.register_reader()),
             "player_dying_system",
-            &["missile_system", "monster_action_system"],
+            &["action_system"],
         )
         .with(
             WorldPositionTransformSystem,
             "world_position_transform_system",
-            &[
-                "missile_system",
-                "player_movement_system",
-                "monster_movement_system",
-            ],
+            &["action_system"],
         )
         .with(
             StateSwitcherSystem,

@@ -10,7 +10,7 @@ use amethyst::{
 use shred_derive::SystemData;
 
 use ha_animation_prefabs::GameSpriteAnimationPrefab;
-use ha_core::math::Vector2;
+use ha_core::{ecs::components::ClientPlayerActions, math::Vector2};
 
 use crate::ecs::{
     components::HealthUiGraphics,
@@ -53,6 +53,7 @@ pub struct PlayerClientFactory<'s> {
     screen_dimensions: ReadExpect<'s, ScreenDimensions>,
     sprite_animation_handles: WriteStorage<'s, Handle<Prefab<GameSpriteAnimationPrefab>>>,
     health_ui_graphics: WriteStorage<'s, HealthUiGraphics>,
+    client_player_actions: WriteStorage<'s, ClientPlayerActions>,
 }
 
 impl<'s> PlayerClientFactory<'s> {
@@ -83,7 +84,11 @@ impl<'s> PlayerClientFactory<'s> {
                         health: 1.0,
                     },
                 )
-                .expect("Expected to insert a HealthUiGraphics");
+                .expect("Expected to insert a HealthUiGraphics component");
+
+            self.client_player_actions
+                .insert(player_entity, ClientPlayerActions::default())
+                .expect("Expected to insert a ClientPlayerActions component");
         }
     }
 }

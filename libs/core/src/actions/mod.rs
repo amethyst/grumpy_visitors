@@ -6,7 +6,9 @@ pub mod player;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Action<T> {
+    /// Frame number when action was created.
     pub frame_number: u64,
+    /// Action payload.
     pub action: Option<T>,
 }
 

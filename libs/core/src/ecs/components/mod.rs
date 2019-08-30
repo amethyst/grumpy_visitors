@@ -71,12 +71,28 @@ impl Component for Player {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PlayerActions {
+    /// Absence of internal action means that a player stopped walking.
     pub walk_action: Action<PlayerWalkAction>,
+    /// Absence of internal action means that there are no new updates. (Normally they should be?)
     pub look_action: Action<PlayerLookAction>,
+    /// Absence of internal action means that a player didn't cast anything.
     pub cast_action: Action<PlayerCastAction>,
 }
 
 impl Component for PlayerActions {
+    type Storage = DenseVecStorage<Self>;
+}
+
+/// We need this component to backup client actions and restore them
+/// after processing server updates.
+#[derive(Debug, Clone, Default)]
+pub struct ClientPlayerActions {
+    pub walk_action: Option<PlayerWalkAction>,
+    pub look_action: Option<PlayerLookAction>,
+    pub cast_action: Option<PlayerCastAction>,
+}
+
+impl Component for ClientPlayerActions {
     type Storage = DenseVecStorage<Self>;
 }
 
@@ -104,7 +120,7 @@ impl Component for Monster {
     type Storage = DenseVecStorage<Self>;
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Dead;
 
 impl Component for Dead {
@@ -116,6 +132,7 @@ pub struct NetConnectionModel {
     pub reader: ReaderId<NetEvent<EncodedMessage>>,
     pub created_at: Instant,
     pub last_pinged_at: Instant,
+    pub last_acknowledged_update: u64,
 }
 
 impl NetConnectionModel {
@@ -125,6 +142,7 @@ impl NetConnectionModel {
             reader,
             created_at: Instant::now(),
             last_pinged_at: Instant::now(),
+            last_acknowledged_update: 0,
         }
     }
 }
@@ -133,6 +151,7 @@ impl Component for NetConnectionModel {
     type Storage = DenseVecStorage<Self>;
 }
 
+#[derive(Clone, Copy)]
 pub struct EntityNetMetadata {
     pub id: EntityNetIdentifier,
     pub spawned_frame_number: u64,

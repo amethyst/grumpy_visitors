@@ -57,7 +57,7 @@ impl<'s> System<'s> for NetConnectionManagerSystem {
 
     fn run(
         &mut self,
-        (mut incoming_messages, mut connections, mut connection_readers, entities): Self::SystemData,
+        (mut incoming_messages, mut connections, mut net_connection_models, entities): Self::SystemData,
     ) {
         let mut count = 0;
         let mut connection_count = 0;
@@ -67,11 +67,16 @@ impl<'s> System<'s> for NetConnectionManagerSystem {
 
         for (e, connection) in (&entities, &mut connections).join() {
             let mut connection_messages_count = 0;
-            let connection_model = connection_readers
+            let connection_model = net_connection_models
                 .entry(e)
                 .expect("Expected to get the right generation")
                 .or_insert_with(|| {
-                    NetConnectionModel::new(self.next_connection_id(), connection.register_reader())
+                    let connection_id = self.next_connection_id();
+                    incoming_messages.0.push(ConnectionNetEvent {
+                        connection_id,
+                        event: NetEvent::Connected,
+                    });
+                    NetConnectionModel::new(connection_id, connection.register_reader())
                 });
 
             for ev in connection.received_events(&mut connection_model.reader) {
@@ -119,7 +124,7 @@ impl<'s> System<'s> for NetConnectionManagerSystem {
         }
 
         if count > 0 {
-            log::info!(
+            log::trace!(
                 "Received {} messages this frame from {} connections",
                 count,
                 connection_count

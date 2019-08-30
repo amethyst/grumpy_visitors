@@ -1,9 +1,8 @@
-mod action;
+mod action_subsystem;
 mod dying;
-mod movement;
 mod spawner;
 
 pub use self::{
-    action::MonsterActionSystem, dying::MonsterDyingSystem, movement::MonsterMovementSystem,
+    action_subsystem::MonsterActionSubsystem, dying::MonsterDyingSystem,
     spawner::MonsterSpawnerSystem,
 };

@@ -25,7 +25,7 @@ use ha_core::{
     ecs::{
         components::EntityNetMetadata,
         resources::{
-            net::{EntityNetMetadataService, MultiplayerGameState},
+            net::{EntityNetMetadataStorage, MultiplayerGameState},
             GameEngineState, GameLevelState,
         },
         system_data::time::GameTimeService,
@@ -48,7 +48,7 @@ impl SimpleState for PlayingState {
         world.add_resource(SpawnActions(Vec::new()));
         world.add_resource(GameLevelState::default());
 
-        GameTimeService::fetch(&world.res).set_level_started_at();
+        GameTimeService::fetch(&world.res).set_game_start_time();
 
         initialize_players(world);
 
@@ -103,14 +103,14 @@ fn initialize_players(world: &mut World) {
             mut player_client_factory,
             mut entity_net_metadata,
             mut entity_net_metadata_service,
-            mut multiplayer_room_state,
+            multiplayer_room_state,
             multiplayer_game_state,
         ): (
             PlayerFactory,
             PlayerClientFactory,
             WriteStorage<EntityNetMetadata>,
-            WriteExpect<EntityNetMetadataService>,
-            WriteExpect<MultiplayerRoomState>,
+            WriteExpect<EntityNetMetadataStorage>,
+            ReadExpect<MultiplayerRoomState>,
             ReadExpect<MultiplayerGameState>,
         )| {
             if !multiplayer_game_state.is_playing {
@@ -132,9 +132,8 @@ fn initialize_players(world: &mut World) {
                     )
                     .expect("Expected to insert EntityNetMetadata component");
 
-                if player.connection_id == multiplayer_room_state.connection_id {
+                if player.entity_net_id == multiplayer_room_state.player_net_id {
                     player_client_factory.create(player_entity, true);
-                    multiplayer_room_state.player_net_id = player.entity_net_id;
                     main_player = Some(player_entity);
                 } else {
                     player_client_factory.create(player_entity, false);
@@ -161,7 +160,7 @@ fn initialize_players(world: &mut World) {
         ): (
             PlayerFactory,
             WriteStorage<EntityNetMetadata>,
-            WriteExpect<EntityNetMetadataService>,
+            WriteExpect<EntityNetMetadataStorage>,
             WriteExpect<MultiplayerGameState>,
             WriteStorage<NetConnection>,
         )| {
