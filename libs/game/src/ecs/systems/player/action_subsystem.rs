@@ -64,6 +64,7 @@ impl<'s> PlayerActionSubsystem<'s> {
             .as_ref()
             .map(|actions| actions.walk_action.clone());
         let is_controllable = client_walk_action.is_some();
+        let is_latest_frame = self.game_time_service.game_frame_number() == frame_number;
 
         if self.multiplayer_game_state.is_playing {
             let ApplyWalkActionNetArgs {
@@ -118,6 +119,7 @@ impl<'s> PlayerActionSubsystem<'s> {
                         player_position.clone(),
                         player_actions.walk_action.action.clone(),
                         is_controllable,
+                        is_latest_frame,
                     );
                 }
             }
@@ -170,8 +172,9 @@ impl<'s> PlayerActionSubsystem<'s> {
         _player_position: WorldPosition,
         walk_action: Option<PlayerWalkAction>,
         is_controllable: bool,
+        is_latest_frame: bool,
     ) {
-        if is_controllable {
+        if is_controllable && is_latest_frame {
             outcoming_net_updates.walk_action_updates.push(NetUpdate {
                 entity_net_id,
                 data: walk_action,
@@ -187,6 +190,7 @@ impl<'s> PlayerActionSubsystem<'s> {
         player_position: WorldPosition,
         walk_action: Option<PlayerWalkAction>,
         _is_controllable: bool,
+        _is_latest_frame: bool,
     ) {
         outcoming_net_updates
             .player_walk_actions_updates
