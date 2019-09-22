@@ -12,7 +12,7 @@ use ha_core::ecs::{
         Monster, WorldPosition,
     },
     resources::GameLevelState,
-    system_data::time::GameTimeService,
+    system_data::{game_state_helper::GameStateHelper, time::GameTimeService},
 };
 
 use crate::utils::world::{closest_monster, find_first_hit_monster, random_scene_position};
@@ -34,6 +34,7 @@ pub struct MissileSystem;
 impl<'s> System<'s> for MissileSystem {
     type SystemData = (
         GameTimeService<'s>,
+        GameStateHelper<'s>,
         ReadExpect<'s, GameLevelState>,
         Entities<'s>,
         WriteStorage<'s, Monster>,
@@ -46,6 +47,7 @@ impl<'s> System<'s> for MissileSystem {
         &mut self,
         (
             game_time_service,
+            game_state_helper,
             game_scene,
             entities,
             monsters,
@@ -54,6 +56,10 @@ impl<'s> System<'s> for MissileSystem {
             mut world_positions,
         ): Self::SystemData,
     ) {
+        if !game_state_helper.is_running() {
+            return;
+        }
+
         let now = game_time_service.level_duration();
 
         for (missile_entity, mut missile) in (&entities, &mut missiles).join() {

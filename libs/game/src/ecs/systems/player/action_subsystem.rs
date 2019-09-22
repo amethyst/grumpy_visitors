@@ -102,7 +102,7 @@ impl<'s> PlayerActionSubsystem<'s> {
                 };
 
                 if is_new_direction {
-                    log::trace!(
+                    log::debug!(
                         "Applying a new walk update for {} (frame {}): {:?}",
                         entity_net_id,
                         frame_number,

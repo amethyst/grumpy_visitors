@@ -11,7 +11,7 @@ use ha_core::{
     actions::player::{PlayerCastAction, PlayerLookAction, PlayerWalkAction},
     ecs::{
         components::{ClientPlayerActions, WorldPosition},
-        resources::GameEngineState,
+        system_data::game_state_helper::GameStateHelper,
     },
     math::Vector2,
 };
@@ -21,10 +21,10 @@ pub struct InputSystem;
 
 impl<'s> System<'s> for InputSystem {
     type SystemData = (
+        GameStateHelper<'s>,
         Entities<'s>,
         ReadExpect<'s, InputHandler<StringBindings>>,
         ReadExpect<'s, ScreenDimensions>,
-        ReadExpect<'s, GameEngineState>,
         ReadStorage<'s, Camera>,
         ReadStorage<'s, Parent>,
         ReadStorage<'s, Transform>,
@@ -35,10 +35,10 @@ impl<'s> System<'s> for InputSystem {
     fn run(
         &mut self,
         (
+            game_state_helper,
             entities,
             input,
             screen_dimensions,
-            game_engine_state,
             cameras,
             parents,
             transforms,
@@ -46,7 +46,7 @@ impl<'s> System<'s> for InputSystem {
             mut client_player_actions,
         ): Self::SystemData,
     ) {
-        if *game_engine_state != GameEngineState::Playing {
+        if !game_state_helper.is_running() {
             return;
         }
 

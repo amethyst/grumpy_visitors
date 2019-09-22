@@ -5,13 +5,15 @@ pub mod player;
 mod action;
 mod level;
 mod net_connection_manager;
+mod pause;
 mod state_switcher;
 mod world_position_transform;
 mod world_state_subsystem;
 
 pub use self::{
     action::ActionSystem, level::LevelSystem, net_connection_manager::NetConnectionManagerSystem,
-    state_switcher::StateSwitcherSystem, world_position_transform::WorldPositionTransformSystem,
+    pause::PauseSystem, state_switcher::StateSwitcherSystem,
+    world_position_transform::WorldPositionTransformSystem,
     world_state_subsystem::WorldStateSubsystem,
 };
 

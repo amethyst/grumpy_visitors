@@ -11,7 +11,10 @@ use ha_core::{
         monster_spawn::{SpawnActions, SpawnType},
         Action,
     },
-    ecs::{resources::GameLevelState, system_data::time::GameTimeService},
+    ecs::{
+        resources::GameLevelState,
+        system_data::{game_state_helper::GameStateHelper, time::GameTimeService},
+    },
     math::{Vector2, ZeroVector},
 };
 
@@ -24,6 +27,7 @@ pub struct MonsterSpawnerSystem;
 
 impl<'s> System<'s> for MonsterSpawnerSystem {
     type SystemData = (
+        GameStateHelper<'s>,
         GameTimeService<'s>,
         ReadExpect<'s, MonsterDefinitions>,
         ReadExpect<'s, GameLevelState>,
@@ -34,6 +38,7 @@ impl<'s> System<'s> for MonsterSpawnerSystem {
     fn run(
         &mut self,
         (
+            game_state_helper,
             game_time_service,
             monster_definitions,
             game_level_state,
@@ -41,6 +46,10 @@ impl<'s> System<'s> for MonsterSpawnerSystem {
             mut monster_factory,
         ): Self::SystemData,
     ) {
+        if !game_state_helper.is_running() {
+            return;
+        }
+
         let mut rng = rand::thread_rng();
         let SpawnActions(ref mut spawn_actions) = *spawn_actions;
         for spawn_action in spawn_actions.drain(..) {

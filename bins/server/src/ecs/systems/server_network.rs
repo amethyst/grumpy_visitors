@@ -1,4 +1,4 @@
-use amethyst::ecs::{Join, System, WriteExpect, WriteStorage};
+use amethyst::ecs::{Join, ReadExpect, System, WriteExpect, WriteStorage};
 
 use ha_core::{
     ecs::{
@@ -8,6 +8,7 @@ use ha_core::{
             world::{FramedUpdates, PlayerActionUpdates},
             GameEngineState, NewGameEngineState,
         },
+        system_data::time::GameTimeService,
     },
     net::{
         client_message::ClientMessagePayload, server_message::ServerMessagePayload,
@@ -18,6 +19,9 @@ use ha_game::{
     ecs::resources::ConnectionEvents,
     utils::net::{broadcast_message_reliable, send_message_reliable},
 };
+
+// Pause the game if we have a client that hasn't responded for the last 180 frames (3 secs).
+const PAUSE_FRAME_THRESHOLD: u64 = 180;
 
 pub struct ServerNetworkSystem {
     host_connection_id: ConnectionIdentifier,
@@ -33,6 +37,8 @@ impl ServerNetworkSystem {
 
 impl<'s> System<'s> for ServerNetworkSystem {
     type SystemData = (
+        GameTimeService<'s>,
+        ReadExpect<'s, GameEngineState>,
         WriteExpect<'s, ConnectionEvents>,
         WriteExpect<'s, MultiplayerGameState>,
         WriteExpect<'s, NewGameEngineState>,
@@ -44,6 +50,8 @@ impl<'s> System<'s> for ServerNetworkSystem {
     fn run(
         &mut self,
         (
+            game_time_service,
+            game_engine_state,
             mut connection_events,
             mut multiplayer_game_state,
             mut new_game_engine_state,
@@ -89,7 +97,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
                 }
                 NetEvent::Message(ClientMessagePayload::WalkActions(mut action)) => {
                     if let Some(update) = framed_updates.update_frame(action.frame_number, true) {
-                        log::trace!(
+                        log::info!(
                             "Added an update for frame {} to frame {}",
                             action.frame_number,
                             update.frame_number
@@ -114,7 +122,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
                                 connection_id
                             )
                         });
-                    connection_model.last_acknowledged_update = frame_number;
+                    connection_model.last_acknowledged_update = Some(frame_number);
                 }
                 NetEvent::Disconnected => {
                     multiplayer_game_state
@@ -130,6 +138,28 @@ impl<'s> System<'s> for ServerNetworkSystem {
                 &mut net_connections,
                 &ServerMessagePayload::UpdateRoomPlayers(players.to_owned()),
             );
+        }
+
+        // Pause server if one of clients is lagging behind.
+        if *game_engine_state == GameEngineState::Playing && multiplayer_game_state.is_playing {
+            multiplayer_game_state.waiting_network = false;
+            let min_last_acknowledged_update = (&net_connection_models)
+                .join()
+                .map(|net_connection_model| net_connection_model.last_acknowledged_update)
+                .min_by(|update_a, update_b| update_a.cmp(update_b));
+            if let Some(min_last_acknowledged_update) = min_last_acknowledged_update {
+                let frames_ahead = min_last_acknowledged_update
+                    .map(|update_number| {
+                        game_time_service
+                            .game_frame_number()
+                            .saturating_sub(update_number)
+                    })
+                    .unwrap_or_else(|| game_time_service.game_frame_number() + 1);
+                log::trace!("Frames ahead: {}", frames_ahead);
+                if frames_ahead > PAUSE_FRAME_THRESHOLD {
+                    multiplayer_game_state.waiting_network = true;
+                }
+            }
         }
     }
 }

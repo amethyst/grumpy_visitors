@@ -2,7 +2,10 @@ use amethyst::ecs::{
     prelude::ComponentEvent, BitSet, Entities, Join, ReadStorage, ReaderId, System, WriteStorage,
 };
 
-use ha_core::ecs::components::{damage_history::DamageHistory, Monster};
+use ha_core::ecs::{
+    components::{damage_history::DamageHistory, Monster},
+    system_data::game_state_helper::GameStateHelper,
+};
 
 pub struct MonsterDyingSystem {
     damage_history_reader: ReaderId<ComponentEvent>,
@@ -20,12 +23,20 @@ impl MonsterDyingSystem {
 
 impl<'s> System<'s> for MonsterDyingSystem {
     type SystemData = (
+        GameStateHelper<'s>,
         Entities<'s>,
         ReadStorage<'s, DamageHistory>,
         WriteStorage<'s, Monster>,
     );
 
-    fn run(&mut self, (entities, damage_histories, mut monsters): Self::SystemData) {
+    fn run(
+        &mut self,
+        (game_state_helper, entities, damage_histories, mut monsters): Self::SystemData,
+    ) {
+        if !game_state_helper.is_running() {
+            return;
+        }
+
         self.monsters_hit.clear();
         let events = damage_histories
             .channel()

@@ -1,15 +1,14 @@
-use amethyst::ecs::{Join, ReadExpect, System, WriteExpect, WriteStorage};
+use amethyst::ecs::{Join, System, WriteExpect, WriteStorage};
 
 use std::iter::FromIterator;
 
+use crate::ecs::systems::client_network::INTERPOLATION_FRAME_DELAY;
 use ha_core::{
     ecs::{
-        resources::{
-            net::MultiplayerGameState,
-            world::{ClientWorldUpdates, ImmediatePlayerActionsUpdates, PlayerLookActionUpdates},
-            GameEngineState,
+        resources::world::{
+            ClientWorldUpdates, ImmediatePlayerActionsUpdates, PlayerLookActionUpdates,
         },
-        system_data::time::GameTimeService,
+        system_data::{game_state_helper::GameStateHelper, time::GameTimeService},
     },
     net::{client_message::ClientMessagePayload, NetConnection},
 };
@@ -25,8 +24,7 @@ pub struct GameUpdatesBroadcastingSystem {
 impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
     type SystemData = (
         GameTimeService<'s>,
-        ReadExpect<'s, GameEngineState>,
-        WriteExpect<'s, MultiplayerGameState>,
+        GameStateHelper<'s>,
         WriteExpect<'s, ClientWorldUpdates>,
         WriteStorage<'s, NetConnection>,
     );
@@ -35,13 +33,12 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
         &mut self,
         (
             game_time_service,
-            game_engine_state,
-            multiplayer_game_state,
+            game_state_helper,
             mut client_world_updates,
             mut net_connections,
         ): Self::SystemData,
     ) {
-        if !(*game_engine_state == GameEngineState::Playing && multiplayer_game_state.is_playing) {
+        if !game_state_helper.multiplayer_is_running() {
             return;
         }
 
@@ -54,7 +51,7 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
             send_message_reliable(
                 net_connection,
                 &ClientMessagePayload::WalkActions(ImmediatePlayerActionsUpdates {
-                    frame_number: game_time_service.game_frame_number(),
+                    frame_number: game_time_service.game_frame_number() + INTERPOLATION_FRAME_DELAY,
                     updates: client_world_updates.walk_action_updates.clone(),
                 }),
             );
@@ -65,7 +62,7 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
             send_message_reliable(
                 net_connection,
                 &ClientMessagePayload::CastActions(ImmediatePlayerActionsUpdates {
-                    frame_number: game_time_service.game_frame_number(),
+                    frame_number: game_time_service.game_frame_number() + INTERPOLATION_FRAME_DELAY,
                     updates: client_world_updates.cast_action_updates.clone(),
                 }),
             );
@@ -84,7 +81,9 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
         send_message_reliable(
             net_connection,
             &ClientMessagePayload::LookActions(PlayerLookActionUpdates {
-                updates: Vec::from_iter(client_world_updates.look_actions_updates.drain(..)),
+                updates: Vec::from_iter(client_world_updates.look_actions_updates.drain(..).map(
+                    |(frame_number, update)| (frame_number + INTERPOLATION_FRAME_DELAY, update),
+                )),
             }),
         );
     }

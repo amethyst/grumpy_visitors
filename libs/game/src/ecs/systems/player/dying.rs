@@ -7,6 +7,7 @@ use ha_core::{
     ecs::{
         components::{damage_history::DamageHistory, Dead, Player},
         resources::{net::MultiplayerGameState, GameLevelState},
+        system_data::game_state_helper::GameStateHelper,
     },
     math::{Vector2, ZeroVector},
 };
@@ -27,6 +28,7 @@ impl PlayerDyingSystem {
 
 impl<'s> System<'s> for PlayerDyingSystem {
     type SystemData = (
+        GameStateHelper<'s>,
         Entities<'s>,
         ReadStorage<'s, DamageHistory>,
         ReadExpect<'s, MultiplayerGameState>,
@@ -38,6 +40,7 @@ impl<'s> System<'s> for PlayerDyingSystem {
     fn run(
         &mut self,
         (
+            game_state_helper,
             entities,
             damage_histories,
             multiplayer_game_state,
@@ -46,6 +49,10 @@ impl<'s> System<'s> for PlayerDyingSystem {
             mut dead,
         ): Self::SystemData,
     ) {
+        if !game_state_helper.is_running() {
+            return;
+        }
+
         self.players_hit.clear();
         let events = damage_histories
             .channel()

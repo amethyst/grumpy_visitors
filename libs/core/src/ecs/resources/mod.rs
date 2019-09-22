@@ -8,6 +8,7 @@ use crate::math::Vector2;
 pub struct GameTime {
     pub level_started_at: Duration,
     pub started_at_frame_number: u64,
+    pub frames_skipped: u64,
 }
 
 impl Default for GameTime {
@@ -15,6 +16,7 @@ impl Default for GameTime {
         Self {
             level_started_at: Duration::new(0, 0),
             started_at_frame_number: 0,
+            frames_skipped: 0,
         }
     }
 }

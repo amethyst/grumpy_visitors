@@ -132,7 +132,7 @@ pub struct NetConnectionModel {
     pub reader: ReaderId<NetEvent<EncodedMessage>>,
     pub created_at: Instant,
     pub last_pinged_at: Instant,
-    pub last_acknowledged_update: u64,
+    pub last_acknowledged_update: Option<u64>,
 }
 
 impl NetConnectionModel {
@@ -142,7 +142,7 @@ impl NetConnectionModel {
             reader,
             created_at: Instant::now(),
             last_pinged_at: Instant::now(),
-            last_acknowledged_update: 0,
+            last_acknowledged_update: None,
         }
     }
 }

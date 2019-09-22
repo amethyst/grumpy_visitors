@@ -36,11 +36,8 @@ pub fn build_game_logic_systems<'a, 'b>(
     let mut damage_history_storage = world.write_storage::<DamageHistory>();
 
     let game_data_builder = game_data_builder
-        .with(
-            LevelSystem::default(),
-            "level_system",
-            &["game_network_system"],
-        )
+        .with(PauseSystem, "pause_system", &["game_network_system"])
+        .with(LevelSystem::default(), "level_system", &["pause_system"])
         .with(MonsterSpawnerSystem, "spawner_system", &["level_system"])
         .with(
             MissileSpawnerSystem,

@@ -47,9 +47,12 @@ impl WorldStates {
         &mut self,
         start_frame_number: u64,
     ) -> impl Iterator<Item = &mut SavedWorldState> {
-        self.world_states
-            .iter_mut()
-            .skip_while(move |world_state| world_state.frame_number < start_frame_number)
+        let elements_to_skip = self
+            .world_states
+            .iter()
+            .position(|world_state| world_state.frame_number == start_frame_number)
+            .unwrap_or_else(|| self.world_states.len().saturating_sub(1));
+        self.world_states.iter_mut().skip(elements_to_skip)
     }
 
     pub fn states_iter(&self, start_frame_number: u64) -> impl Iterator<Item = &SavedWorldState> {
@@ -180,6 +183,11 @@ impl<T: FramedUpdate + ::std::fmt::Debug> FramedUpdates<T> {
         };
 
         let update_index = if update_index.is_none() && lag_compensate {
+            log::debug!(
+                "Lag compensating while updating frame {}: skip {} frames",
+                frame_number,
+                frames_to_skip
+            );
             Some(frames_to_skip)
         } else {
             update_index.map(|index| index + frames_to_skip)

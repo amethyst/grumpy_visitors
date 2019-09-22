@@ -35,7 +35,10 @@ use ha_game::{
 };
 
 use crate::{
-    ecs::{resources::ServerCommand, systems::*},
+    ecs::{
+        resources::{LastAcknowledgedUpdate, ServerCommand},
+        systems::*,
+    },
     rendering::HealthUiPlugin,
 };
 
@@ -50,10 +53,10 @@ fn main() -> amethyst::Result<()> {
 
     Logger::from_config(Default::default())
         .level_for("gfx_backend_vulkan", LogLevelFilter::Warn)
-        // .level_for(
-        //     "ha_game::ecs::systems::net_connection_manager",
-        //     LogLevelFilter::Trace,
-        // )
+        //.level_for(
+        //    "ha_game::ecs::systems::net_connection_manager",
+        //    LogLevelFilter::Trace,
+        //)
         .start();
 
     let settings = Settings::new()?;
@@ -67,6 +70,7 @@ fn main() -> amethyst::Result<()> {
     builder.world.add_resource(ServerCommand::new());
     builder.world.add_resource(MultiplayerRoomState::new());
     builder.world.add_resource(ClientWorldUpdates::default());
+    builder.world.add_resource(LastAcknowledgedUpdate(0));
     builder
         .world
         .add_resource(FramedUpdates::<ServerWorldUpdate>::default());

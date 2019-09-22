@@ -16,9 +16,9 @@ use ha_core::{
         resources::{
             net::{EntityNetMetadataStorage, MultiplayerGameState},
             world::{FramedUpdates, SavedWorldState, WorldStates},
-            GameEngineState, GameLevelState,
+            GameLevelState,
         },
-        system_data::time::GameTimeService,
+        system_data::{game_state_helper::GameStateHelper, time::GameTimeService},
     },
 };
 
@@ -48,7 +48,7 @@ impl<'s> System<'s> for ActionSystem {
     type SystemData = (
         Entities<'s>,
         GameTimeService<'s>,
-        ReadExpect<'s, GameEngineState>,
+        GameStateHelper<'s>,
         ReadExpect<'s, GameLevelState>,
         ReadExpect<'s, MultiplayerGameState>,
         WriteExpect<'s, FramedUpdates<FrameUpdate>>,
@@ -72,7 +72,7 @@ impl<'s> System<'s> for ActionSystem {
         (
             entities,
             game_time_service,
-            game_engine_state,
+            game_state_helper,
             game_level_state,
             multiplayer_game_state,
             mut framed_updates,
@@ -91,7 +91,7 @@ impl<'s> System<'s> for ActionSystem {
             damage_histories,
         ): Self::SystemData,
     ) {
-        if *game_engine_state != GameEngineState::Playing {
+        if !game_state_helper.is_running() {
             return;
         }
         log::trace!("Frame number: {}", game_time_service.game_frame_number());
@@ -218,7 +218,7 @@ impl<'s> System<'s> for ActionSystem {
             world_state_subsystem.save_world_state(world_state);
         }
 
-        framed_updates.oldest_updated_frame = game_time_service.game_frame_number();
+        framed_updates.oldest_updated_frame = game_time_service.game_frame_number() + 1;
     }
 }
 

@@ -6,7 +6,7 @@ use ha_core::ecs::{
     components::{
         missile::MissileTarget, Dead, Monster, PlayerActions, PlayerLastCastedSpells, WorldPosition,
     },
-    system_data::time::GameTimeService,
+    system_data::{game_state_helper::GameStateHelper, time::GameTimeService},
 };
 
 use crate::{
@@ -21,6 +21,7 @@ const SPELL_CAST_COOLDOWN: Duration = Duration::from_millis(500);
 impl<'s> System<'s> for MissileSpawnerSystem {
     type SystemData = (
         GameTimeService<'s>,
+        GameStateHelper<'s>,
         Entities<'s>,
         MissileFactory<'s>,
         ReadStorage<'s, Monster>,
@@ -34,6 +35,7 @@ impl<'s> System<'s> for MissileSpawnerSystem {
         &mut self,
         (
             game_time_service,
+            game_state_helper,
             entities,
             mut missile_factory,
             monsters,
@@ -43,6 +45,10 @@ impl<'s> System<'s> for MissileSpawnerSystem {
             mut player_last_casted_spells,
         ): Self::SystemData,
     ) {
+        if !game_state_helper.is_running() {
+            return;
+        }
+
         let now = game_time_service.level_duration();
 
         for (player_actions, player_last_casted_spells, _) in

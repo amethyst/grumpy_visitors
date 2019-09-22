@@ -1,12 +1,12 @@
-use amethyst::ecs::{ReadExpect, System, WriteExpect};
+use amethyst::ecs::{System, WriteExpect};
 
 use std::time::Duration;
 
 use ha_core::{
     actions::monster_spawn::{Count, SpawnAction, SpawnActions, SpawnType},
     ecs::{
-        resources::{GameEngineState, GameLevelState},
-        system_data::time::GameTimeService,
+        resources::GameLevelState,
+        system_data::{game_state_helper::GameStateHelper, time::GameTimeService},
     },
 };
 
@@ -19,18 +19,22 @@ pub struct LevelSystem;
 
 impl<'s> System<'s> for LevelSystem {
     type SystemData = (
+        GameStateHelper<'s>,
         GameTimeService<'s>,
-        ReadExpect<'s, GameEngineState>,
         WriteExpect<'s, GameLevelState>,
         WriteExpect<'s, SpawnActions>,
     );
 
     fn run(
         &mut self,
-        (game_time_service, game_engine_state, mut game_level_state, mut spawn_actions): Self::SystemData,
+        (
+            game_state_helper,
+            game_time_service,
+            mut game_level_state,
+            mut spawn_actions,
+        ): Self::SystemData,
     ) {
-        if let GameEngineState::Playing = *game_engine_state {
-        } else {
+        if !game_state_helper.is_running() {
             return;
         }
 

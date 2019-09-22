@@ -17,6 +17,7 @@ pub struct MultiplayerRoomPlayer {
 pub struct MultiplayerGameState {
     pub is_playing: bool,
     pub players: Vec<MultiplayerRoomPlayer>,
+    pub waiting_network: bool,
     players_updated: bool,
 }
 
@@ -25,6 +26,7 @@ impl MultiplayerGameState {
         Self {
             is_playing: false,
             players: Vec::new(),
+            waiting_network: false,
             players_updated: false,
         }
     }

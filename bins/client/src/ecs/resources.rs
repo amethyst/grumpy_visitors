@@ -7,6 +7,8 @@ use std::{
     time::Instant,
 };
 
+pub struct LastAcknowledgedUpdate(pub u64);
+
 pub struct ServerCommand {
     process: Option<ServerProcess>,
 }

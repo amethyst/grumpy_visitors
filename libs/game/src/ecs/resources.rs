@@ -2,7 +2,7 @@ use amethyst::ecs::World;
 #[cfg(feature = "client")]
 use amethyst::renderer::palette::LinSrgba;
 
-use std::{collections::HashMap, time::Duration};
+use std::collections::HashMap;
 
 #[cfg(feature = "client")]
 use ha_client_shared::{
@@ -14,18 +14,6 @@ use ha_core::net::client_message::ClientMessagePayload;
 #[cfg(feature = "client")]
 use ha_core::net::server_message::ServerMessagePayload;
 use ha_core::{actions::mob::MobAttackType, net::ConnectionNetEvent};
-
-pub struct GameTime {
-    pub level_started_at: Duration,
-}
-
-impl Default for GameTime {
-    fn default() -> Self {
-        Self {
-            level_started_at: Duration::new(0, 0),
-        }
-    }
-}
 
 #[derive(Clone)]
 pub struct MonsterDefinition {
