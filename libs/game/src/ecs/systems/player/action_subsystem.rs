@@ -18,7 +18,7 @@ use ha_core::{
         system_data::time::GameTimeService,
     },
     math::{Vector2, ZeroVector},
-    net::EntityNetIdentifier,
+    net::NetIdentifier,
 };
 
 use super::super::{OutcomingNetUpdates, WriteStorageCell};
@@ -34,7 +34,7 @@ pub struct PlayerActionSubsystem<'s> {
 }
 
 pub struct ApplyWalkActionNetArgs<'a> {
-    pub entity_net_id: EntityNetIdentifier,
+    pub entity_net_id: NetIdentifier,
     pub outcoming_net_updates: &'a mut OutcomingNetUpdates,
     pub updates: Option<(Option<WorldPosition>, Option<PlayerWalkAction>)>,
 }
@@ -168,7 +168,7 @@ impl<'s> PlayerActionSubsystem<'s> {
     pub fn add_walk_action_net_update(
         &self,
         outcoming_net_updates: &mut OutcomingNetUpdates,
-        entity_net_id: EntityNetIdentifier,
+        entity_net_id: NetIdentifier,
         _player_position: WorldPosition,
         walk_action: Option<PlayerWalkAction>,
         is_controllable: bool,
@@ -186,7 +186,7 @@ impl<'s> PlayerActionSubsystem<'s> {
     pub fn add_walk_action_net_update(
         &self,
         outcoming_net_updates: &mut OutcomingNetUpdates,
-        entity_net_id: EntityNetIdentifier,
+        entity_net_id: NetIdentifier,
         player_position: WorldPosition,
         walk_action: Option<PlayerWalkAction>,
         _is_controllable: bool,

@@ -3,7 +3,7 @@ use shred_derive::SystemData;
 
 use crate::{
     ecs::{components::EntityNetMetadata, resources::net::EntityNetMetadataStorage},
-    net::EntityNetIdentifier,
+    net::NetIdentifier,
 };
 
 #[derive(SystemData)]
@@ -13,7 +13,7 @@ pub struct EntityNetMetadataService<'s> {
 }
 
 impl<'s> EntityNetMetadataService<'s> {
-    pub fn get_entity(&self, entity_net_id: EntityNetIdentifier) -> Entity {
+    pub fn get_entity(&self, entity_net_id: NetIdentifier) -> Entity {
         self.storage.get_entity(entity_net_id)
     }
 

@@ -11,8 +11,8 @@ use ha_core::{
         system_data::time::GameTimeService,
     },
     net::{
-        client_message::ClientMessagePayload, server_message::ServerMessagePayload,
-        ConnectionIdentifier, NetConnection, NetEvent,
+        client_message::ClientMessagePayload, server_message::ServerMessagePayload, NetConnection,
+        NetEvent, NetIdentifier,
     },
 };
 use ha_game::{
@@ -24,7 +24,7 @@ use ha_game::{
 const PAUSE_FRAME_THRESHOLD: u64 = 180;
 
 pub struct ServerNetworkSystem {
-    host_connection_id: ConnectionIdentifier,
+    host_connection_id: NetIdentifier,
 }
 
 impl ServerNetworkSystem {

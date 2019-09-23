@@ -53,10 +53,11 @@ fn main() -> amethyst::Result<()> {
 
     Logger::from_config(Default::default())
         .level_for("gfx_backend_vulkan", LogLevelFilter::Warn)
-        //.level_for(
-        //    "ha_game::ecs::systems::net_connection_manager",
-        //    LogLevelFilter::Trace,
-        //)
+        .level_for("ha_game::ecs::systems", LogLevelFilter::Debug)
+        .level_for(
+            "ha_game::ecs::systems::net_connection_manager",
+            LogLevelFilter::Trace,
+        )
         .start();
 
     let settings = Settings::new()?;

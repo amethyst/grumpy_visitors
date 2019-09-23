@@ -13,8 +13,8 @@ use ha_core::{
         system_data::time::GameTimeService,
     },
     net::{
-        client_message::ClientMessagePayload, server_message::ServerMessagePayload,
-        EntityNetIdentifier, NetConnection, NetEvent,
+        client_message::ClientMessagePayload, server_message::ServerMessagePayload, NetConnection,
+        NetEvent, NetIdentifier,
     },
 };
 use ha_game::{ecs::resources::ConnectionEvents, utils::net::send_message_reliable};
@@ -164,7 +164,7 @@ impl<'s> System<'s> for ClientNetworkSystem {
 
 // Expects incoming_updates to be sorted (lowest frame first).
 fn apply_world_updates(
-    player_net_id: EntityNetIdentifier,
+    player_net_id: NetIdentifier,
     framed_updates: &mut FramedUpdates<ServerWorldUpdate>,
     mut incoming_updates: Vec<ServerWorldUpdate>,
 ) {

@@ -8,10 +8,7 @@ use amethyst::{
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
 use ha_animation_prefabs::GameSpriteAnimationPrefab;
-use ha_core::{
-    math::Vector3,
-    net::{ConnectionIdentifier, EntityNetIdentifier},
-};
+use ha_core::{math::Vector3, net::NetIdentifier};
 
 use crate::utils::graphic_helpers::{
     create_color_material, create_mesh, generate_circle_vertices, generate_rectangle_vertices,
@@ -77,8 +74,8 @@ pub struct MultiplayerRoomState {
     pub has_sent_start_package: bool,
     pub server_addr: SocketAddr,
     pub is_host: bool,
-    pub connection_id: ConnectionIdentifier,
-    pub player_net_id: EntityNetIdentifier,
+    pub connection_id: NetIdentifier,
+    pub player_net_id: NetIdentifier,
 }
 
 impl MultiplayerRoomState {

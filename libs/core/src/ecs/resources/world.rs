@@ -12,7 +12,7 @@ use crate::{
         damage_history::DamageHistoryEntries, missile::Missile, Dead, Monster, Player,
         PlayerActions, WorldPosition,
     },
-    net::{EntityNetIdentifier, MergableNetUpdates, NetUpdate, NetUpdateWithPosition},
+    net::{MergableNetUpdates, NetIdentifier, NetUpdate, NetUpdateWithPosition},
 };
 
 const SAVED_WORLD_STATES_LIMIT: usize = 600;
@@ -361,7 +361,7 @@ pub struct ServerWorldUpdate {
     pub player_walk_actions_updates: Vec<NetUpdateWithPosition<Option<PlayerWalkAction>>>,
     pub player_look_actions_updates: Vec<NetUpdate<Option<PlayerLookAction>>>,
     pub player_cast_actions_updates: Vec<NetUpdate<Option<PlayerCastAction>>>,
-    pub mob_actions_updates: Vec<NetUpdateWithPosition<MobAction<EntityNetIdentifier>>>,
+    pub mob_actions_updates: Vec<NetUpdateWithPosition<MobAction<NetIdentifier>>>,
     pub damage_histories_updates: Vec<NetUpdate<DamageHistoryEntries>>,
 }
 

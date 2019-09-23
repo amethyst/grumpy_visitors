@@ -9,11 +9,10 @@ use crate::ecs::components::WorldPosition;
 
 pub type EncodedMessage = Vec<u8>;
 pub type NetConnection = network::NetConnection<EncodedMessage>;
-pub type EntityNetIdentifier = u64;
-pub type ConnectionIdentifier = usize;
+pub type NetIdentifier = u64;
 
 pub struct ConnectionNetEvent<T> {
-    pub connection_id: usize,
+    pub connection_id: NetIdentifier,
     pub event: NetEvent<T>,
 }
 
@@ -23,31 +22,31 @@ pub enum NetEvent<T> {
     Disconnected,
 }
 
-pub trait IdentifiableNetUpdate {
-    fn entity_net_id(&self) -> EntityNetIdentifier;
+pub trait NetIdentifiable {
+    fn net_id(&self) -> NetIdentifier;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetUpdate<T> {
-    pub entity_net_id: EntityNetIdentifier,
+    pub entity_net_id: NetIdentifier,
     pub data: T,
 }
 
-impl<T> IdentifiableNetUpdate for NetUpdate<T> {
-    fn entity_net_id(&self) -> EntityNetIdentifier {
+impl<T> NetIdentifiable for NetUpdate<T> {
+    fn net_id(&self) -> NetIdentifier {
         self.entity_net_id
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetUpdateWithPosition<T> {
-    pub entity_net_id: EntityNetIdentifier,
+    pub entity_net_id: NetIdentifier,
     pub position: WorldPosition,
     pub data: T,
 }
 
-impl<T> IdentifiableNetUpdate for NetUpdateWithPosition<T> {
-    fn entity_net_id(&self) -> EntityNetIdentifier {
+impl<T> NetIdentifiable for NetUpdateWithPosition<T> {
+    fn net_id(&self) -> NetIdentifier {
         self.entity_net_id
     }
 }
@@ -56,13 +55,9 @@ pub trait MergableNetUpdates {
     fn merge(&mut self, other: Self);
 }
 
-impl<T: IdentifiableNetUpdate> MergableNetUpdates for Vec<T> {
+impl<T: NetIdentifiable> MergableNetUpdates for Vec<T> {
     fn merge(&mut self, mut other: Self) {
-        self.retain(|update| {
-            !other
-                .iter()
-                .any(|other| update.entity_net_id() == other.entity_net_id())
-        });
+        self.retain(|update| !other.iter().any(|other| update.net_id() == other.net_id()));
         self.append(&mut other);
     }
 }

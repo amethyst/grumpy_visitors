@@ -3,12 +3,12 @@ use serde_derive::{Deserialize, Serialize};
 
 use std::{collections::HashMap, ops::Range};
 
-use crate::net::{ConnectionIdentifier, EntityNetIdentifier};
+use crate::net::NetIdentifier;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MultiplayerRoomPlayer {
-    pub connection_id: ConnectionIdentifier,
-    pub entity_net_id: EntityNetIdentifier,
+    pub connection_id: NetIdentifier,
+    pub entity_net_id: NetIdentifier,
     pub nickname: String,
     pub is_host: bool,
 }
@@ -47,23 +47,23 @@ impl MultiplayerGameState {
 }
 
 pub struct EntityNetMetadataStorage {
-    range: Range<EntityNetIdentifier>,
-    mapping: HashMap<EntityNetIdentifier, Entity>,
+    range: Range<NetIdentifier>,
+    mapping: HashMap<NetIdentifier, Entity>,
 }
 
 impl EntityNetMetadataStorage {
     pub fn new() -> Self {
         Self {
-            range: 0..EntityNetIdentifier::max_value(),
+            range: 0..NetIdentifier::max_value(),
             mapping: HashMap::new(),
         }
     }
 
-    pub fn get_entity(&self, entity_net_id: EntityNetIdentifier) -> Entity {
+    pub fn get_entity(&self, entity_net_id: NetIdentifier) -> Entity {
         self.mapping[&entity_net_id]
     }
 
-    pub fn register_new_entity(&mut self, entity: Entity) -> EntityNetIdentifier {
+    pub fn register_new_entity(&mut self, entity: Entity) -> NetIdentifier {
         let entity_net_id = self
             .range
             .next()
@@ -72,12 +72,12 @@ impl EntityNetMetadataStorage {
         entity_net_id
     }
 
-    pub fn set_net_id(&mut self, entity: Entity, entity_net_id: EntityNetIdentifier) {
+    pub fn set_net_id(&mut self, entity: Entity, entity_net_id: NetIdentifier) {
         self.mapping.insert(entity_net_id, entity);
     }
 
     pub fn reset(&mut self) {
-        self.range = 0..EntityNetIdentifier::max_value();
+        self.range = 0..NetIdentifier::max_value();
         self.mapping.clear();
     }
 }

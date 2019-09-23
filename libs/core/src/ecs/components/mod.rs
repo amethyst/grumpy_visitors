@@ -18,7 +18,7 @@ use crate::{
         Action,
     },
     math::{Vector2, ZeroVector},
-    net::{ConnectionIdentifier, EncodedMessage, EntityNetIdentifier},
+    net::{EncodedMessage, NetIdentifier},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, Shrinkwrap)]
@@ -128,7 +128,7 @@ impl Component for Dead {
 }
 
 pub struct NetConnectionModel {
-    pub id: ConnectionIdentifier,
+    pub id: NetIdentifier,
     pub reader: ReaderId<NetEvent<EncodedMessage>>,
     pub created_at: Instant,
     pub last_pinged_at: Instant,
@@ -136,7 +136,7 @@ pub struct NetConnectionModel {
 }
 
 impl NetConnectionModel {
-    pub fn new(id: ConnectionIdentifier, reader: ReaderId<NetEvent<EncodedMessage>>) -> Self {
+    pub fn new(id: NetIdentifier, reader: ReaderId<NetEvent<EncodedMessage>>) -> Self {
         Self {
             id,
             reader,
@@ -153,7 +153,7 @@ impl Component for NetConnectionModel {
 
 #[derive(Clone, Copy)]
 pub struct EntityNetMetadata {
-    pub id: EntityNetIdentifier,
+    pub id: NetIdentifier,
     pub spawned_frame_number: u64,
 }
 

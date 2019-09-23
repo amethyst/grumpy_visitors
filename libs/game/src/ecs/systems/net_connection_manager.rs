@@ -9,8 +9,8 @@ use std::time::{Duration, Instant};
 use ha_core::{
     ecs::components::NetConnectionModel,
     net::{
-        client_message::ClientMessagePayload, server_message::ServerMessagePayload,
-        ConnectionIdentifier, EncodedMessage, NetConnection,
+        client_message::ClientMessagePayload, server_message::ServerMessagePayload, EncodedMessage,
+        NetConnection, NetIdentifier,
     },
 };
 
@@ -30,7 +30,7 @@ type OutcomingMessage = ServerMessagePayload;
 
 #[derive(Default)]
 pub struct NetConnectionManagerSystem {
-    connection_id_autoinc: ConnectionIdentifier,
+    connection_id_autoinc: NetIdentifier,
 }
 
 impl NetConnectionManagerSystem {
@@ -40,7 +40,7 @@ impl NetConnectionManagerSystem {
         }
     }
 
-    fn next_connection_id(&mut self) -> ConnectionIdentifier {
+    fn next_connection_id(&mut self) -> NetIdentifier {
         let id = self.connection_id_autoinc;
         self.connection_id_autoinc = self.connection_id_autoinc.wrapping_add(1);
         id
