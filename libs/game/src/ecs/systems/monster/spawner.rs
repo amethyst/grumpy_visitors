@@ -62,7 +62,7 @@ impl<'s> System<'s> for MonsterSpawnerSystem {
                 |position: Vector2,
                  action: Action<MobAction<Entity>>,
                  monster_definition: &MonsterDefinition| {
-                    let destination = if let Some(MobAction::Move(destination)) = action.action {
+                    let destination = if let MobAction::Move(destination) = action.action {
                         destination
                     } else {
                         Vector2::zero()
@@ -94,7 +94,14 @@ impl<'s> System<'s> for MonsterSpawnerSystem {
                             },
                         );
                         let position = side_start + random_displacement;
-                        spawn_monster(position, Action::default(), ghoul);
+                        spawn_monster(
+                            position,
+                            Action {
+                                frame_number: game_time_service.game_frame_number(),
+                                action: MobAction::Idle,
+                            },
+                            ghoul,
+                        );
                     }
                 }
                 SpawnType::Borderline => {
@@ -109,7 +116,7 @@ impl<'s> System<'s> for MonsterSpawnerSystem {
                     for _ in 0..monsters_to_spawn {
                         let action = Action {
                             frame_number: game_time_service.game_frame_number(),
-                            action: Some(MobAction::Move(position + destination)),
+                            action: MobAction::Move(position + destination),
                         };
                         spawn_monster(position, action, ghoul);
                         position += spawn_distance;

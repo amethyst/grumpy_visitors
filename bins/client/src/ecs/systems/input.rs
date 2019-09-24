@@ -103,9 +103,9 @@ impl InputSystem {
             Vector2::new(position.x, position.y)
         };
 
-        client_player_actions.look_action = Some(PlayerLookAction {
+        client_player_actions.look_action = PlayerLookAction {
             direction: mouse_world_position - player_position,
-        });
+        };
 
         if input.mouse_button_is_down(MouseButton::Left) {
             client_player_actions.cast_action = Some(PlayerCastAction {
@@ -132,7 +132,9 @@ impl InputSystem {
             None
         };
 
-        let action = direction.map(|direction| PlayerWalkAction { direction });
+        let action = direction
+            .map(|direction| PlayerWalkAction::Walk { direction })
+            .unwrap_or(PlayerWalkAction::Stop);
         client_player_actions.walk_action = action;
     }
 }

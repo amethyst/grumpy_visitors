@@ -17,7 +17,10 @@ use ha_core::{
         NetEvent, NetIdentifier,
     },
 };
-use ha_game::{ecs::resources::ConnectionEvents, utils::net::send_message_reliable};
+use ha_game::{
+    ecs::resources::ConnectionEvents,
+    utils::net::{send_message_reliable, send_message_unreliable},
+};
 
 use crate::ecs::resources::LastAcknowledgedUpdate;
 
@@ -123,7 +126,7 @@ impl<'s> System<'s> for ClientNetworkSystem {
                         .join()
                         .next()
                         .expect("Expected a server connection");
-                    send_message_reliable(
+                    send_message_unreliable(
                         connection,
                         &ClientMessagePayload::AcknowledgeWorldUpdate(id),
                     );

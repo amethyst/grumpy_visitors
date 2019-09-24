@@ -7,14 +7,14 @@ use ha_core::ecs::resources::world::{ClientWorldUpdates, ServerWorldUpdate};
 #[cfg(not(feature = "client"))]
 use ha_core::ecs::resources::world::{PlayerActionUpdates, ServerWorldUpdates};
 use ha_core::{
-    actions::player::PlayerWalkAction,
+    actions::{player::PlayerWalkAction, ClientActionUpdate},
     ecs::{
         components::{
             damage_history::DamageHistory, missile::Missile, ClientPlayerActions, Dead,
             EntityNetMetadata, Monster, Player, PlayerActions, WorldPosition,
         },
         resources::{
-            net::{EntityNetMetadataStorage, MultiplayerGameState},
+            net::{ActionUpdateIdProvider, EntityNetMetadataStorage, MultiplayerGameState},
             world::{FramedUpdates, SavedWorldState, WorldStates},
             GameLevelState,
         },
@@ -28,7 +28,7 @@ use crate::ecs::{
         monster::MonsterActionSubsystem,
         player::{ApplyWalkActionNetArgs, PlayerActionSubsystem},
         world_state_subsystem::WorldStateSubsystem,
-        OutcomingNetUpdates,
+        ClientFrameUpdate, OutcomingNetUpdates,
     },
 };
 
@@ -52,8 +52,10 @@ impl<'s> System<'s> for ActionSystem {
         ReadExpect<'s, GameLevelState>,
         ReadExpect<'s, MultiplayerGameState>,
         WriteExpect<'s, FramedUpdates<FrameUpdate>>,
+        WriteExpect<'s, FramedUpdates<ClientFrameUpdate>>,
         WriteExpect<'s, WorldStates>,
         WriteExpect<'s, AggregatedOutcomingUpdates>,
+        WriteExpect<'s, ActionUpdateIdProvider>,
         ReadExpect<'s, EntityNetMetadataStorage>,
         ReadExpect<'s, MonsterDefinitions>,
         ReadStorage<'s, EntityNetMetadata>,
@@ -76,9 +78,11 @@ impl<'s> System<'s> for ActionSystem {
             game_level_state,
             multiplayer_game_state,
             mut framed_updates,
+            mut framed_client_side_actions,
             mut world_states,
             mut aggregated_outcoming_updates,
-            entity_net_metadata_service,
+            action_update_id_provider,
+            entity_net_metadata_storage,
             monster_definitions,
             entity_net_metadata,
             client_player_actions,
@@ -96,6 +100,7 @@ impl<'s> System<'s> for ActionSystem {
         }
         log::trace!("Frame number: {}", game_time_service.game_frame_number());
 
+        let action_update_id_provider = Rc::new(RefCell::new(action_update_id_provider));
         let players = Rc::new(RefCell::new(players));
         let player_actions = Rc::new(RefCell::new(player_actions));
         let monsters = Rc::new(RefCell::new(monsters));
@@ -117,8 +122,9 @@ impl<'s> System<'s> for ActionSystem {
             game_time_service: &game_time_service,
             game_level_state: &game_level_state,
             multiplayer_game_state: &multiplayer_game_state,
-            entity_net_metadata_service: &entity_net_metadata_service,
+            entity_net_metadata_storage: &entity_net_metadata_storage,
             client_player_actions: &client_player_actions,
+            action_update_id_provider: action_update_id_provider.clone(),
             player_actions: player_actions.clone(),
             world_positions: world_positions.clone(),
         };
@@ -134,6 +140,7 @@ impl<'s> System<'s> for ActionSystem {
         };
 
         framed_updates.reserve_updates(game_time_service.game_frame_number());
+        framed_client_side_actions.reserve_updates(game_time_service.game_frame_number());
 
         // Add a world state to save the components to, insure the update is possible.
         world_states.add_world_state(SavedWorldState::default());
@@ -153,11 +160,16 @@ impl<'s> System<'s> for ActionSystem {
         world_state_subsystem.load_from_world_state(world_state);
 
         // Run each updated frame.
+        let mut client_side_actions_iter =
+            framed_client_side_actions.updates_iter_mut(framed_updates.oldest_updated_frame);
         for frame_updated in framed_updates.iter_from_oldest_update() {
             // Update no further than a current frame.
             if game_time_service.game_frame_number() < frame_updated.frame_number {
                 break;
             }
+            let client_side_actions = client_side_actions_iter
+                .next()
+                .expect("Expected a framed client-side action");
 
             let outcoming_net_updates = outcoming_net_updates_mut(
                 &mut aggregated_outcoming_updates,
@@ -190,6 +202,7 @@ impl<'s> System<'s> for ActionSystem {
                     entity,
                     &mut player,
                     net_args,
+                    client_side_actions,
                 );
             }
 
@@ -242,7 +255,7 @@ fn outcoming_net_updates_mut(
 fn walk_action_update_for_player(
     frame_updates: &FrameUpdate,
     entity_net_metadata: EntityNetMetadata,
-) -> Option<(Option<WorldPosition>, Option<PlayerWalkAction>)> {
+) -> Option<(Option<WorldPosition>, ClientActionUpdate<PlayerWalkAction>)> {
     frame_updates
         .player_walk_actions_updates
         .iter()
@@ -254,7 +267,7 @@ fn walk_action_update_for_player(
 fn walk_action_update_for_player(
     frame_updates: &FrameUpdate,
     entity_net_metadata: EntityNetMetadata,
-) -> Option<(Option<WorldPosition>, Option<PlayerWalkAction>)> {
+) -> Option<(Option<WorldPosition>, ClientActionUpdate<PlayerWalkAction>)> {
     frame_updates
         .walk_action_updates
         .iter()

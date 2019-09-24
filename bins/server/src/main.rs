@@ -13,7 +13,7 @@ use log::LevelFilter;
 use std::{env, io, path::PathBuf, str::FromStr, time::Duration};
 
 use ha_core::{
-    ecs::resources::world::{FramedUpdates, PlayerActionUpdates, ServerWorldUpdates},
+    ecs::resources::world::{DummyFramedUpdate, FramedUpdates, ServerWorldUpdates},
     net::EncodedMessage,
 };
 use ha_game::{
@@ -54,12 +54,12 @@ fn main() -> amethyst::Result<()> {
     let mut builder = Application::build("./", LoadingState::default())?;
     builder
         .world
-        .add_resource(FramedUpdates::<PlayerActionUpdates>::default());
+        .add_resource(FramedUpdates::<DummyFramedUpdate>::default());
     builder.world.add_resource(ServerWorldUpdates::default());
     let mut game_data_builder = GameDataBuilder::default()
         .with_bundle(NetworkBundle::<EncodedMessage>::new(socket_addr.parse()?))?
         .with(
-            NetConnectionManagerSystem::new(),
+            NetConnectionManagerSystem::default(),
             "net_connection_manager_system",
             &["net_socket"],
         )

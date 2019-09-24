@@ -87,3 +87,16 @@ impl Default for EntityNetMetadataStorage {
         Self::new()
     }
 }
+
+#[derive(Default)]
+pub struct ActionUpdateIdProvider {
+    update_id_autoinc: NetIdentifier,
+}
+
+impl ActionUpdateIdProvider {
+    pub fn next_update_id(&mut self) -> NetIdentifier {
+        let id = self.update_id_autoinc;
+        self.update_id_autoinc = self.update_id_autoinc.wrapping_add(1);
+        id
+    }
+}

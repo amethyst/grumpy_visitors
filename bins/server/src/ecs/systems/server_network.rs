@@ -109,7 +109,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
                 NetEvent::Message(ClientMessagePayload::CastActions(mut action)) => {
                     if let Some(update) = framed_updates.update_frame(action.frame_number, true) {
                         action.frame_number = update.frame_number;
-                        update.add_cast_action_update(action);
+                        update.add_cast_action_updates(action);
                     }
                 }
                 NetEvent::Message(ClientMessagePayload::AcknowledgeWorldUpdate(frame_number)) => {
@@ -122,7 +122,8 @@ impl<'s> System<'s> for ServerNetworkSystem {
                                 connection_id
                             )
                         });
-                    connection_model.last_acknowledged_update = Some(frame_number);
+                    connection_model.last_acknowledged_update =
+                        Some(frame_number).max(connection_model.last_acknowledged_update);
                 }
                 NetEvent::Disconnected => {
                     multiplayer_game_state

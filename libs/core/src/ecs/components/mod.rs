@@ -69,26 +69,24 @@ impl Component for Player {
     type Storage = DenseVecStorage<Self>;
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct PlayerActions {
-    /// Absence of internal action means that a player stopped walking.
-    pub walk_action: Action<PlayerWalkAction>,
-    /// Absence of internal action means that there are no new updates. (Normally they should be?)
-    pub look_action: Action<PlayerLookAction>,
-    /// Absence of internal action means that a player didn't cast anything.
-    pub cast_action: Action<PlayerCastAction>,
+    pub walk_action: PlayerWalkAction,
+    pub look_action: PlayerLookAction,
+    pub cast_action: Option<PlayerCastAction>,
 }
 
 impl Component for PlayerActions {
     type Storage = DenseVecStorage<Self>;
 }
 
-/// We need this component to backup client actions and restore them
-/// after processing server updates.
-#[derive(Debug, Clone, Default)]
+/// We write the actions to this component right on input from client, they get processed and
+/// inserted to PlayerActions component (and optionally scheduled to be sent to a server)
+/// in ActionSystem.
+#[derive(Default, Debug, Clone)]
 pub struct ClientPlayerActions {
-    pub walk_action: Option<PlayerWalkAction>,
-    pub look_action: Option<PlayerLookAction>,
+    pub walk_action: PlayerWalkAction,
+    pub look_action: PlayerLookAction,
     pub cast_action: Option<PlayerCastAction>,
 }
 

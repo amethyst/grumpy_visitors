@@ -34,12 +34,6 @@ pub struct NetConnectionManagerSystem {
 }
 
 impl NetConnectionManagerSystem {
-    pub fn new() -> Self {
-        Self {
-            connection_id_autoinc: 0,
-        }
-    }
-
     fn next_connection_id(&mut self) -> NetIdentifier {
         let id = self.connection_id_autoinc;
         self.connection_id_autoinc = self.connection_id_autoinc.wrapping_add(1);

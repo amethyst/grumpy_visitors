@@ -8,11 +8,11 @@ use ha_core::net::NetUpdate;
 #[cfg(not(feature = "client"))]
 use ha_core::net::NetUpdateWithPosition;
 use ha_core::{
-    actions::player::PlayerWalkAction,
+    actions::{player::PlayerWalkAction, ClientActionUpdate},
     ecs::{
         components::{ClientPlayerActions, Player, PlayerActions, WorldPosition},
         resources::{
-            net::{EntityNetMetadataStorage, MultiplayerGameState},
+            net::{ActionUpdateIdProvider, EntityNetMetadataStorage, MultiplayerGameState},
             GameLevelState,
         },
         system_data::time::GameTimeService,
@@ -21,14 +21,15 @@ use ha_core::{
     net::NetIdentifier,
 };
 
-use super::super::{OutcomingNetUpdates, WriteStorageCell};
+use super::super::{ClientFrameUpdate, OutcomingNetUpdates, WriteExpectCell, WriteStorageCell};
 
 pub struct PlayerActionSubsystem<'s> {
     pub game_time_service: &'s GameTimeService<'s>,
     pub game_level_state: &'s ReadExpect<'s, GameLevelState>,
     pub multiplayer_game_state: &'s ReadExpect<'s, MultiplayerGameState>,
-    pub entity_net_metadata_service: &'s ReadExpect<'s, EntityNetMetadataStorage>,
+    pub entity_net_metadata_storage: &'s ReadExpect<'s, EntityNetMetadataStorage>,
     pub client_player_actions: &'s ReadStorage<'s, ClientPlayerActions>,
+    pub action_update_id_provider: WriteExpectCell<'s, ActionUpdateIdProvider>,
     pub player_actions: WriteStorageCell<'s, PlayerActions>,
     pub world_positions: WriteStorageCell<'s, WorldPosition>,
 }
@@ -36,7 +37,7 @@ pub struct PlayerActionSubsystem<'s> {
 pub struct ApplyWalkActionNetArgs<'a> {
     pub entity_net_id: NetIdentifier,
     pub outcoming_net_updates: &'a mut OutcomingNetUpdates,
-    pub updates: Option<(Option<WorldPosition>, Option<PlayerWalkAction>)>,
+    pub updates: Option<(Option<WorldPosition>, ClientActionUpdate<PlayerWalkAction>)>,
 }
 
 const PLAYER_SPEED: f32 = 200.0;
@@ -48,6 +49,7 @@ impl<'s> PlayerActionSubsystem<'s> {
         entity: Entity,
         player: &mut Player,
         net_args: Option<ApplyWalkActionNetArgs<'a>>,
+        client_side_actions: &mut ClientFrameUpdate,
     ) {
         let mut world_positions = self.world_positions.borrow_mut();
         let player_position = world_positions
@@ -60,10 +62,10 @@ impl<'s> PlayerActionSubsystem<'s> {
             .expect("Expected player actions");
 
         let client_player_actions = self.client_player_actions.get(entity);
-        let client_walk_action = client_player_actions
+        let new_client_walk_action = client_player_actions
             .as_ref()
             .map(|actions| actions.walk_action.clone());
-        let is_controllable = client_walk_action.is_some();
+        let is_controllable = new_client_walk_action.is_some();
         let is_latest_frame = self.game_time_service.game_frame_number() == frame_number;
 
         if self.multiplayer_game_state.is_playing {
@@ -73,67 +75,55 @@ impl<'s> PlayerActionSubsystem<'s> {
                 updates,
             } = net_args.expect("Expected ApplyWalkActionNetArgs in multiplayer");
 
-            let walk_action_update = if let Some((updated_position, updated_walk_action)) = updates
+            // Update position if it's an authoritative server update.
+            if let Some(updated_position) = updates
+                .clone()
+                .and_then(|(updated_position, _)| updated_position)
             {
-                // Update position if it's an authoritative server update.
-                if let Some(updated_position) = updated_position {
-                    *player_position = updated_position.clone();
-                }
+                *player_position = updated_position;
+            }
 
-                Some(self.actual_action(frame_number, updated_walk_action, client_walk_action))
-            } else if let Some(client_walk_action) = client_walk_action {
-                if self.game_time_service.game_frame_number() == frame_number {
-                    Some(client_walk_action)
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
+            // Decide which source has an actual update and retrieve it.
+            let updated_walk_action = updates.map(|(_, updated_action)| updated_action);
+            let walk_action_update = self.actual_walk_action_update(
+                frame_number,
+                updated_walk_action,
+                &player_actions.walk_action,
+                new_client_walk_action,
+                client_side_actions,
+                entity_net_id,
+            );
 
             if let Some(walk_action_update) = walk_action_update {
-                // Check whether walking direction changed indeed.
-                let updated_direction = walk_action_update.as_ref().map(|action| action.direction);
-                let is_new_direction = match &player_actions.walk_action.action {
-                    Some(action) => updated_direction.map_or(true, |direction| {
-                        (action.direction - direction).norm_squared() > 0.001
-                    }),
-                    None => updated_direction.is_some(),
-                };
+                log::debug!(
+                    "Applying a new walk update for {} (frame {}): {:?}",
+                    entity_net_id,
+                    frame_number,
+                    &walk_action_update
+                );
+                // Update player actions.
+                player_actions.walk_action = walk_action_update.action.clone();
 
-                if is_new_direction {
-                    log::debug!(
-                        "Applying a new walk update for {} (frame {}): {:?}",
-                        entity_net_id,
-                        frame_number,
-                        &walk_action_update
-                    );
-                    // Update player actions.
-                    player_actions.walk_action.frame_number = frame_number;
-                    player_actions.walk_action.action = walk_action_update;
-
-                    // Add to network broadcasted updates.
-                    self.add_walk_action_net_update(
-                        outcoming_net_updates,
-                        entity_net_id,
-                        player_position.clone(),
-                        player_actions.walk_action.action.clone(),
-                        is_controllable,
-                        is_latest_frame,
-                    );
-                }
+                // Add to network broadcasted updates.
+                self.add_walk_action_net_update(
+                    outcoming_net_updates,
+                    entity_net_id,
+                    player_position.clone(),
+                    walk_action_update,
+                    is_controllable,
+                    is_latest_frame,
+                );
             }
         } else {
-            player_actions.walk_action.frame_number = frame_number;
-            player_actions.walk_action.action =
-                client_walk_action.expect("Expected ClientPlayerActions in single player");
+            player_actions.walk_action =
+                new_client_walk_action.expect("Expected ClientPlayerActions in single player");
         }
 
         // Run player actions.
-        if let Some(walk_action) = &player_actions.walk_action.action {
-            player.walking_direction = walk_action.direction;
-            player.velocity = if walk_action.direction != Vector2::zero() {
-                walk_action.direction.normalize() * PLAYER_SPEED
+        if let PlayerWalkAction::Walk { direction } = &player_actions.walk_action {
+            player.walking_direction = *direction;
+            player.velocity = if *direction != Vector2::zero() {
+                direction.normalize() * PLAYER_SPEED
             } else {
                 Vector2::zero()
             };
@@ -149,18 +139,55 @@ impl<'s> PlayerActionSubsystem<'s> {
         }
     }
 
-    #[allow(clippy::option_option)] // sry
-    pub fn actual_action<T>(
+    //    #[cfg(feature = "client")]
+    //    pub fn apply_client_walk_action(&self, frame_number: u64, entity: Entity)
+
+    #[cfg(feature = "client")]
+    pub fn actual_walk_action_update(
         &self,
         frame_number: u64,
-        updated_player_action: Option<T>,
-        client_player_action: Option<Option<T>>,
-    ) -> Option<T> {
-        if self.game_time_service.game_frame_number() == frame_number {
-            if let Some(action) = client_player_action {
-                return action;
+        updated_player_action: Option<ClientActionUpdate<PlayerWalkAction>>,
+        current_walk_action: &PlayerWalkAction,
+        new_client_walk_action: Option<PlayerWalkAction>,
+        client_side_actions: &mut ClientFrameUpdate,
+        entity_net_id: NetIdentifier,
+    ) -> Option<ClientActionUpdate<PlayerWalkAction>> {
+        if let Some(new_client_walk_action) = new_client_walk_action {
+            if self.game_time_service.game_frame_number() == frame_number {
+                let mut action_update_id_provider = self.action_update_id_provider.borrow_mut();
+                let client_action_id = action_update_id_provider.next_update_id();
+                if *current_walk_action != new_client_walk_action {
+                    let client_action_update = ClientActionUpdate {
+                        client_action_id,
+                        action: new_client_walk_action,
+                    };
+                    client_side_actions.walk_action_updates.push(NetUpdate {
+                        entity_net_id,
+                        data: client_action_update.clone(),
+                    });
+                    return Some(client_action_update);
+                }
             }
         }
+        updated_player_action.or_else(|| {
+            client_side_actions
+                .walk_action_updates
+                .iter()
+                .find(|action_update| action_update.entity_net_id == entity_net_id)
+                .map(|client_side_action| client_side_action.data.clone())
+        })
+    }
+
+    #[cfg(not(feature = "client"))]
+    pub fn actual_walk_action_update(
+        &self,
+        _frame_number: u64,
+        updated_player_action: Option<ClientActionUpdate<PlayerWalkAction>>,
+        _current_walk_action: &PlayerWalkAction,
+        _new_client_walk_action: Option<PlayerWalkAction>,
+        _client_side_actions: &mut ClientFrameUpdate,
+        _entity_net_id: NetIdentifier,
+    ) -> Option<ClientActionUpdate<PlayerWalkAction>> {
         updated_player_action
     }
 
@@ -170,14 +197,14 @@ impl<'s> PlayerActionSubsystem<'s> {
         outcoming_net_updates: &mut OutcomingNetUpdates,
         entity_net_id: NetIdentifier,
         _player_position: WorldPosition,
-        walk_action: Option<PlayerWalkAction>,
+        walk_action_update: ClientActionUpdate<PlayerWalkAction>,
         is_controllable: bool,
         is_latest_frame: bool,
     ) {
         if is_controllable && is_latest_frame {
             outcoming_net_updates.walk_action_updates.push(NetUpdate {
                 entity_net_id,
-                data: walk_action,
+                data: walk_action_update,
             });
         }
     }
@@ -188,7 +215,7 @@ impl<'s> PlayerActionSubsystem<'s> {
         outcoming_net_updates: &mut OutcomingNetUpdates,
         entity_net_id: NetIdentifier,
         player_position: WorldPosition,
-        walk_action: Option<PlayerWalkAction>,
+        walk_action_update: ClientActionUpdate<PlayerWalkAction>,
         _is_controllable: bool,
         _is_latest_frame: bool,
     ) {
@@ -197,7 +224,7 @@ impl<'s> PlayerActionSubsystem<'s> {
             .push(NetUpdateWithPosition {
                 entity_net_id,
                 position: player_position,
-                data: walk_action,
+                data: walk_action_update,
             });
     }
 }

@@ -54,10 +54,7 @@ impl<'s> System<'s> for MissileSpawnerSystem {
         for (player_actions, player_last_casted_spells, _) in
             (&mut player_actions, &mut player_last_casted_spells, !&dead).join()
         {
-            if let Some(cast_action) = player_actions.cast_action.action.as_ref() {
-                if player_actions.cast_action.frame_number < game_time_service.game_frame_number() {
-                    continue;
-                }
+            if let Some(cast_action) = player_actions.cast_action.as_ref() {
                 if player_last_casted_spells.missile + SPELL_CAST_COOLDOWN > now {
                     continue;
                 }

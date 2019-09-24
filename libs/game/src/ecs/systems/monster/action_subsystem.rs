@@ -79,7 +79,7 @@ impl<'s> MonsterActionSubsystem<'s> {
             }
         } else {
             match monster.action.action {
-                Some(MobAction::Chase(entity)) => Some(**world_positions.get(entity).unwrap()),
+                MobAction::Chase(entity) => Some(**world_positions.get(entity).unwrap()),
                 _ => None,
             }
         };
@@ -91,7 +91,7 @@ impl<'s> MonsterActionSubsystem<'s> {
         if let Some(action) = new_action {
             monster.action = Action {
                 frame_number,
-                action: Some(action),
+                action,
             }
         }
     }
@@ -141,7 +141,7 @@ impl<'s> MonsterActionSubsystem<'s> {
             .expect("Expected a MonsterDefinition");
 
         match monster.action.action {
-            Some(MobAction::Idle) | None => {
+            MobAction::Idle => {
                 if let Some((entity, _player_position)) = find_player_in_radius(
                     (self.entities, &*players, &*world_positions).join(),
                     *monster_position,
@@ -161,7 +161,7 @@ impl<'s> MonsterActionSubsystem<'s> {
                     }
                 }
             }
-            Some(MobAction::Move(destination)) => {
+            MobAction::Move(destination) => {
                 if let Some((entity, _player_position)) = find_player_in_radius(
                     (self.entities, &*players, &*world_positions).join(),
                     *monster_position,
@@ -174,7 +174,7 @@ impl<'s> MonsterActionSubsystem<'s> {
                     None
                 }
             }
-            Some(MobAction::Chase(_)) => {
+            MobAction::Chase(_) => {
                 if let Some((target, _player_position)) = find_player_in_radius(
                     (self.entities, &*players, &*world_positions).join(),
                     *monster_position,
@@ -199,7 +199,7 @@ impl<'s> MonsterActionSubsystem<'s> {
                     None
                 }
             }
-            Some(MobAction::Attack(ref attack_action)) => {
+            MobAction::Attack(ref attack_action) => {
                 let is_cooling_down = match attack_action.attack_type {
                     MobAttackType::SlowMelee { cooldown } => {
                         self.game_time_service

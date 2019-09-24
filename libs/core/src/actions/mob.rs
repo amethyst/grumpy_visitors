@@ -16,6 +16,12 @@ pub enum MobAction<T> {
     Attack(MobAttackAction<T>),
 }
 
+impl<T> Default for MobAction<T> {
+    fn default() -> Self {
+        Self::Idle
+    }
+}
+
 impl MobAction<NetIdentifier> {
     pub fn load_entity_by_net_id(
         self,

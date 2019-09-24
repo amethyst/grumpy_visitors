@@ -17,18 +17,24 @@ pub use self::{
     world_state_subsystem::WorldStateSubsystem,
 };
 
-use amethyst::ecs::WriteStorage;
+use amethyst::ecs::{WriteExpect, WriteStorage};
 
 use std::{cell::RefCell, rc::Rc};
 
 #[cfg(feature = "client")]
-use ha_core::ecs::resources::world::ClientWorldUpdates;
+use ha_core::ecs::resources::world::{ClientWorldUpdates, PlayerActionUpdates};
 #[cfg(not(feature = "client"))]
-use ha_core::ecs::resources::world::ServerWorldUpdate;
+use ha_core::ecs::resources::world::{DummyFramedUpdate, ServerWorldUpdate};
 
 #[cfg(feature = "client")]
 type OutcomingNetUpdates = ClientWorldUpdates;
 #[cfg(not(feature = "client"))]
 type OutcomingNetUpdates = ServerWorldUpdate;
 
+#[cfg(feature = "client")]
+type ClientFrameUpdate = PlayerActionUpdates;
+#[cfg(not(feature = "client"))]
+type ClientFrameUpdate = DummyFramedUpdate;
+
 type WriteStorageCell<'s, T> = Rc<RefCell<WriteStorage<'s, T>>>;
+type WriteExpectCell<'s, T> = Rc<RefCell<WriteExpect<'s, T>>>;

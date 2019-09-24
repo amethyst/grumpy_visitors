@@ -7,6 +7,7 @@ use crate::{
     actions::{
         mob::MobAction,
         player::{PlayerCastAction, PlayerLookAction, PlayerWalkAction},
+        ClientActionUpdate,
     },
     ecs::components::{
         damage_history::DamageHistoryEntries, missile::Missile, Dead, Monster, Player,
@@ -284,19 +285,22 @@ impl ServerWorldUpdates {
 #[derive(Default)]
 pub struct ClientWorldUpdates {
     /// Immediate update.
-    pub walk_action_updates: Vec<NetUpdate<Option<PlayerWalkAction>>>,
+    pub walk_action_updates: Vec<NetUpdate<ClientActionUpdate<PlayerWalkAction>>>,
     /// Immediate update.
-    pub cast_action_updates: Vec<NetUpdate<Option<PlayerCastAction>>>,
+    pub cast_action_updates: Vec<NetUpdate<ClientActionUpdate<PlayerCastAction>>>,
     /// Batched update.
-    pub look_actions_updates: VecDeque<(u64, Vec<NetUpdate<Option<PlayerLookAction>>>)>,
+    pub look_actions_updates: VecDeque<(u64, Vec<NetUpdate<ClientActionUpdate<PlayerLookAction>>>)>,
 }
 
+/// Both client and server side framed update.
+/// Client uses it to store the updates until it receives their confirmations from a server.
+/// Server uses it as the main resource of client updates, stores SAVED_WORLD_STATES_LIMIT of them.
 #[derive(Debug)]
 pub struct PlayerActionUpdates {
     pub frame_number: u64,
-    pub walk_action_updates: Vec<NetUpdate<Option<PlayerWalkAction>>>,
-    pub cast_action_updates: Vec<NetUpdate<Option<PlayerCastAction>>>,
-    pub look_action_updates: Vec<NetUpdate<Option<PlayerLookAction>>>,
+    pub walk_action_updates: Vec<NetUpdate<ClientActionUpdate<PlayerWalkAction>>>,
+    pub cast_action_updates: Vec<NetUpdate<ClientActionUpdate<PlayerCastAction>>>,
+    pub look_action_updates: Vec<NetUpdate<ClientActionUpdate<PlayerLookAction>>>,
 }
 
 impl PlayerActionUpdates {
@@ -308,7 +312,7 @@ impl PlayerActionUpdates {
         self.walk_action_updates.append(&mut action_update.updates);
     }
 
-    pub fn add_cast_action_update(
+    pub fn add_cast_action_updates(
         &mut self,
         mut action_update: ImmediatePlayerActionsUpdates<PlayerCastAction>,
     ) {
@@ -316,9 +320,9 @@ impl PlayerActionUpdates {
         self.cast_action_updates.append(&mut action_update.updates);
     }
 
-    pub fn add_look_action_update(
+    pub fn add_look_action_updates(
         &mut self,
-        action_updates: (u64, Vec<NetUpdate<Option<PlayerLookAction>>>),
+        action_updates: (u64, Vec<NetUpdate<ClientActionUpdate<PlayerLookAction>>>),
     ) {
         let (frame_number, mut action_updates) = action_updates;
         assert_eq!(self.frame_number, frame_number);
@@ -345,22 +349,26 @@ impl FramedUpdate for PlayerActionUpdates {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ImmediatePlayerActionsUpdates<T> {
     pub frame_number: u64,
-    pub updates: Vec<NetUpdate<Option<T>>>,
+    pub updates: Vec<NetUpdate<ClientActionUpdate<T>>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlayerLookActionUpdates {
     /// Updates for each player.
-    pub updates: Vec<(u64, Vec<NetUpdate<Option<PlayerLookAction>>>)>,
+    pub updates: Vec<(u64, Vec<NetUpdate<ClientActionUpdate<PlayerLookAction>>>)>,
 }
 
 /// Is sent by server, stored in FramedUpdates<T> by client.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerWorldUpdate {
     pub frame_number: u64,
-    pub player_walk_actions_updates: Vec<NetUpdateWithPosition<Option<PlayerWalkAction>>>,
-    pub player_look_actions_updates: Vec<NetUpdate<Option<PlayerLookAction>>>,
-    pub player_cast_actions_updates: Vec<NetUpdate<Option<PlayerCastAction>>>,
+    pub player_walk_actions_updates:
+        Vec<NetUpdateWithPosition<ClientActionUpdate<PlayerWalkAction>>>,
+    pub discarded_player_walk_actions_updates: Vec<NetIdentifier>,
+    pub player_look_actions_updates: Vec<NetUpdate<ClientActionUpdate<PlayerLookAction>>>,
+    pub discarded_player_look_actions_updates: Vec<NetIdentifier>,
+    pub player_cast_actions_updates: Vec<NetUpdate<ClientActionUpdate<PlayerCastAction>>>,
+    pub discarded_player_cast_actions_updates: Vec<NetIdentifier>,
     pub mob_actions_updates: Vec<NetUpdateWithPosition<MobAction<NetIdentifier>>>,
     pub damage_histories_updates: Vec<NetUpdate<DamageHistoryEntries>>,
 }
@@ -385,11 +393,29 @@ impl FramedUpdate for ServerWorldUpdate {
         Self {
             frame_number,
             player_walk_actions_updates: Vec::new(),
+            discarded_player_walk_actions_updates: Vec::new(),
             player_look_actions_updates: Vec::new(),
+            discarded_player_look_actions_updates: Vec::new(),
             player_cast_actions_updates: Vec::new(),
+            discarded_player_cast_actions_updates: Vec::new(),
             mob_actions_updates: Vec::new(),
             damage_histories_updates: Vec::new(),
         }
+    }
+
+    fn frame_number(&self) -> u64 {
+        self.frame_number
+    }
+}
+
+#[derive(Debug)]
+pub struct DummyFramedUpdate {
+    pub frame_number: u64,
+}
+
+impl FramedUpdate for DummyFramedUpdate {
+    fn new_update(frame_number: u64) -> Self {
+        Self { frame_number }
     }
 
     fn frame_number(&self) -> u64 {

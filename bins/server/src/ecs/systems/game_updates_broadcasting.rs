@@ -8,7 +8,7 @@ use ha_core::{
     },
     net::{server_message::ServerMessagePayload, NetConnection},
 };
-use ha_game::utils::net::send_message_reliable;
+use ha_game::utils::net::send_message_unreliable;
 
 const BROADCAST_FRAME_INTERVAL: u64 = 5;
 
@@ -98,7 +98,7 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
                 }
             }
 
-            send_message_reliable(
+            send_message_unreliable(
                 net_connection,
                 &ServerMessagePayload::UpdateWorld {
                     id: latest_update,

@@ -36,3 +36,19 @@ pub fn send_message_reliable(net_connection: &mut NetConnection, message: &Serve
     ));
     net_connection.queue(send_message);
 }
+
+#[cfg(feature = "client")]
+pub fn send_message_unreliable(net_connection: &mut NetConnection, message: &ClientMessagePayload) {
+    let send_message = NetEvent::Packet(NetPacket::unreliable(
+        bincode::serialize(&message).expect("Expected to serialize a client message"),
+    ));
+    net_connection.queue(send_message);
+}
+
+#[cfg(not(feature = "client"))]
+pub fn send_message_unreliable(net_connection: &mut NetConnection, message: &ServerMessagePayload) {
+    let send_message = NetEvent::Packet(NetPacket::unreliable(
+        bincode::serialize(&message).expect("Expected to serialize a server message"),
+    ));
+    net_connection.queue(send_message);
+}

@@ -12,8 +12,8 @@ use amethyst::{
 use ha_core::ecs::{
     components::damage_history::DamageHistory,
     resources::{
-        net::{EntityNetMetadataStorage, MultiplayerGameState},
-        world::WorldStates,
+        net::{ActionUpdateIdProvider, EntityNetMetadataStorage, MultiplayerGameState},
+        world::{FramedUpdates, PlayerActionUpdates, WorldStates},
     },
 };
 
@@ -27,10 +27,12 @@ pub fn build_game_logic_systems<'a, 'b>(
     world: &mut World,
     is_server: bool,
 ) -> Result<GameDataBuilder<'a, 'b>, Error> {
+    world.add_resource(FramedUpdates::<PlayerActionUpdates>::default());
     world.add_resource(WorldStates::default());
     world.add_resource(ConnectionEvents(Vec::new()));
     world.add_resource(MultiplayerGameState::new());
     world.add_resource(EntityNetMetadataStorage::new());
+    world.add_resource(ActionUpdateIdProvider::default());
 
     world.register::<DamageHistory>();
     let mut damage_history_storage = world.write_storage::<DamageHistory>();
