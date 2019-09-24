@@ -133,7 +133,6 @@ pub struct NetConnectionModel {
     pub id: NetIdentifier,
     pub reader: ReaderId<NetEvent<EncodedMessage>>,
     pub created_at: Instant,
-    pub last_pinged_at: Instant,
     pub last_acknowledged_update: Option<u64>,
     pub ping_pong_data: PingPongData,
 }
@@ -144,7 +143,6 @@ impl NetConnectionModel {
             id,
             reader,
             created_at: Instant::now(),
-            last_pinged_at: Instant::now(),
             last_acknowledged_update: None,
             ping_pong_data: PingPongData::new(),
         }
@@ -152,37 +150,54 @@ impl NetConnectionModel {
 }
 
 pub struct PingPongData {
+    pub last_pinged_at: Instant,
+    pub last_ponged_frame: u64,
     data: VecDeque<PingPong>,
 }
 
 impl PingPongData {
     fn new() -> Self {
         Self {
+            last_pinged_at: Instant::now(),
+            last_ponged_frame: 0,
             data: VecDeque::with_capacity(PING_PONG_STORAGE_LIMIT),
         }
     }
 
-    pub fn add_ping(&mut self, ping_id: NetIdentifier, frame_number: u64) {
+    pub fn add_ping(&mut self, ping_id: NetIdentifier, engine_frame_number: u64) {
+        self.last_pinged_at = Instant::now();
         if self.data.len() == PING_PONG_STORAGE_LIMIT {
             self.data.pop_front();
         }
         self.data.push_back(PingPong {
             ping_id,
-            sent_ping_frame: frame_number,
-            received_pong_frame: None,
-            estimated_peer_frame_number: None,
+            sent_ping_frame: engine_frame_number,
+            pong: None,
         })
     }
 
-    pub fn add_pong(&mut self, ping_id: NetIdentifier, peer_frame_number: u64, frame_number: u64) {
+    pub fn add_pong(
+        &mut self,
+        ping_id: NetIdentifier,
+        peer_frame_number: u64,
+        engine_frame_number: u64,
+        frame_number: u64,
+    ) {
+        if self.last_ponged_frame < engine_frame_number {
+            self.last_ponged_frame = engine_frame_number;
+        }
+
         if let Some(ping_pong) = self
             .data
             .iter_mut()
             .find(|ping_pong| ping_pong.ping_id == ping_id)
         {
-            ping_pong.received_pong_frame = Some(frame_number);
-            let oneway_latency = frame_number.saturating_sub(ping_pong.sent_ping_frame) / 2;
-            ping_pong.estimated_peer_frame_number = Some(peer_frame_number + oneway_latency);
+            let oneway_latency = engine_frame_number.saturating_sub(ping_pong.sent_ping_frame) / 2;
+            let estimated_peer_frame_number = peer_frame_number + oneway_latency;
+            ping_pong.pong = Some(Pong {
+                received_frame: frame_number,
+                estimated_peer_frame_number,
+            })
         }
     }
 
@@ -193,12 +208,11 @@ impl PingPongData {
         let (pongs_count, lagging_behind_sum) = self.data.iter().fold(
             (0, 0),
             |(mut pongs_count, mut lagging_behind_sum), ping_pong| {
-                if let Some(estimated_peer_frame_number) = ping_pong.estimated_peer_frame_number {
+                if let Some(pong) = &ping_pong.pong {
                     pongs_count += 1;
-                    lagging_behind_sum += ping_pong
-                        .received_pong_frame
-                        .expect("Expected received_pong_frame set")
-                        .saturating_sub(estimated_peer_frame_number);
+                    lagging_behind_sum += pong
+                        .received_frame
+                        .saturating_sub(pong.estimated_peer_frame_number);
                 }
                 (pongs_count, lagging_behind_sum)
             },
@@ -213,13 +227,26 @@ impl PingPongData {
             lagging_behind_sum / pongs_count
         }
     }
+
+    pub fn last_stored_game_frame(&self) -> u64 {
+        self.data
+            .iter()
+            .rev()
+            .find(|ping_pong| ping_pong.pong.is_some())
+            .map(|ping_pong| ping_pong.pong.as_ref().unwrap().estimated_peer_frame_number)
+            .unwrap_or(0)
+    }
 }
 
 struct PingPong {
     ping_id: NetIdentifier,
     sent_ping_frame: u64,
-    received_pong_frame: Option<u64>,
-    estimated_peer_frame_number: Option<u64>,
+    pong: Option<Pong>,
+}
+
+struct Pong {
+    received_frame: u64,
+    estimated_peer_frame_number: u64,
 }
 
 impl Component for NetConnectionModel {

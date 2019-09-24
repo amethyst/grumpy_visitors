@@ -22,6 +22,9 @@ pub enum ServerMessagePayload {
         frame_number: u64,
     },
     /// Contains connection ids of players a server is waiting for.
-    PauseWaitingForPlayers(Vec<NetIdentifier>),
-    UnpauseWaitingForPlayers,
+    PauseWaitingForPlayers {
+        id: NetIdentifier,
+        players: Vec<NetIdentifier>,
+    },
+    UnpauseWaitingForPlayers(NetIdentifier),
 }

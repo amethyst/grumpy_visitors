@@ -17,7 +17,7 @@ use crate::{
 };
 
 const SAVED_WORLD_STATES_LIMIT: usize = 600;
-const LAG_COMPENSATION_FRAMES_LIMIT: usize = 20;
+pub const LAG_COMPENSATION_FRAMES_LIMIT: usize = 20;
 
 #[derive(Debug)]
 pub struct OldFrameError {

@@ -107,11 +107,8 @@ impl<'s> System<'s> for NetConnectionManagerSystem {
                     _ => {}
                 }
 
-                let (event, response) = process_connection_event(
-                    &ev,
-                    &mut connection_model,
-                    game_time_service.game_frame_number(),
-                );
+                let (event, response) =
+                    process_connection_event(&ev, &mut connection_model, &game_time_service);
 
                 if let Some(event) = event {
                     connection_messages_count += 1;
@@ -125,13 +122,13 @@ impl<'s> System<'s> for NetConnectionManagerSystem {
                 connection.queue(response);
             }
 
-            if connection_model.last_pinged_at + Duration::from_millis(PING_INTERVAL_MILLIS)
+            if connection_model.ping_pong_data.last_pinged_at
+                + Duration::from_millis(PING_INTERVAL_MILLIS)
                 < Instant::now()
             {
-                connection_model.last_pinged_at = Instant::now();
                 connection_model
                     .ping_pong_data
-                    .add_ping(ping_id, game_time_service.game_frame_number());
+                    .add_ping(ping_id, game_time_service.engine_time().frame_number());
                 connection.queue(send_ping_packet.clone());
             }
 
@@ -167,7 +164,7 @@ fn pong_message(ping_id: NetIdentifier, frame_number: u64) -> EncodedMessage {
 fn process_connection_event(
     ev: &AmethystNetEvent<EncodedMessage>,
     connection_model: &mut NetConnectionModel,
-    frame_number: u64,
+    game_time_service: &GameTimeService,
 ) -> (
     Option<ConnectionNetEvent<IncomingMessage>>,
     Option<AmethystNetEvent<EncodedMessage>>,
@@ -182,7 +179,7 @@ fn process_connection_event(
                         (
                             None,
                             Some(AmethystNetEvent::Packet(AmethystNetPacket::unreliable(
-                                pong_message(ping_id, frame_number),
+                                pong_message(ping_id, game_time_service.game_frame_number()),
                             ))),
                         )
                     }
@@ -194,7 +191,8 @@ fn process_connection_event(
                         connection_model.ping_pong_data.add_pong(
                             ping_id,
                             peer_frame_number,
-                            frame_number,
+                            game_time_service.engine_time().frame_number(),
+                            game_time_service.game_frame_number(),
                         );
                         (None, None)
                     }

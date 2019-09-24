@@ -11,6 +11,8 @@ pub type EncodedMessage = Vec<u8>;
 pub type NetConnection = network::NetConnection<EncodedMessage>;
 pub type NetIdentifier = u64;
 
+pub const INTERPOLATION_FRAME_DELAY: u64 = 10;
+
 pub struct ConnectionNetEvent<T> {
     pub connection_id: NetIdentifier,
     pub event: NetEvent<T>,

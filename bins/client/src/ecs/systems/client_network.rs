@@ -7,14 +7,16 @@ use ha_core::{
     ecs::{
         resources::{
             net::MultiplayerGameState,
-            world::{FramedUpdate, FramedUpdates, ServerWorldUpdate},
+            world::{
+                FramedUpdate, FramedUpdates, ServerWorldUpdate, LAG_COMPENSATION_FRAMES_LIMIT,
+            },
             GameEngineState, NewGameEngineState,
         },
         system_data::time::GameTimeService,
     },
     net::{
         client_message::ClientMessagePayload, server_message::ServerMessagePayload, NetConnection,
-        NetEvent, NetIdentifier,
+        NetEvent, NetIdentifier, INTERPOLATION_FRAME_DELAY,
     },
 };
 use ha_game::{
@@ -24,10 +26,9 @@ use ha_game::{
 
 use crate::ecs::resources::LastAcknowledgedUpdate;
 
-pub const INTERPOLATION_FRAME_DELAY: u64 = 10;
-
 // Pause the game if we haven't received any message from server for the last 180 frames (3 secs).
-const PAUSE_FRAME_THRESHOLD: u64 = 180;
+const PAUSE_FRAME_THRESHOLD: u64 =
+    (LAG_COMPENSATION_FRAMES_LIMIT + LAG_COMPENSATION_FRAMES_LIMIT / 2) as u64;
 
 pub struct ClientNetworkSystem;
 
@@ -142,25 +143,69 @@ impl<'s> System<'s> for ClientNetworkSystem {
                         updates,
                     );
                 }
+                NetEvent::Message(ServerMessagePayload::PauseWaitingForPlayers { id, players }) => {
+                    if multiplayer_game_state.waiting_for_players_pause_id < id {
+                        multiplayer_game_state.waiting_for_players_pause_id = id;
+                        let is_lagging = players.iter().any(|connection_id| {
+                            *connection_id == multiplayer_room_state.connection_id
+                        });
+                        // We won't pause the game if we're lagging ourselves.
+                        multiplayer_game_state.waiting_for_players = !is_lagging;
+                        multiplayer_game_state.lagging_players = players;
+                    }
+                }
+                NetEvent::Message(ServerMessagePayload::UnpauseWaitingForPlayers(id)) => {
+                    if multiplayer_game_state.waiting_for_players_pause_id <= id {
+                        multiplayer_game_state.waiting_for_players = false;
+                        multiplayer_game_state.waiting_for_players_pause_id = id;
+                        multiplayer_game_state.lagging_players.clear();
+                    }
+                }
                 // TODO: handle disconnects.
                 _ => {}
             }
         }
 
+        // If we were lagging and have caught up with a server,
+        // wait until a server authorizes to unpause.
+        if !multiplayer_game_state.waiting_for_players
+            && !multiplayer_game_state.lagging_players.is_empty()
+        {
+            let server_frame = framed_updates
+                .updates
+                .back()
+                .expect("Expected at least one framed update if we're lagging")
+                .frame_number;
+            if game_time_service.game_frame_number() + INTERPOLATION_FRAME_DELAY >= server_frame {
+                multiplayer_game_state.waiting_for_players = true;
+            }
+        }
+
         if *game_engine_state == GameEngineState::Playing && multiplayer_game_state.is_playing {
-            multiplayer_game_state.waiting_network = false;
+            // We always skip first INTERPOLATION_FRAME_DELAY frames on game start.
             if game_time_service.game_frame_number_absolute() < INTERPOLATION_FRAME_DELAY {
                 multiplayer_game_state.waiting_network = true;
                 return;
+            } else if game_time_service.game_frame_number_absolute() == INTERPOLATION_FRAME_DELAY {
+                multiplayer_game_state.waiting_network = false;
             }
 
+            // Wait if we a server is lagging behind for PAUSE_FRAME_THRESHOLD frames.
             let frames_ahead = game_time_service.game_frame_number().saturating_sub(
                 last_acknowledged_update
                     .0
                     .saturating_sub(INTERPOLATION_FRAME_DELAY),
             );
             log::trace!("Frames ahead: {}", frames_ahead);
-            multiplayer_game_state.waiting_network = frames_ahead > PAUSE_FRAME_THRESHOLD;
+            if multiplayer_game_state.waiting_network {
+                log::debug!("Waiting for server. Frames ahead: {}", frames_ahead);
+                if frames_ahead == 0 {
+                    multiplayer_game_state.waiting_network = false;
+                }
+            } else if frames_ahead > PAUSE_FRAME_THRESHOLD {
+                log::debug!("Waiting for server. Frames ahead: {}", frames_ahead);
+                multiplayer_game_state.waiting_network = true;
+            }
         }
     }
 }

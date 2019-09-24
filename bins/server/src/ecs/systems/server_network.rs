@@ -5,14 +5,14 @@ use ha_core::{
         components::NetConnectionModel,
         resources::{
             net::{MultiplayerGameState, MultiplayerRoomPlayer},
-            world::{FramedUpdates, PlayerActionUpdates},
+            world::{FramedUpdates, PlayerActionUpdates, LAG_COMPENSATION_FRAMES_LIMIT},
             GameEngineState, NewGameEngineState,
         },
         system_data::time::GameTimeService,
     },
     net::{
         client_message::ClientMessagePayload, server_message::ServerMessagePayload, NetConnection,
-        NetEvent, NetIdentifier,
+        NetEvent, NetIdentifier, INTERPOLATION_FRAME_DELAY,
     },
 };
 use ha_game::{
@@ -21,7 +21,8 @@ use ha_game::{
 };
 
 // Pause the game if we have a client that hasn't responded for the last 180 frames (3 secs).
-const PAUSE_FRAME_THRESHOLD: u64 = 180;
+const PAUSE_FRAME_THRESHOLD: u64 =
+    (LAG_COMPENSATION_FRAMES_LIMIT + LAG_COMPENSATION_FRAMES_LIMIT / 2) as u64;
 
 pub struct ServerNetworkSystem {
     host_connection_id: NetIdentifier,
@@ -143,23 +144,59 @@ impl<'s> System<'s> for ServerNetworkSystem {
 
         // Pause server if one of clients is lagging behind.
         if *game_engine_state == GameEngineState::Playing && multiplayer_game_state.is_playing {
-            multiplayer_game_state.waiting_network = false;
-            let min_last_acknowledged_update = (&net_connection_models)
-                .join()
-                .map(|net_connection_model| net_connection_model.last_acknowledged_update)
-                .min_by(|update_a, update_b| update_a.cmp(update_b));
-            if let Some(min_last_acknowledged_update) = min_last_acknowledged_update {
-                let frames_ahead = min_last_acknowledged_update
-                    .map(|update_number| {
-                        game_time_service
-                            .game_frame_number()
-                            .saturating_sub(update_number)
-                    })
-                    .unwrap_or_else(|| game_time_service.game_frame_number() + 1);
-                log::trace!("Frames ahead: {}", frames_ahead);
-                if frames_ahead > PAUSE_FRAME_THRESHOLD {
-                    multiplayer_game_state.waiting_network = true;
+            let mut lagging_players = Vec::new();
+            for net_connection_model in (&net_connection_models).join() {
+                let frames_since_last_pong = game_time_service.engine_time().frame_number()
+                    - net_connection_model.ping_pong_data.last_ponged_frame;
+                let average_lagging_behind =
+                    net_connection_model.ping_pong_data.average_lagging_behind();
+
+                let expected_client_frame_number = game_time_service
+                    .game_frame_number()
+                    .saturating_sub(INTERPOLATION_FRAME_DELAY);
+
+                let was_lagging = multiplayer_game_state
+                    .lagging_players
+                    .iter()
+                    .any(|connection_id| *connection_id == net_connection_model.id);
+
+                // If a player was already lagging we expect them to fully catch up with others.
+                let is_catching_up = net_connection_model.ping_pong_data.last_stored_game_frame()
+                    < expected_client_frame_number;
+
+                log::trace!(
+                    "Average lagging behind (client {}): {}",
+                    net_connection_model.id,
+                    average_lagging_behind
+                );
+
+                if frames_since_last_pong > PAUSE_FRAME_THRESHOLD
+                    || was_lagging && is_catching_up
+                    || average_lagging_behind > PAUSE_FRAME_THRESHOLD
+                {
+                    lagging_players.push(net_connection_model.id);
                 }
+            }
+
+            multiplayer_game_state.lagging_players = lagging_players.clone();
+            if !multiplayer_game_state.waiting_for_players && !lagging_players.is_empty() {
+                multiplayer_game_state.waiting_for_players_pause_id += 1;
+                broadcast_message_reliable(
+                    &mut net_connections,
+                    &ServerMessagePayload::PauseWaitingForPlayers {
+                        id: multiplayer_game_state.waiting_for_players_pause_id,
+                        players: lagging_players,
+                    },
+                );
+                multiplayer_game_state.waiting_for_players = true;
+            } else if multiplayer_game_state.waiting_for_players && lagging_players.is_empty() {
+                broadcast_message_reliable(
+                    &mut net_connections,
+                    &ServerMessagePayload::UnpauseWaitingForPlayers(
+                        multiplayer_game_state.waiting_for_players_pause_id,
+                    ),
+                );
+                multiplayer_game_state.waiting_for_players = false;
             }
         }
     }

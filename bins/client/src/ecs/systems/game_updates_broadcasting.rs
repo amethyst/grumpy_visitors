@@ -2,7 +2,6 @@ use amethyst::ecs::{Join, System, WriteExpect, WriteStorage};
 
 use std::iter::FromIterator;
 
-use crate::ecs::systems::client_network::INTERPOLATION_FRAME_DELAY;
 use ha_core::{
     ecs::{
         resources::world::{
@@ -10,7 +9,7 @@ use ha_core::{
         },
         system_data::{game_state_helper::GameStateHelper, time::GameTimeService},
     },
-    net::{client_message::ClientMessagePayload, NetConnection},
+    net::{client_message::ClientMessagePayload, NetConnection, INTERPOLATION_FRAME_DELAY},
 };
 use ha_game::utils::net::send_message_reliable;
 

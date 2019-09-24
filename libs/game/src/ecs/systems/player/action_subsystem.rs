@@ -139,9 +139,6 @@ impl<'s> PlayerActionSubsystem<'s> {
         }
     }
 
-    //    #[cfg(feature = "client")]
-    //    pub fn apply_client_walk_action(&self, frame_number: u64, entity: Entity)
-
     #[cfg(feature = "client")]
     pub fn actual_walk_action_update(
         &self,
