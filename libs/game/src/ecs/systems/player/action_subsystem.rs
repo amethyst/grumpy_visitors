@@ -155,8 +155,8 @@ impl<'s> PlayerActionSubsystem<'s> {
         if let Some(new_client_walk_action) = new_client_walk_action {
             if self.game_time_service.game_frame_number() == frame_number {
                 let mut action_update_id_provider = self.action_update_id_provider.borrow_mut();
-                let client_action_id = action_update_id_provider.next_update_id();
                 if *current_walk_action != new_client_walk_action {
+                    let client_action_id = action_update_id_provider.next_update_id();
                     let client_action_update = ClientActionUpdate {
                         client_action_id,
                         action: new_client_walk_action,

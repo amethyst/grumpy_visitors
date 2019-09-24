@@ -1,5 +1,3 @@
-use serde_derive::{Deserialize, Serialize};
-
 pub mod damage_history;
 pub mod missile;
 
@@ -7,9 +5,13 @@ use amethyst::{
     ecs::{Component, DenseVecStorage, Entity, FlaggedStorage, NullStorage, ReaderId, VecStorage},
     network::NetEvent,
 };
+use serde_derive::{Deserialize, Serialize};
 use shrinkwraprs::Shrinkwrap;
 
-use std::time::{Duration, Instant};
+use std::{
+    collections::VecDeque,
+    time::{Duration, Instant},
+};
 
 use crate::{
     actions::{
@@ -20,6 +22,8 @@ use crate::{
     math::{Vector2, ZeroVector},
     net::{EncodedMessage, NetIdentifier},
 };
+
+const PING_PONG_STORAGE_LIMIT: usize = 20;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Shrinkwrap)]
 #[shrinkwrap(mutable)]
@@ -131,6 +135,7 @@ pub struct NetConnectionModel {
     pub created_at: Instant,
     pub last_pinged_at: Instant,
     pub last_acknowledged_update: Option<u64>,
+    pub ping_pong_data: PingPongData,
 }
 
 impl NetConnectionModel {
@@ -141,8 +146,80 @@ impl NetConnectionModel {
             created_at: Instant::now(),
             last_pinged_at: Instant::now(),
             last_acknowledged_update: None,
+            ping_pong_data: PingPongData::new(),
         }
     }
+}
+
+pub struct PingPongData {
+    data: VecDeque<PingPong>,
+}
+
+impl PingPongData {
+    fn new() -> Self {
+        Self {
+            data: VecDeque::with_capacity(PING_PONG_STORAGE_LIMIT),
+        }
+    }
+
+    pub fn add_ping(&mut self, ping_id: NetIdentifier, frame_number: u64) {
+        if self.data.len() == PING_PONG_STORAGE_LIMIT {
+            self.data.pop_front();
+        }
+        self.data.push_back(PingPong {
+            ping_id,
+            sent_ping_frame: frame_number,
+            received_pong_frame: None,
+            estimated_peer_frame_number: None,
+        })
+    }
+
+    pub fn add_pong(&mut self, ping_id: NetIdentifier, peer_frame_number: u64, frame_number: u64) {
+        if let Some(ping_pong) = self
+            .data
+            .iter_mut()
+            .find(|ping_pong| ping_pong.ping_id == ping_id)
+        {
+            ping_pong.received_pong_frame = Some(frame_number);
+            let oneway_latency = frame_number.saturating_sub(ping_pong.sent_ping_frame) / 2;
+            ping_pong.estimated_peer_frame_number = Some(peer_frame_number + oneway_latency);
+        }
+    }
+
+    /// Returns 0 if a level has just started and we have little data, otherwise returns u64::max()
+    /// if there're no pongs at all.
+    /// This usually evaluates to 0 on client side.
+    pub fn average_lagging_behind(&self) -> u64 {
+        let (pongs_count, lagging_behind_sum) = self.data.iter().fold(
+            (0, 0),
+            |(mut pongs_count, mut lagging_behind_sum), ping_pong| {
+                if let Some(estimated_peer_frame_number) = ping_pong.estimated_peer_frame_number {
+                    pongs_count += 1;
+                    lagging_behind_sum += ping_pong
+                        .received_pong_frame
+                        .expect("Expected received_pong_frame set")
+                        .saturating_sub(estimated_peer_frame_number);
+                }
+                (pongs_count, lagging_behind_sum)
+            },
+        );
+        if pongs_count == 0 {
+            if self.data.len() < PING_PONG_STORAGE_LIMIT / 2 {
+                0
+            } else {
+                u64::max_value()
+            }
+        } else {
+            lagging_behind_sum / pongs_count
+        }
+    }
+}
+
+struct PingPong {
+    ping_id: NetIdentifier,
+    sent_ping_frame: u64,
+    received_pong_frame: Option<u64>,
+    estimated_peer_frame_number: Option<u64>,
 }
 
 impl Component for NetConnectionModel {

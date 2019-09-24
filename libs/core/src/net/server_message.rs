@@ -16,15 +16,12 @@ pub enum ServerMessagePayload {
         id: u64,
         updates: Vec<ServerWorldUpdate>,
     },
-    Ping,
-}
-
-impl ServerMessagePayload {
-    pub fn is_ping_message(&self) -> bool {
-        if let ServerMessagePayload::Ping = self {
-            true
-        } else {
-            false
-        }
-    }
+    Ping(NetIdentifier),
+    Pong {
+        ping_id: NetIdentifier,
+        frame_number: u64,
+    },
+    /// Contains connection ids of players a server is waiting for.
+    PauseWaitingForPlayers(Vec<NetIdentifier>),
+    UnpauseWaitingForPlayers,
 }
