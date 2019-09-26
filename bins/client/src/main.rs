@@ -49,7 +49,7 @@ fn main() -> amethyst::Result<()> {
         .about("A prototype of a top-down EvilInvasion-like 2D arcade/action")
         .get_matches();
 
-    let socket_addr = "127.0.0.1:0";
+    let socket_addr = "0.0.0.0:0";
 
     Logger::from_config(Default::default())
         .level_for("gfx_backend_vulkan", LogLevelFilter::Warn)
