@@ -15,9 +15,9 @@ impl SimpleState for MenuState {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
         log::info!("MenuState started");
         let world = data.world;
-        *world.write_resource::<GameEngineState>() = GameEngineState::Menu;
+        *world.fetch_mut::<GameEngineState>() = GameEngineState::Menu;
 
-        let mut game_level_state = world.write_resource::<GameLevelState>();
+        let mut game_level_state = world.fetch_mut::<GameLevelState>();
         if game_level_state.is_over {
             game_level_state.is_over = false;
             drop(game_level_state);

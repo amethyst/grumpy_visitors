@@ -5,14 +5,9 @@ authors = []
 edition = "2018"
 
 [dependencies.amethyst]
-version = "0.12.0"
-features = ["nightly"]
-
-# Bad news: https://github.com/rust-lang/cargo/issues/1197
-
-#[target.'cfg(target_os = "macos")'.dependencies.amethyst]
-#version = "0.12.0"
-#features = ["metal"]
+version = "0.13.0"
+git = "https://github.com/mvlabat/amethyst.git"
+branch = "hide-hierarchy-system-desc"
 
 [dependencies]
 bincode = "1.1.4"
@@ -22,6 +17,4 @@ num = "0.2.0"
 rand = "0.6.5"
 serde = "1.0.91"
 serde_derive = "1.0.91"
-shred = "0.7"
-shred-derive = "0.5"
 shrinkwraprs = "0.2.1"

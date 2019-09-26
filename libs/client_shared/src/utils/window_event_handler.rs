@@ -8,10 +8,11 @@ use amethyst::{
 };
 
 use crate::settings::Settings;
+use amethyst::prelude::WorldExt;
 
 // TODO: I don't like how this module looks, though I dunno why and how make it look better.
 pub fn handle_window_event(world: &World, event: &StateEvent) -> Option<SimpleTrans> {
-    let mut application_settings = world.write_resource::<Settings>();
+    let mut application_settings = world.fetch_mut::<Settings>();
     let display = application_settings.display();
 
     if let StateEvent::Window(event) = &event {
@@ -25,7 +26,7 @@ pub fn handle_window_event(world: &World, event: &StateEvent) -> Option<SimpleTr
                 ..
             } if input.state == ElementState::Released => match input.virtual_keycode {
                 Some(VirtualKeyCode::F11) => {
-                    let window = world.write_resource::<Window>();
+                    let window = world.fetch_mut::<Window>();
 
                     let monitor_id = if display.fullscreen.is_some() {
                         None
@@ -42,7 +43,7 @@ pub fn handle_window_event(world: &World, event: &StateEvent) -> Option<SimpleTr
                     window.set_fullscreen(monitor_id);
                 }
                 Some(VirtualKeyCode::F10) => {
-                    let screen_dimensions = world.read_resource::<ScreenDimensions>();
+                    let screen_dimensions = world.fetch::<ScreenDimensions>();
                     println!(
                         "{}:{}",
                         screen_dimensions.width(),
@@ -56,8 +57,8 @@ pub fn handle_window_event(world: &World, event: &StateEvent) -> Option<SimpleTr
                 event: winit::WindowEvent::Resized(size),
                 ..
             } => {
-                let hidpi = world.read_resource::<ScreenDimensions>().hidpi_factor();
-                let mut cameras = world.write_storage::<Camera>();
+                let hidpi = world.fetch::<ScreenDimensions>().hidpi_factor();
+                let mut cameras = world.write_component::<Camera>();
                 let camera = (&mut cameras).join().next().unwrap();
                 let (screen_width, screen_height) =
                     ((size.width * hidpi) as f32, (size.height * hidpi) as f32);

@@ -3,11 +3,11 @@
 use amethyst::{
     assets::{Handle, Prefab},
     core::{Parent, Transform},
-    ecs::{Entities, Entity, ReadExpect, WriteStorage},
+    ecs::{prelude::World, Entities, Entity, ReadExpect, WriteStorage},
     renderer::Camera,
+    shred::{ResourceId, SystemData},
     window::ScreenDimensions,
 };
-use shred_derive::SystemData;
 
 use ha_animation_prefabs::GameSpriteAnimationPrefab;
 use ha_core::{ecs::components::ClientPlayerActions, math::Vector2};

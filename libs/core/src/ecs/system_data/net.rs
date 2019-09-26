@@ -1,5 +1,7 @@
-use amethyst::ecs::{Entity, ReadExpect, ReadStorage};
-use shred_derive::SystemData;
+use amethyst::{
+    ecs::{prelude::World, Entity, ReadExpect, ReadStorage},
+    shred::{ResourceId, SystemData},
+};
 
 use crate::{
     ecs::{components::EntityNetMetadata, resources::net::EntityNetMetadataStorage},

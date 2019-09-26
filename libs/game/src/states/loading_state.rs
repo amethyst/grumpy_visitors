@@ -1,6 +1,6 @@
 use amethyst::{
     assets::ProgressCounter,
-    ecs::World,
+    ecs::{prelude::WorldExt, World},
     prelude::{GameData, SimpleState, SimpleTrans, StateData, Trans},
     utils::tag::Tag,
 };
@@ -45,11 +45,11 @@ impl SimpleState for LoadingState {
         world.register::<Missile>();
         world.register::<Player>();
         world.register::<Tag<Landscape>>();
-        world.add_resource(SpawnActions(Vec::new()));
-        world.add_resource(GameLevelState::default());
-        world.add_resource(GameTime::default());
-        world.add_resource(GameEngineState::Loading);
-        world.add_resource(NewGameEngineState(GameEngineState::Loading));
+        world.insert(SpawnActions(Vec::new()));
+        world.insert(GameLevelState::default());
+        world.insert(GameTime::default());
+        world.insert(GameEngineState::Loading);
+        world.insert(NewGameEngineState(GameEngineState::Loading));
     }
 
     fn update(&mut self, data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
@@ -102,7 +102,7 @@ fn register_client_dependencies(world: &mut World, progress_counter: &mut Progre
     let _ui_handle =
         world.exec(|mut creator: UiCreator| creator.create("resources/ui/main_menu.ron", ()));
 
-    world.add_resource(AssetHandles {
+    world.insert(AssetHandles {
         hero_prefab: hero_prefab_handle,
         landscape: landscape_handle,
         ui_font: ui_font_handle,

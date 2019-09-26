@@ -31,7 +31,7 @@ impl MissileGraphics {
         let (positions, tex_coords) = generate_circle_vertices(5.0, 64);
         let mesh = create_mesh(world, positions, tex_coords);
         let material = create_color_material(world, LinSrgba::new(1.0, 0.0, 0.0, 1.0));
-        world.add_resource(MissileGraphics(EntityGraphics { mesh, material }));
+        world.insert(MissileGraphics(EntityGraphics { mesh, material }));
     }
 }
 
@@ -46,7 +46,7 @@ impl HealthUiMesh {
         );
 
         let mesh = {
-            let loader = world.read_resource::<Loader>();
+            let loader = world.fetch::<Loader>();
             loader.load_from_data(
                 MeshBuilder::new()
                     .with_vertices(vertices)
@@ -54,10 +54,10 @@ impl HealthUiMesh {
                     .with_indices(indices)
                     .into(),
                 (),
-                &world.read_resource(),
+                &world.fetch(),
             )
         };
-        world.add_resource(HealthUiMesh(mesh));
+        world.insert(HealthUiMesh(mesh));
     }
 }
 

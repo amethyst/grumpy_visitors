@@ -55,8 +55,8 @@ fn main() -> amethyst::Result<()> {
     let mut builder = Application::build("./", LoadingState::default())?;
     builder
         .world
-        .add_resource(FramedUpdates::<DummyFramedUpdate>::default());
-    builder.world.add_resource(ServerWorldUpdates::default());
+        .insert(FramedUpdates::<DummyFramedUpdate>::default());
+    builder.world.insert(ServerWorldUpdates::default());
     let mut game_data_builder = GameDataBuilder::default()
         .with_bundle(NetworkBundle::<EncodedMessage>::new(socket_addr.parse()?))?
         .with(

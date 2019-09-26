@@ -77,26 +77,22 @@ pub fn create_mesh(
     positions: Vec<Position>,
     tex_coords: Vec<TexCoord>,
 ) -> Handle<Mesh> {
-    let loader = world.read_resource::<Loader>();
+    let loader = world.fetch::<Loader>();
     loader.load_from_data(
         MeshBuilder::new()
             .with_vertices(positions)
             .with_vertices(tex_coords)
             .into(),
         (),
-        &world.read_resource(),
+        &world.fetch(),
     )
 }
 
 pub fn create_color_material(world: &World, colour: LinSrgba) -> Handle<Material> {
-    let mat_defaults = world.read_resource::<MaterialDefaults>();
-    let loader = world.read_resource::<Loader>();
+    let mat_defaults = world.fetch::<MaterialDefaults>();
+    let loader = world.fetch::<Loader>();
 
-    let albedo = loader.load_from_data(
-        load_from_linear_rgba(colour).into(),
-        (),
-        &world.read_resource(),
-    );
+    let albedo = loader.load_from_data(load_from_linear_rgba(colour).into(), (), &world.fetch());
 
     loader.load_from_data(
         Material {
@@ -104,6 +100,6 @@ pub fn create_color_material(world: &World, colour: LinSrgba) -> Handle<Material
             ..mat_defaults.0.clone()
         },
         (),
-        &world.read_resource(),
+        &world.fetch(),
     )
 }

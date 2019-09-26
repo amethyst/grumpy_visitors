@@ -51,7 +51,7 @@ impl MonsterDefinitions {
                 radius: 12.0,
             },
         );
-        world.add_resource(Self(map))
+        world.insert(Self(map))
     }
 
     #[cfg(not(feature = "client"))]
@@ -68,7 +68,7 @@ impl MonsterDefinitions {
                 radius: 12.0,
             },
         );
-        world.add_resource(Self(map))
+        world.insert(Self(map))
     }
 }
 

@@ -1,5 +1,7 @@
-use amethyst::ecs::ReadExpect;
-use shred_derive::SystemData;
+use amethyst::{
+    ecs::{prelude::World, ReadExpect},
+    shred::{ResourceId, SystemData},
+};
 
 use crate::ecs::resources::{net::MultiplayerGameState, GameEngineState};
 

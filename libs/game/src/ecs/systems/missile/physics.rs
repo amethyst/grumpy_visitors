@@ -1,6 +1,10 @@
 use amethyst::{
-    core::math::{clamp, Rotation2},
-    ecs::{Entities, Join, ReadExpect, System, WriteStorage},
+    core::{
+        math::{clamp, Rotation2},
+        SystemDesc,
+    },
+    derive::SystemDesc,
+    ecs::{Entities, Join, ReadExpect, System, SystemData, World, WriteStorage},
 };
 
 use std::time::Duration;
@@ -29,6 +33,7 @@ const MISSILE_ACCELERATION: f32 =
 const TIME_TO_ROTATE: f32 = 1000.0;
 const MAX_ROTATION: f32 = std::f32::consts::PI / TIME_TO_ROTATE * MS_PER_FRAME;
 
+#[derive(SystemDesc)]
 pub struct MissileSystem;
 
 impl<'s> System<'s> for MissileSystem {

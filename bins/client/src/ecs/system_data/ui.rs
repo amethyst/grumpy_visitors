@@ -1,8 +1,8 @@
 use amethyst::{
-    ecs::{Entities, Entity, Join, WriteStorage},
+    ecs::{Entities, Entity, Join, World, WriteStorage},
+    shred::{ResourceId, SystemData},
     ui::UiTransform,
 };
-use shred_derive::SystemData;
 
 #[derive(SystemData)]
 pub struct UiFinderMut<'a> {

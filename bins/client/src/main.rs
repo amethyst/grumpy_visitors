@@ -6,9 +6,9 @@ mod utils;
 
 use amethyst::{
     animation::AnimationBundle,
-    assets::PrefabLoaderSystem,
+    assets::PrefabLoaderSystemDesc,
     core::{
-        frame_limiter::FrameRateLimitStrategy, transform::TransformBundle, HideHierarchySystem,
+        frame_limiter::FrameRateLimitStrategy, transform::TransformBundle, HideHierarchySystemDesc,
     },
     input::{InputBundle, StringBindings},
     network::NetworkBundle,
@@ -68,14 +68,14 @@ fn main() -> amethyst::Result<()> {
     let input_bundle = InputBundle::<StringBindings>::new().with_bindings(bindings);
 
     let mut builder = Application::build("./", LoadingState::default())?;
-    builder.world.add_resource(settings);
-    builder.world.add_resource(ServerCommand::new());
-    builder.world.add_resource(MultiplayerRoomState::new());
-    builder.world.add_resource(ClientWorldUpdates::default());
-    builder.world.add_resource(LastAcknowledgedUpdate(0));
+    builder.world.insert(settings);
+    builder.world.insert(ServerCommand::new());
+    builder.world.insert(MultiplayerRoomState::new());
+    builder.world.insert(ClientWorldUpdates::default());
+    builder.world.insert(LastAcknowledgedUpdate(0));
     builder
         .world
-        .add_resource(FramedUpdates::<ServerWorldUpdate>::default());
+        .insert(FramedUpdates::<ServerWorldUpdate>::default());
 
     let mut game_data_builder = GameDataBuilder::default()
         .with_bundle(NetworkBundle::<EncodedMessage>::new(socket_addr.parse()?))?
@@ -109,13 +109,13 @@ fn main() -> amethyst::Result<()> {
             "world_position_transform_system",
             "camera_translation_system",
         ]))?
-        .with(
-            PrefabLoaderSystem::<GameSpriteAnimationPrefab>::default(),
+        .with_system_desc(
+            PrefabLoaderSystemDesc::<GameSpriteAnimationPrefab>::default(),
             "",
             &[],
         )
-        .with(
-            HideHierarchySystem::default(),
+        .with_system_desc(
+            HideHierarchySystemDesc::default(),
             "",
             &["parent_hierarchy_system"],
         )

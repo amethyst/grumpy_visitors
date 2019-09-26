@@ -1,8 +1,8 @@
 use amethyst::{
     core::Time,
-    ecs::{ReadExpect, WriteExpect},
+    ecs::{prelude::World, ReadExpect, WriteExpect},
+    shred::{ResourceId, SystemData},
 };
-use shred_derive::SystemData;
 
 use std::time::Duration;
 

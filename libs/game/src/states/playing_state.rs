@@ -4,9 +4,8 @@ use amethyst::{
     prelude::{SimpleTrans, StateEvent, Trans},
 };
 use amethyst::{
-    ecs::{World, WriteExpect, WriteStorage},
+    ecs::{SystemData, World, WriteExpect, WriteStorage},
     prelude::{GameData, SimpleState, StateData},
-    shred::SystemData,
 };
 
 #[cfg(feature = "client")]
@@ -43,17 +42,17 @@ impl SimpleState for PlayingState {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
         log::info!("PlayingState started");
         let world = data.world;
-        *world.write_resource::<GameEngineState>() = GameEngineState::Playing;
+        *world.fetch_mut::<GameEngineState>() = GameEngineState::Playing;
 
-        world.add_resource(SpawnActions(Vec::new()));
-        world.add_resource(GameLevelState::default());
+        world.insert(SpawnActions(Vec::new()));
+        world.insert(GameLevelState::default());
 
-        GameTimeService::fetch(&world.res).set_game_start_time();
+        GameTimeService::fetch(&world).set_game_start_time();
 
         initialize_players(world);
 
         {
-            let mut spawn_actions = world.write_resource::<SpawnActions>();
+            let mut spawn_actions = world.fetch_mut::<SpawnActions>();
             spawn_actions.0.append(&mut vec![
                 SpawnAction {
                     monsters: Count {

@@ -8,8 +8,8 @@ edition = "2018"
 path = "../libs/animation_prefabs"
 
 [dependencies.amethyst]
-version = "0.12.0"
-features = ["nightly"]
+version = "0.13.0"
+features = ["nightly", "empty"]
 
 [dependencies]
 texture_packer = "0.16.0"

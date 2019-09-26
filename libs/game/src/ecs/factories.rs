@@ -8,10 +8,10 @@ use amethyst::{
 };
 use amethyst::{
     core::Transform,
-    ecs::{Entities, Entity, WriteStorage},
+    ecs::{prelude::World, Entities, Entity, WriteStorage},
+    shred::{ResourceId, SystemData},
     utils::tag::Tag,
 };
-use shred_derive::SystemData;
 
 use std::time::Duration;
 

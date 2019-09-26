@@ -1,6 +1,6 @@
 use amethyst::{
     assets::AssetStorage,
-    core::ecs::{Join, Read, ReadExpect, ReadStorage, Resources, SystemData},
+    core::ecs::{Join, Read, ReadExpect, ReadStorage, SystemData, World},
     error::Error,
     renderer::{
         bundle::{RenderOrder, RenderPlan, RenderPlugin, Target},
@@ -38,7 +38,7 @@ impl<B: Backend> RenderPlugin<B> for HealthUiPlugin {
         &mut self,
         plan: &mut RenderPlan<B>,
         _factory: &mut Factory<B>,
-        _res: &Resources,
+        _world: &World,
     ) -> Result<(), Error> {
         plan.extend_target(self.target, |ctx| {
             ctx.add(
@@ -105,19 +105,19 @@ impl DrawHealthUiDesc {
     }
 }
 
-impl<B: Backend> RenderGroupDesc<B, Resources> for DrawHealthUiDesc {
+impl<B: Backend> RenderGroupDesc<B, World> for DrawHealthUiDesc {
     fn build(
         self,
         _ctx: &GraphContext<B>,
         factory: &mut Factory<B>,
         _queue: QueueId,
-        _resources: &Resources,
+        _world: &World,
         framebuffer_width: u32,
         framebuffer_height: u32,
         subpass: hal::pass::Subpass<'_, B>,
         _buffers: Vec<NodeBuffer>,
         _images: Vec<NodeImage>,
-    ) -> Result<Box<dyn RenderGroup<B, Resources>>, failure::Error> {
+    ) -> Result<Box<dyn RenderGroup<B, World>>, failure::Error> {
         let env = DynamicUniform::new(factory, pso::ShaderStageFlags::VERTEX)?;
 
         let (pipeline, pipeline_layout) = build_pipeline(
@@ -143,16 +143,16 @@ pub struct DrawHealthUi<B: Backend> {
     env: DynamicUniform<B, ViewArgs>,
 }
 
-impl<B: Backend> RenderGroup<B, Resources> for DrawHealthUi<B> {
+impl<B: Backend> RenderGroup<B, World> for DrawHealthUi<B> {
     fn prepare(
         &mut self,
         factory: &Factory<B>,
         _queue: QueueId,
         index: usize,
         _subpass: hal::pass::Subpass<'_, B>,
-        resources: &Resources,
+        world: &World,
     ) -> PrepareResult {
-        let camera = CameraGatherer::gather(resources);
+        let camera = CameraGatherer::gather(world);
         self.env.write(factory, index, camera.projview);
 
         PrepareResult::DrawRecord
@@ -163,13 +163,13 @@ impl<B: Backend> RenderGroup<B, Resources> for DrawHealthUi<B> {
         mut encoder: RenderPassEncoder<'_, B>,
         index: usize,
         _: hal::pass::Subpass<'_, B>,
-        resources: &Resources,
+        world: &World,
     ) {
         let (mesh_storage, health_ui_mesh_handle, health_ui_graphics) = <(
             Read<'_, AssetStorage<Mesh>>,
             ReadExpect<'_, HealthUiMesh>,
             ReadStorage<'_, HealthUiGraphics>,
-        )>::fetch(resources);
+        )>::fetch(world);
 
         let layout = &self.pipeline_layout;
 
@@ -215,7 +215,7 @@ impl<B: Backend> RenderGroup<B, Resources> for DrawHealthUi<B> {
         }
     }
 
-    fn dispose(self: Box<Self>, factory: &mut Factory<B>, _aux: &Resources) {
+    fn dispose(self: Box<Self>, factory: &mut Factory<B>, _aux: &World) {
         unsafe {
             factory.device().destroy_graphics_pipeline(self.pipeline);
             factory
