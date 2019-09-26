@@ -27,7 +27,7 @@ use std::time::Duration;
 use ha_animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
 use ha_client_shared::{ecs::resources::MultiplayerRoomState, settings::Settings};
 use ha_core::{
-    ecs::resources::world::{ClientWorldUpdates, FramedUpdates, ServerWorldUpdate},
+    ecs::resources::world::{ClientWorldUpdates, FramedUpdates, ReceivedServerWorldUpdate},
     net::EncodedMessage,
 };
 use ha_game::{
@@ -56,7 +56,7 @@ fn main() -> amethyst::Result<()> {
         .level_for("ha_game::ecs::systems", LogLevelFilter::Debug)
         .level_for(
             "ha_game::ecs::systems::net_connection_manager",
-            LogLevelFilter::Info,
+            LogLevelFilter::Debug,
         )
         .level_for("ha_client", LogLevelFilter::Debug)
         .start();
@@ -75,7 +75,7 @@ fn main() -> amethyst::Result<()> {
     builder.world.insert(LastAcknowledgedUpdate(0));
     builder
         .world
-        .insert(FramedUpdates::<ServerWorldUpdate>::default());
+        .insert(FramedUpdates::<ReceivedServerWorldUpdate>::default());
 
     let mut game_data_builder = GameDataBuilder::default()
         .with_bundle(NetworkBundle::<EncodedMessage>::new(socket_addr.parse()?))?

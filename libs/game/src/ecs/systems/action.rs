@@ -3,7 +3,7 @@ use amethyst::ecs::{Entities, Join, ReadExpect, ReadStorage, System, WriteExpect
 use std::{cell::RefCell, rc::Rc};
 
 #[cfg(feature = "client")]
-use ha_core::ecs::resources::world::{ClientWorldUpdates, ServerWorldUpdate};
+use ha_core::ecs::resources::world::{ClientWorldUpdates, ReceivedServerWorldUpdate};
 #[cfg(not(feature = "client"))]
 use ha_core::ecs::resources::world::{PlayerActionUpdates, ServerWorldUpdates};
 use ha_core::{
@@ -33,7 +33,7 @@ use crate::ecs::{
 };
 
 #[cfg(feature = "client")]
-type FrameUpdate = ServerWorldUpdate;
+type FrameUpdate = ReceivedServerWorldUpdate;
 #[cfg(not(feature = "client"))]
 type FrameUpdate = PlayerActionUpdates;
 
@@ -257,9 +257,17 @@ fn walk_action_update_for_player(
     entity_net_metadata: EntityNetMetadata,
 ) -> Option<(Option<WorldPosition>, ClientActionUpdate<PlayerWalkAction>)> {
     frame_updates
+        .player_updates
         .player_walk_actions_updates
         .iter()
         .find(|actions_updates| actions_updates.entity_net_id == entity_net_metadata.id)
+        .or_else(|| {
+            frame_updates
+                .controlled_player_updates
+                .player_walk_actions_updates
+                .iter()
+                .find(|actions_updates| actions_updates.entity_net_id == entity_net_metadata.id)
+        })
         .map(move |update| (Some(update.position.clone()), update.data.clone()))
 }
 

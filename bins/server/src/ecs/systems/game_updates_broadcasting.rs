@@ -3,7 +3,7 @@ use amethyst::ecs::{Join, ReadStorage, System, WriteExpect, WriteStorage};
 use ha_core::{
     ecs::{
         components::NetConnectionModel,
-        resources::world::{ServerWorldUpdate, ServerWorldUpdates},
+        resources::world::ServerWorldUpdates,
         system_data::{game_state_helper::GameStateHelper, time::GameTimeService},
     },
     net::{server_message::ServerMessagePayload, NetConnection},
@@ -49,14 +49,16 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
         }
         self.last_broadcasted_frame = game_time_service.game_frame_number();
 
-        let latest_update = server_world_updates
-            .updates
-            .back()
-            .expect("Expected at least one ServerWorldUpdate")
-            .0;
+        let (latest_update_number, latest_update_frame_number) = {
+            let latest_update = server_world_updates
+                .updates
+                .back()
+                .expect("Expected at least one ServerWorldUpdate");
+            (latest_update.0, latest_update.1.frame_number)
+        };
 
         // We'll use these to drop server updates that are no longer needed.
-        let mut oldest_actual_update = latest_update + 1;
+        let mut oldest_actual_update = latest_update_number + 1;
         let mut oldest_actual_update_index = 0;
 
         for (i, (net_connection_model, net_connection)) in
@@ -73,42 +75,39 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
                 oldest_actual_update_index = i;
             }
 
-            let mut merged_server_updates: Vec<ServerWorldUpdate> = Vec::with_capacity(
-                latest_update as usize
-                    - net_connection_model.last_acknowledged_update.unwrap_or(0) as usize,
-            );
-
-            // Here we check which update a client acknowledged the last and gather all the
-            // updates a client haven't acknowledged, merging all the new updates with the old ones,
-            // as we may alter updates for a certain frame more than once.
-            for (server_update_id, server_update) in server_world_updates.updates.iter().cloned() {
-                let is_not_acknowledged = net_connection_model
-                    .last_acknowledged_update
-                    .map(|update_id| update_id < server_update_id)
-                    .unwrap_or(true);
-                if is_not_acknowledged {
-                    if let Some(existing_update) = merged_server_updates
-                        .iter_mut()
-                        .find(|update| update.frame_number == server_update.frame_number)
-                    {
-                        existing_update.merge_another_update(server_update)
+            // Gather the updates this client needs based on its last_acknowledged_update.
+            let mut oldest_added_frame = latest_update_frame_number + 1;
+            let updates = server_world_updates
+                .updates
+                .iter()
+                .rev()
+                .take_while(|update| {
+                    Some(update.0) > net_connection_model.last_acknowledged_update
+                })
+                .filter_map(move |update| {
+                    let update = &update.1;
+                    // We may store some repetitive updates, so we need to filter them out.
+                    if oldest_added_frame > update.frame_number {
+                        oldest_added_frame = update.frame_number;
+                        Some(update.clone())
                     } else {
-                        merged_server_updates.push(server_update)
+                        None
                     }
-                }
-            }
+                })
+                .collect::<Vec<_>>();
+            let updates = updates.into_iter().rev().collect();
 
             send_message_unreliable(
                 net_connection,
                 &ServerMessagePayload::UpdateWorld {
-                    id: latest_update,
-                    updates: merged_server_updates,
+                    id: latest_update_number,
+                    updates,
                 },
             );
         }
 
         // We don't need to store these updates anymore, as clients have already acknowledged them.
-        if oldest_actual_update <= latest_update {
+        if oldest_actual_update <= latest_update_number {
             server_world_updates
                 .updates
                 .drain(0..=oldest_actual_update_index);

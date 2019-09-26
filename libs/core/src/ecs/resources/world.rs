@@ -13,7 +13,7 @@ use crate::{
         damage_history::DamageHistoryEntries, missile::Missile, Dead, Monster, Player,
         PlayerActions, WorldPosition,
     },
-    net::{MergableNetUpdates, NetIdentifier, NetUpdate, NetUpdateWithPosition},
+    net::{NetIdentifier, NetUpdate, NetUpdateWithPosition},
 };
 
 const SAVED_WORLD_STATES_LIMIT: usize = 600;
@@ -34,8 +34,7 @@ impl WorldStates {
         if self.world_states.is_empty() {
             world_state.frame_number = 0;
         } else {
-            world_state.frame_number =
-                self.world_states[self.world_states.len() - 1].frame_number + 1;
+            world_state.frame_number = self.world_states.back().unwrap().frame_number + 1;
         }
 
         self.world_states.push_back(world_state);
@@ -167,10 +166,6 @@ impl<T: FramedUpdate + ::std::fmt::Debug> FramedUpdates<T> {
     pub fn update_frame(&mut self, frame_number: u64, lag_compensate: bool) -> Option<&mut T> {
         self.reserve_updates(frame_number);
 
-        if frame_number < self.oldest_updated_frame {
-            self.oldest_updated_frame = frame_number;
-        }
-
         let latest_frame = self.latest_frame();
         let available_frames_count = self.updates.len().min(LAG_COMPENSATION_FRAMES_LIMIT);
         let frames_to_skip = self.updates.len() - available_frames_count;
@@ -193,14 +188,26 @@ impl<T: FramedUpdate + ::std::fmt::Debug> FramedUpdates<T> {
         } else {
             update_index.map(|index| index + frames_to_skip)
         };
-        let update = update_index.and_then(move |index| self.updates.get_mut(index));
+        let update = update_index
+            .and_then(move |index| {
+                let update_frame_number = self
+                    .updates
+                    .get(index)
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "Expected to find an update for {} frame (latest frame update: {})",
+                            frame_number, latest_frame
+                        )
+                    })
+                    .frame_number();
+                if update_frame_number < self.oldest_updated_frame {
+                    self.oldest_updated_frame = update_frame_number;
+                }
+                self.updates.get_mut(index)
+            })
+            .unwrap();
 
-        Some(update.unwrap_or_else(|| {
-            panic!(
-                "Expected to find an update for {} frame (latest frame update: {})",
-                frame_number, latest_frame
-            )
-        }))
+        Some(update)
     }
 
     pub fn updates_iter_mut(&mut self, start_frame_number: u64) -> impl Iterator<Item = &mut T> {
@@ -220,7 +227,7 @@ impl<T: FramedUpdate + ::std::fmt::Debug> FramedUpdates<T> {
         if self.updates.is_empty() {
             0
         } else {
-            self.updates[self.updates.len() - 1].frame_number()
+            self.updates.back().unwrap().frame_number()
         }
     }
 
@@ -271,13 +278,12 @@ impl ServerWorldUpdates {
         let new_update_id = if self.updates.is_empty() {
             0
         } else {
-            let latest_update = &self.updates[self.updates.len() - 1];
+            let latest_update = &self.updates.back().unwrap();
             latest_update.0 + 1
         };
         self.updates
-            .push_back((new_update_id, ServerWorldUpdate::new_update(frame_number)));
-        let latest_update_index = self.updates.len() - 1;
-        &mut self.updates[latest_update_index].1
+            .push_back((new_update_id, ServerWorldUpdate::new(frame_number)));
+        &mut self.updates.back_mut().unwrap().1
     }
 }
 
@@ -364,40 +370,59 @@ pub struct ServerWorldUpdate {
     pub frame_number: u64,
     pub player_walk_actions_updates:
         Vec<NetUpdateWithPosition<ClientActionUpdate<PlayerWalkAction>>>,
-    pub discarded_player_walk_actions_updates: Vec<NetIdentifier>,
     pub player_look_actions_updates: Vec<NetUpdate<ClientActionUpdate<PlayerLookAction>>>,
-    pub discarded_player_look_actions_updates: Vec<NetIdentifier>,
     pub player_cast_actions_updates: Vec<NetUpdate<ClientActionUpdate<PlayerCastAction>>>,
-    pub discarded_player_cast_actions_updates: Vec<NetIdentifier>,
     pub mob_actions_updates: Vec<NetUpdateWithPosition<MobAction<NetIdentifier>>>,
     pub damage_histories_updates: Vec<NetUpdate<DamageHistoryEntries>>,
 }
 
 impl ServerWorldUpdate {
-    pub fn merge_another_update(&mut self, other: ServerWorldUpdate) {
-        assert_eq!(self.frame_number, other.frame_number);
-        self.player_walk_actions_updates
-            .merge(other.player_walk_actions_updates);
-        self.player_look_actions_updates
-            .merge(other.player_look_actions_updates);
-        self.player_cast_actions_updates
-            .merge(other.player_cast_actions_updates);
-        self.mob_actions_updates.merge(other.mob_actions_updates);
-        self.damage_histories_updates
-            .merge(other.damage_histories_updates);
-    }
-}
-
-impl FramedUpdate for ServerWorldUpdate {
-    fn new_update(frame_number: u64) -> Self {
+    pub fn new(frame_number: u64) -> Self {
         Self {
             frame_number,
             player_walk_actions_updates: Vec::new(),
-            discarded_player_walk_actions_updates: Vec::new(),
             player_look_actions_updates: Vec::new(),
-            discarded_player_look_actions_updates: Vec::new(),
             player_cast_actions_updates: Vec::new(),
-            discarded_player_cast_actions_updates: Vec::new(),
+            mob_actions_updates: Vec::new(),
+            damage_histories_updates: Vec::new(),
+        }
+    }
+}
+
+/// I hate this struct name.
+#[derive(Debug, Clone)]
+pub struct ReceivedServerWorldUpdate {
+    pub frame_number: u64,
+    pub player_updates: ReceivedPlayerUpdate,
+    pub controlled_player_updates: ReceivedPlayerUpdate,
+    pub mob_actions_updates: Vec<NetUpdateWithPosition<MobAction<NetIdentifier>>>,
+    pub damage_histories_updates: Vec<NetUpdate<DamageHistoryEntries>>,
+}
+
+impl ReceivedServerWorldUpdate {
+    pub fn apply_server_update(&mut self, server_update: ServerWorldUpdate) {
+        self.player_updates.player_walk_actions_updates = server_update.player_walk_actions_updates;
+        self.player_updates.player_look_actions_updates = server_update.player_look_actions_updates;
+        self.player_updates.player_cast_actions_updates = server_update.player_cast_actions_updates;
+        self.mob_actions_updates = server_update.mob_actions_updates;
+        self.damage_histories_updates = server_update.damage_histories_updates;
+    }
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct ReceivedPlayerUpdate {
+    pub player_walk_actions_updates:
+        Vec<NetUpdateWithPosition<ClientActionUpdate<PlayerWalkAction>>>,
+    pub player_look_actions_updates: Vec<NetUpdate<ClientActionUpdate<PlayerLookAction>>>,
+    pub player_cast_actions_updates: Vec<NetUpdate<ClientActionUpdate<PlayerCastAction>>>,
+}
+
+impl FramedUpdate for ReceivedServerWorldUpdate {
+    fn new_update(frame_number: u64) -> Self {
+        Self {
+            frame_number,
+            player_updates: ReceivedPlayerUpdate::default(),
+            controlled_player_updates: ReceivedPlayerUpdate::default(),
             mob_actions_updates: Vec::new(),
             damage_histories_updates: Vec::new(),
         }

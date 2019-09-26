@@ -1,14 +1,13 @@
 use amethyst::ecs::{Entities, Join, ReadExpect, System, WriteExpect, WriteStorage};
 
-use std::{collections::VecDeque, iter::FromIterator};
-
 use ha_client_shared::ecs::resources::MultiplayerRoomState;
 use ha_core::{
     ecs::{
         resources::{
             net::MultiplayerGameState,
             world::{
-                FramedUpdate, FramedUpdates, ServerWorldUpdate, LAG_COMPENSATION_FRAMES_LIMIT,
+                FramedUpdates, ReceivedPlayerUpdate, ReceivedServerWorldUpdate, ServerWorldUpdate,
+                LAG_COMPENSATION_FRAMES_LIMIT,
             },
             GameEngineState, NewGameEngineState,
         },
@@ -42,7 +41,7 @@ impl<'s> System<'s> for ClientNetworkSystem {
         WriteExpect<'s, MultiplayerGameState>,
         WriteExpect<'s, NewGameEngineState>,
         WriteExpect<'s, LastAcknowledgedUpdate>,
-        WriteExpect<'s, FramedUpdates<ServerWorldUpdate>>,
+        WriteExpect<'s, FramedUpdates<ReceivedServerWorldUpdate>>,
         WriteStorage<'s, NetConnection>,
     );
 
@@ -132,16 +131,23 @@ impl<'s> System<'s> for ClientNetworkSystem {
                         &ClientMessagePayload::AcknowledgeWorldUpdate(id),
                     );
 
-                    updates.sort_by(|a, b| a.frame_number.cmp(&b.frame_number));
-                    last_acknowledged_update.0 = updates
-                        .last()
-                        .expect("Expected at least one incoming server update")
-                        .frame_number;
-                    apply_world_updates(
-                        multiplayer_room_state.player_net_id,
-                        &mut framed_updates,
-                        updates,
-                    );
+                    if last_acknowledged_update.0 < id {
+                        last_acknowledged_update.0 = id;
+
+                        updates.sort_by(|a, b| a.frame_number.cmp(&b.frame_number));
+                        let frame_to_reserve = updates
+                            .last()
+                            .map(|update| update.frame_number)
+                            .unwrap_or(0)
+                            .max(game_time_service.game_frame_number());
+                        framed_updates.reserve_updates(frame_to_reserve);
+
+                        apply_world_updates(
+                            vec![multiplayer_room_state.player_net_id],
+                            &mut framed_updates,
+                            updates,
+                        );
+                    }
                 }
                 NetEvent::Message(ServerMessagePayload::PauseWaitingForPlayers { id, players }) => {
                     if multiplayer_game_state.waiting_for_players_pause_id < id {
@@ -212,24 +218,80 @@ impl<'s> System<'s> for ClientNetworkSystem {
 
 // Expects incoming_updates to be sorted (lowest frame first).
 fn apply_world_updates(
-    player_net_id: NetIdentifier,
-    framed_updates: &mut FramedUpdates<ServerWorldUpdate>,
+    controlled_players: Vec<NetIdentifier>,
+    framed_updates: &mut FramedUpdates<ReceivedServerWorldUpdate>,
     mut incoming_updates: Vec<ServerWorldUpdate>,
 ) {
-    let current_player_updates = incoming_updates
-        .iter_mut()
-        .skip_while(|update| update.frame_number < INTERPOLATION_FRAME_DELAY)
+    if incoming_updates.is_empty() {
+        return;
+    }
+
+    let first_incoming_frame_number = incoming_updates
+        .first()
+        .unwrap()
+        .frame_number
+        .saturating_sub(INTERPOLATION_FRAME_DELAY);
+    let first_available_frame_number = framed_updates.updates.front().unwrap().frame_number;
+    assert!(
+        first_incoming_frame_number >= first_available_frame_number,
+        "Tried to apply a too old ServerUpdate (frame {}), when the first available frame is {}",
+        first_incoming_frame_number,
+        first_available_frame_number,
+    );
+
+    let controlled_player_updates =
+        collect_controlled_player_updates(&controlled_players, &mut incoming_updates);
+
+    let (controlled_start_frame_number, others_start_frame_number) = incoming_updates
+        .first()
         .map(|update| {
-            let mut current_player_update =
-                ServerWorldUpdate::new_update(update.frame_number - INTERPOLATION_FRAME_DELAY);
+            (
+                update
+                    .frame_number
+                    .saturating_sub(INTERPOLATION_FRAME_DELAY),
+                update.frame_number,
+            )
+        })
+        .unwrap();
+
+    framed_updates.oldest_updated_frame = controlled_start_frame_number;
+    let mut controlled_player_updates_iter = controlled_player_updates.into_iter();
+    let mut incoming_updates_iter = incoming_updates.into_iter();
+
+    for frame_updates in framed_updates.updates_iter_mut(controlled_start_frame_number) {
+        if let Some(controlled_player_updates) = controlled_player_updates_iter.next() {
+            frame_updates.controlled_player_updates = controlled_player_updates;
+        }
+        if frame_updates.frame_number >= others_start_frame_number {
+            let server_update = incoming_updates_iter.next();
+            if server_update.is_none() {
+                return;
+            }
+            frame_updates.apply_server_update(server_update.unwrap());
+        }
+    }
+}
+
+fn collect_controlled_player_updates(
+    controlled_players: &[NetIdentifier],
+    incoming_updates: &mut Vec<ServerWorldUpdate>,
+) -> Vec<ReceivedPlayerUpdate> {
+    incoming_updates
+        .iter_mut()
+        .skip_while(|update| {
+            // Skips the first 10 frames, as there shouldn't be any player updates on game start.
+            update.frame_number < INTERPOLATION_FRAME_DELAY
+        })
+        .map(|update| {
+            let mut controlled_player_update = ReceivedPlayerUpdate::default();
 
             let walk_action_pos = update
                 .player_walk_actions_updates
                 .iter()
-                .position(|action| action.entity_net_id == player_net_id);
+                .position(|action| controlled_players.contains(&action.entity_net_id));
             if let Some(walk_action_pos) = walk_action_pos {
                 let walk_action = update.player_walk_actions_updates.remove(walk_action_pos);
-                current_player_update
+                controlled_player_update
                     .player_walk_actions_updates
                     .push(walk_action);
             }
@@ -237,10 +299,10 @@ fn apply_world_updates(
             let cast_action_pos = update
                 .player_cast_actions_updates
                 .iter()
-                .position(|action| action.entity_net_id == player_net_id);
+                .position(|action| controlled_players.contains(&action.entity_net_id));
             if let Some(cast_action_pos) = cast_action_pos {
                 let cast_action = update.player_cast_actions_updates.remove(cast_action_pos);
-                current_player_update
+                controlled_player_update
                     .player_cast_actions_updates
                     .push(cast_action);
             }
@@ -248,48 +310,15 @@ fn apply_world_updates(
             let look_action_pos = update
                 .player_look_actions_updates
                 .iter()
-                .position(|action| action.entity_net_id == player_net_id);
+                .position(|action| controlled_players.contains(&action.entity_net_id));
             if let Some(look_action_pos) = look_action_pos {
                 let look_action = update.player_look_actions_updates.remove(look_action_pos);
-                current_player_update
+                controlled_player_update
                     .player_look_actions_updates
                     .push(look_action);
             }
 
-            current_player_update
+            controlled_player_update
         })
-        .collect();
-    apply_filtered_world_updates(framed_updates, incoming_updates);
-    apply_filtered_world_updates(framed_updates, current_player_updates);
-}
-
-fn apply_filtered_world_updates(
-    framed_updates: &mut FramedUpdates<ServerWorldUpdate>,
-    incoming_updates: Vec<ServerWorldUpdate>,
-) {
-    let start_frame_number = incoming_updates.first().map(|update| update.frame_number);
-    if let Some(start_frame_number) = start_frame_number {
-        framed_updates.oldest_updated_frame = start_frame_number;
-        let mut incoming_updates_iter = incoming_updates.into_iter();
-        let mut frame_number = start_frame_number;
-
-        // There may be updates altering the old ones, merge them if such exist.
-        for frame_updates in framed_updates.updates_iter_mut(start_frame_number) {
-            let server_update = incoming_updates_iter.next();
-            if server_update.is_none() {
-                return;
-            }
-            let server_update = server_update.unwrap();
-            frame_number += 1;
-            frame_updates.merge_another_update(server_update);
-        }
-
-        // Add all the other updates.
-        if let Some(newest_update) = framed_updates.updates.back() {
-            assert_eq!(newest_update.frame_number + 1, frame_number);
-        }
-        framed_updates
-            .updates
-            .append(&mut VecDeque::from_iter(incoming_updates_iter));
-    }
+        .collect()
 }
