@@ -24,6 +24,8 @@ use ha_game::{
     utils::net::{broadcast_message_reliable, send_message_reliable},
 };
 
+use crate::ecs::resources::LastBroadcastedFrame;
+
 // Pause the game if we have a client that hasn't responded for the last 180 frames (3 secs).
 const PAUSE_FRAME_THRESHOLD: u64 =
     (LAG_COMPENSATION_FRAMES_LIMIT + LAG_COMPENSATION_FRAMES_LIMIT / 2) as u64;
@@ -44,6 +46,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
     type SystemData = (
         GameTimeService<'s>,
         ReadExpect<'s, GameEngineState>,
+        ReadExpect<'s, LastBroadcastedFrame>,
         WriteExpect<'s, ConnectionEvents>,
         WriteExpect<'s, MultiplayerGameState>,
         WriteExpect<'s, NewGameEngineState>,
@@ -57,6 +60,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
         (
             game_time_service,
             game_engine_state,
+            last_broadcasted_frame,
             mut connection_events,
             mut multiplayer_game_state,
             mut new_game_engine_state,
@@ -159,13 +163,15 @@ impl<'s> System<'s> for ServerNetworkSystem {
         if *game_engine_state == GameEngineState::Playing && multiplayer_game_state.is_playing {
             let mut lagging_players = Vec::new();
             for net_connection_model in (&net_connection_models).join() {
-                let frames_since_last_pong = game_time_service.engine_time().frame_number()
-                    - net_connection_model.ping_pong_data.last_ponged_frame;
+                let frames_since_last_pong = game_time_service
+                    .engine_time()
+                    .frame_number()
+                    .saturating_sub(net_connection_model.ping_pong_data.last_ponged_frame);
                 let average_lagging_behind =
                     net_connection_model.ping_pong_data.average_lagging_behind();
 
-                let expected_client_frame_number = game_time_service
-                    .game_frame_number()
+                let expected_client_frame_number = last_broadcasted_frame
+                    .0
                     .saturating_sub(INTERPOLATION_FRAME_DELAY);
 
                 let was_lagging = multiplayer_game_state
@@ -177,6 +183,17 @@ impl<'s> System<'s> for ServerNetworkSystem {
                 let is_catching_up = net_connection_model.ping_pong_data.last_stored_game_frame()
                     < expected_client_frame_number;
 
+                log::trace!(
+                    "Frames since last pong (client {}): {}",
+                    net_connection_model.id,
+                    frames_since_last_pong
+                );
+                log::trace!(
+                    "Last_stored_game_frame (client {}): {}. Expected_client_frame_number: {}",
+                    net_connection_model.id,
+                    net_connection_model.ping_pong_data.last_stored_game_frame(),
+                    expected_client_frame_number,
+                );
                 log::trace!(
                     "Average lagging behind (client {}): {}",
                     net_connection_model.id,
@@ -239,7 +256,7 @@ fn add_walk_actions(
             if is_badly_late {
                 // If there was any accepted update after this one, we're going to skip it,
                 // as it's impossible to postpone the other ones.
-                framed_updates
+                !framed_updates
                     .updates
                     .iter()
                     .skip_while(|update| update.frame_number < added_actions_frame_number)

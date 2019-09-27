@@ -9,13 +9,12 @@ use std::time::{Duration, Instant};
 use ha_core::{
     ecs::{components::NetConnectionModel, system_data::time::GameTimeService},
     net::{
-        client_message::ClientMessagePayload, server_message::ServerMessagePayload, EncodedMessage,
-        NetConnection, NetIdentifier,
+        client_message::ClientMessagePayload, server_message::ServerMessagePayload,
+        ConnectionNetEvent, EncodedMessage, NetConnection, NetEvent, NetIdentifier,
     },
 };
 
 use crate::ecs::resources::ConnectionEvents;
-use ha_core::net::{ConnectionNetEvent, NetEvent};
 
 const PING_INTERVAL_MILLIS: u64 = 500;
 

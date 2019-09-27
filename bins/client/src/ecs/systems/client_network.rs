@@ -1,8 +1,9 @@
-use amethyst::ecs::{Entities, Join, ReadExpect, System, WriteExpect, WriteStorage};
+use amethyst::ecs::{Entities, Join, ReadExpect, ReadStorage, System, WriteExpect, WriteStorage};
 
 use ha_client_shared::ecs::resources::MultiplayerRoomState;
 use ha_core::{
     ecs::{
+        components::NetConnectionModel,
         resources::{
             net::MultiplayerGameState,
             world::{
@@ -44,6 +45,7 @@ impl<'s> System<'s> for ClientNetworkSystem {
         WriteExpect<'s, FramedUpdates<ReceivedServerWorldUpdate>>,
         WriteExpect<'s, FramedUpdates<PlayerActionUpdates>>,
         WriteStorage<'s, NetConnection>,
+        ReadStorage<'s, NetConnectionModel>,
     );
 
     fn run(
@@ -60,6 +62,7 @@ impl<'s> System<'s> for ClientNetworkSystem {
             mut framed_updates,
             mut player_actions_updates,
             mut connections,
+            net_connection_models,
         ): Self::SystemData,
     ) {
         if connections.count() == 0
@@ -133,14 +136,20 @@ impl<'s> System<'s> for ClientNetworkSystem {
                         &ClientMessagePayload::AcknowledgeWorldUpdate(id),
                     );
 
-                    if last_acknowledged_update.0 < id {
-                        last_acknowledged_update.0 = id;
-
+                    if last_acknowledged_update.id < id {
                         updates.sort_by(|a, b| a.frame_number.cmp(&b.frame_number));
-                        let frame_to_reserve = updates
-                            .last()
-                            .map(|update| update.frame_number)
-                            .unwrap_or(0)
+
+                        last_acknowledged_update.id = id;
+                        last_acknowledged_update.frame_number =
+                            last_acknowledged_update.frame_number.max(
+                                updates
+                                    .last()
+                                    .map(|update| update.frame_number)
+                                    .unwrap_or(0),
+                            );
+
+                        let frame_to_reserve = last_acknowledged_update
+                            .frame_number
                             .max(game_time_service.game_frame_number());
                         framed_updates.reserve_updates(frame_to_reserve);
 
@@ -156,12 +165,9 @@ impl<'s> System<'s> for ClientNetworkSystem {
                 }
                 NetEvent::Message(ServerMessagePayload::PauseWaitingForPlayers { id, players }) => {
                     if multiplayer_game_state.waiting_for_players_pause_id < id {
+                        // We don't always want set `waiting_for_players` to true, as we may need
+                        // to catch up with the server if we're lagging too. See below.
                         multiplayer_game_state.waiting_for_players_pause_id = id;
-                        let is_lagging = players.iter().any(|connection_id| {
-                            *connection_id == multiplayer_room_state.connection_id
-                        });
-                        // We won't pause the game if we're lagging ourselves.
-                        multiplayer_game_state.waiting_for_players = !is_lagging;
                         multiplayer_game_state.lagging_players = players;
                     }
                 }
@@ -177,19 +183,17 @@ impl<'s> System<'s> for ClientNetworkSystem {
             }
         }
 
-        // If we were lagging and have caught up with a server,
-        // wait until a server authorizes to unpause.
-        if !multiplayer_game_state.waiting_for_players
-            && !multiplayer_game_state.lagging_players.is_empty()
-        {
+        // Until the server authorizes to unpause we need to use a chance to catch up with it,
+        // even if it's not us lagging.
+        if !multiplayer_game_state.lagging_players.is_empty() {
             let server_frame = framed_updates
                 .updates
                 .back()
                 .expect("Expected at least one framed update if we're lagging")
                 .frame_number;
-            if game_time_service.game_frame_number() + INTERPOLATION_FRAME_DELAY >= server_frame {
-                multiplayer_game_state.waiting_for_players = true;
-            }
+
+            multiplayer_game_state.waiting_for_players =
+                game_time_service.game_frame_number() + INTERPOLATION_FRAME_DELAY >= server_frame;
         }
 
         if *game_engine_state == GameEngineState::Playing && multiplayer_game_state.is_playing {
@@ -204,18 +208,30 @@ impl<'s> System<'s> for ClientNetworkSystem {
             // Wait if we a server is lagging behind for PAUSE_FRAME_THRESHOLD frames.
             let frames_ahead = game_time_service.game_frame_number().saturating_sub(
                 last_acknowledged_update
-                    .0
+                    .frame_number
                     .saturating_sub(INTERPOLATION_FRAME_DELAY),
             );
             log::trace!("Frames ahead: {}", frames_ahead);
             if multiplayer_game_state.waiting_network {
-                log::debug!("Waiting for server. Frames ahead: {}", frames_ahead);
-                if frames_ahead == 0 {
-                    multiplayer_game_state.waiting_network = false;
-                }
+                multiplayer_game_state.waiting_network = frames_ahead == 0;
             } else if frames_ahead > PAUSE_FRAME_THRESHOLD {
-                log::debug!("Waiting for server. Frames ahead: {}", frames_ahead);
                 multiplayer_game_state.waiting_network = true;
+            }
+
+            if multiplayer_game_state.waiting_network || multiplayer_game_state.waiting_for_players
+            {
+                let net_connection_model = (&net_connection_models)
+                    .join()
+                    .next()
+                    .expect("Expected a server connection (NetConnectionModel)");
+
+                log::debug!(
+                    "Waiting for server. Frames ahead: {}. Current frame: {}. Last ServerWorldUpdate frame: {}. Estimated server frame: {}",
+                    frames_ahead,
+                    game_time_service.game_frame_number(),
+                    last_acknowledged_update.frame_number,
+                    net_connection_model.ping_pong_data.last_stored_game_frame(),
+                );
             }
         }
     }

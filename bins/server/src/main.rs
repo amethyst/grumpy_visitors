@@ -20,7 +20,7 @@ use ha_game::{
     build_game_logic_systems, ecs::systems::NetConnectionManagerSystem, states::LoadingState,
 };
 
-use crate::ecs::systems::*;
+use crate::ecs::{resources::LastBroadcastedFrame, systems::*};
 
 fn main() -> amethyst::Result<()> {
     let cli_matches = clap::App::new("hello_amethyst")
@@ -57,6 +57,7 @@ fn main() -> amethyst::Result<()> {
         .world
         .insert(FramedUpdates::<DummyFramedUpdate>::default());
     builder.world.insert(ServerWorldUpdates::default());
+    builder.world.insert(LastBroadcastedFrame(0));
     let mut game_data_builder = GameDataBuilder::default()
         .with_bundle(NetworkBundle::<EncodedMessage>::new(socket_addr.parse()?))?
         .with(

@@ -72,7 +72,10 @@ fn main() -> amethyst::Result<()> {
     builder.world.insert(ServerCommand::new());
     builder.world.insert(MultiplayerRoomState::new());
     builder.world.insert(ClientWorldUpdates::default());
-    builder.world.insert(LastAcknowledgedUpdate(0));
+    builder.world.insert(LastAcknowledgedUpdate {
+        id: 0,
+        frame_number: 0,
+    });
     builder
         .world
         .insert(FramedUpdates::<ReceivedServerWorldUpdate>::default());

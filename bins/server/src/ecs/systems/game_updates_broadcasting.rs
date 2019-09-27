@@ -10,18 +10,19 @@ use ha_core::{
 };
 use ha_game::utils::net::send_message_unreliable;
 
+use crate::ecs::resources::LastBroadcastedFrame;
+
 const BROADCAST_FRAME_INTERVAL: u64 = 5;
 
 #[derive(Default)]
-pub struct GameUpdatesBroadcastingSystem {
-    last_broadcasted_frame: u64,
-}
+pub struct GameUpdatesBroadcastingSystem;
 
 impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
     type SystemData = (
         GameTimeService<'s>,
         GameStateHelper<'s>,
         WriteExpect<'s, ServerWorldUpdates>,
+        WriteExpect<'s, LastBroadcastedFrame>,
         ReadStorage<'s, NetConnectionModel>,
         WriteStorage<'s, NetConnection>,
     );
@@ -32,6 +33,7 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
             game_time_service,
             game_state_helper,
             mut server_world_updates,
+            mut last_broadcasted_frame,
             net_connection_models,
             mut net_connections,
         ): Self::SystemData,
@@ -40,14 +42,16 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
             return;
         }
 
+        let last_broadcasted_frame = &mut last_broadcasted_frame.0;
+
         let is_time_to_broadcast = game_time_service
             .game_frame_number()
-            .wrapping_sub(self.last_broadcasted_frame)
+            .wrapping_sub(*last_broadcasted_frame)
             > BROADCAST_FRAME_INTERVAL;
         if !is_time_to_broadcast {
             return;
         }
-        self.last_broadcasted_frame = game_time_service.game_frame_number();
+        *last_broadcasted_frame = game_time_service.game_frame_number();
 
         let (latest_update_number, latest_update_frame_number) = {
             let latest_update = server_world_updates
