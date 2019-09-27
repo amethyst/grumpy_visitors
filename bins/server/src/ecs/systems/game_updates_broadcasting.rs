@@ -81,9 +81,7 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
                 .updates
                 .iter()
                 .rev()
-                .take_while(|update| {
-                    Some(update.0) > net_connection_model.last_acknowledged_update
-                })
+                .take_while(|update| Some(update.0) > net_connection_model.last_acknowledged_update)
                 .filter_map(move |update| {
                     let update = &update.1;
                     // We may store some repetitive updates, so we need to filter them out.

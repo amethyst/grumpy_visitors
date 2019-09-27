@@ -56,7 +56,7 @@ fn main() -> amethyst::Result<()> {
         .level_for("ha_game::ecs::systems", LogLevelFilter::Debug)
         .level_for(
             "ha_game::ecs::systems::net_connection_manager",
-            LogLevelFilter::Debug,
+            LogLevelFilter::Info,
         )
         .level_for("ha_client", LogLevelFilter::Debug)
         .start();

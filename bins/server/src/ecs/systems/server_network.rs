@@ -1,11 +1,15 @@
 use amethyst::ecs::{Join, ReadExpect, System, WriteExpect, WriteStorage};
 
 use ha_core::{
+    actions::player::PlayerWalkAction,
     ecs::{
         components::NetConnectionModel,
         resources::{
             net::{MultiplayerGameState, MultiplayerRoomPlayer},
-            world::{FramedUpdates, PlayerActionUpdates, LAG_COMPENSATION_FRAMES_LIMIT},
+            world::{
+                FramedUpdates, ImmediatePlayerActionsUpdates, PlayerActionUpdates,
+                LAG_COMPENSATION_FRAMES_LIMIT,
+            },
             GameEngineState, NewGameEngineState,
         },
         system_data::time::GameTimeService,
@@ -96,22 +100,31 @@ impl<'s> System<'s> for ServerNetworkSystem {
                     multiplayer_game_state.is_playing = true;
                     new_game_engine_state.0 = GameEngineState::Playing;
                 }
-                NetEvent::Message(ClientMessagePayload::WalkActions(mut action)) => {
-                    if let Some(update) = framed_updates.update_frame(action.frame_number, true) {
-                        log::info!(
-                            "Added an update for frame {} to frame {}",
-                            action.frame_number,
-                            update.frame_number
+                NetEvent::Message(ClientMessagePayload::WalkActions(actions)) => {
+                    let discarded_actions = add_walk_actions(
+                        &mut *framed_updates,
+                        actions,
+                        game_time_service.game_frame_number(),
+                    );
+
+                    if !discarded_actions.is_empty() {
+                        let (net_connection, _) = (&mut net_connections, &net_connection_models)
+                            .join()
+                            .find(|(_, net_connection_model)| {
+                                net_connection_model.id == connection_id
+                            })
+                            .expect("Expected to find a NetConnection");
+                        send_message_reliable(
+                            net_connection,
+                            &ServerMessagePayload::DiscardWalkActions(discarded_actions),
                         );
-                        action.frame_number = update.frame_number;
-                        update.add_walk_action_updates(action);
                     }
                 }
-                NetEvent::Message(ClientMessagePayload::CastActions(mut action)) => {
-                    if let Some(update) = framed_updates.update_frame(action.frame_number, true) {
-                        action.frame_number = update.frame_number;
-                        update.add_cast_action_updates(action);
-                    }
+                NetEvent::Message(ClientMessagePayload::CastActions(_actions)) => {
+                    //                    if let Some(update) = framed_updates.update_frame(action.frame_number, true) {
+                    //                        action.frame_number = update.frame_number;
+                    //                        update.add_cast_action_updates(action);
+                    //                    }
                 }
                 NetEvent::Message(ClientMessagePayload::AcknowledgeWorldUpdate(frame_number)) => {
                     let mut connection_model = (&mut net_connection_models)
@@ -200,4 +213,101 @@ impl<'s> System<'s> for ServerNetworkSystem {
             }
         }
     }
+}
+
+/// Returns discarded actions.
+fn add_walk_actions(
+    framed_updates: &mut FramedUpdates<PlayerActionUpdates>,
+    actions: ImmediatePlayerActionsUpdates<PlayerWalkAction>,
+    frame_number: u64,
+) -> Vec<NetIdentifier> {
+    let mut discarded_actions = Vec::new();
+
+    let added_actions_frame_number = actions.frame_number;
+    let oldest_possible_frame = frame_number - LAG_COMPENSATION_FRAMES_LIMIT as u64;
+    let are_lag_compensated = added_actions_frame_number > oldest_possible_frame;
+    let actual_frame = if are_lag_compensated {
+        added_actions_frame_number
+    } else {
+        oldest_possible_frame
+    };
+
+    let is_badly_late =
+        added_actions_frame_number < frame_number - LAG_COMPENSATION_FRAMES_LIMIT as u64 * 2;
+    for action in actions.updates {
+        let is_added = {
+            if is_badly_late {
+                // If there was any accepted update after this one, we're going to skip it,
+                // as it's impossible to postpone the other ones.
+                framed_updates
+                    .updates
+                    .iter()
+                    .skip_while(|update| update.frame_number < added_actions_frame_number)
+                    .any(|update| {
+                        update
+                            .walk_action_updates
+                            .iter()
+                            .any(|net_update| net_update.entity_net_id == action.entity_net_id)
+                    })
+            } else {
+                true
+            }
+        };
+
+        if is_added {
+            let frames_to_move = oldest_possible_frame.saturating_sub(added_actions_frame_number);
+            if !is_badly_late && frames_to_move > 0 {
+                let mut moved_updates = Vec::with_capacity(LAG_COMPENSATION_FRAMES_LIMIT);
+                for framed_update in framed_updates
+                    .updates
+                    .iter_mut()
+                    .skip_while(|update| update.frame_number < actual_frame)
+                {
+                    if let Some(i) = framed_update
+                        .walk_action_updates
+                        .iter()
+                        .position(|net_update| net_update.entity_net_id == action.entity_net_id)
+                    {
+                        let moved_update = framed_update.walk_action_updates.remove(i);
+                        if framed_update.frame_number + frames_to_move > frame_number {
+                            discarded_actions.push(moved_update.data.client_action_id);
+                        } else {
+                            moved_updates.push((framed_update.frame_number, moved_update));
+                        }
+                    }
+                }
+
+                let mut framed_updates_iter =
+                    framed_updates.updates_iter_mut(actual_frame).peekable();
+                for (moved_update_frame_number, moved_update) in moved_updates.into_iter() {
+                    loop {
+                        let framed_update = framed_updates_iter.peek().unwrap();
+                        if framed_update.frame_number == moved_update_frame_number {
+                            break;
+                        }
+                    }
+                    framed_updates_iter
+                        .next()
+                        .expect("Expected a framed update to move a NetUpdate into")
+                        .walk_action_updates
+                        .push(moved_update);
+                }
+            }
+            let updated_frame = framed_updates
+                .update_frame(actual_frame)
+                .unwrap_or_else(|| panic!("Expected a frame {}", actual_frame));
+
+            log::info!(
+                "Added a walk action update for frame {} to frame {}",
+                added_actions_frame_number,
+                updated_frame.frame_number
+            );
+
+            updated_frame.walk_action_updates.push(action);
+        } else {
+            discarded_actions.push(action.data.client_action_id);
+        }
+    }
+
+    discarded_actions
 }

@@ -6,8 +6,8 @@ use ha_core::{
         resources::{
             net::MultiplayerGameState,
             world::{
-                FramedUpdates, ReceivedPlayerUpdate, ReceivedServerWorldUpdate, ServerWorldUpdate,
-                LAG_COMPENSATION_FRAMES_LIMIT,
+                FramedUpdates, PlayerActionUpdates, ReceivedPlayerUpdate,
+                ReceivedServerWorldUpdate, ServerWorldUpdate, LAG_COMPENSATION_FRAMES_LIMIT,
             },
             GameEngineState, NewGameEngineState,
         },
@@ -42,6 +42,7 @@ impl<'s> System<'s> for ClientNetworkSystem {
         WriteExpect<'s, NewGameEngineState>,
         WriteExpect<'s, LastAcknowledgedUpdate>,
         WriteExpect<'s, FramedUpdates<ReceivedServerWorldUpdate>>,
+        WriteExpect<'s, FramedUpdates<PlayerActionUpdates>>,
         WriteStorage<'s, NetConnection>,
     );
 
@@ -57,6 +58,7 @@ impl<'s> System<'s> for ClientNetworkSystem {
             mut new_game_engine_sate,
             mut last_acknowledged_update,
             mut framed_updates,
+            mut player_actions_updates,
             mut connections,
         ): Self::SystemData,
     ) {
@@ -148,6 +150,9 @@ impl<'s> System<'s> for ClientNetworkSystem {
                             updates,
                         );
                     }
+                }
+                NetEvent::Message(ServerMessagePayload::DiscardWalkActions(discarded_actions)) => {
+                    discard_walk_actions(&mut player_actions_updates, discarded_actions);
                 }
                 NetEvent::Message(ServerMessagePayload::PauseWaitingForPlayers { id, players }) => {
                     if multiplayer_game_state.waiting_for_players_pause_id < id {
@@ -321,4 +326,31 @@ fn collect_controlled_player_updates(
             controlled_player_update
         })
         .collect()
+}
+
+fn discard_walk_actions(
+    client_player_updates: &mut FramedUpdates<PlayerActionUpdates>,
+    mut discarded_updates: Vec<NetIdentifier>,
+) {
+    let mut oldest_updated_frame = client_player_updates.oldest_updated_frame;
+    for update in client_player_updates.updates.iter_mut().rev() {
+        let update_frame_number = update.frame_number;
+        update.walk_action_updates.retain(|net_update| {
+            if let Some(i) = discarded_updates
+                .iter()
+                .position(|discarded_update| *discarded_update == net_update.data.client_action_id)
+            {
+                discarded_updates.remove(i);
+                oldest_updated_frame = update_frame_number;
+                false
+            } else {
+                true
+            }
+        });
+
+        if discarded_updates.is_empty() {
+            break;
+        }
+    }
+    client_player_updates.oldest_updated_frame = oldest_updated_frame;
 }

@@ -37,6 +37,10 @@ impl WorldStates {
             world_state.frame_number = self.world_states.back().unwrap().frame_number + 1;
         }
 
+        log::trace!(
+            "Adding a new world state for frame {}",
+            world_state.frame_number
+        );
         self.world_states.push_back(world_state);
         if self.world_states.len() > SAVED_WORLD_STATES_LIMIT {
             self.world_states.pop_front();
@@ -163,31 +167,15 @@ impl<T: FramedUpdate + ::std::fmt::Debug> FramedUpdates<T> {
     /// Updates `oldest_updated_frame`.
     ///
     /// Returns `None` if the `frame_number` passed is from the future.
-    pub fn update_frame(&mut self, frame_number: u64, lag_compensate: bool) -> Option<&mut T> {
+    pub fn update_frame(&mut self, frame_number: u64) -> Option<&mut T> {
         self.reserve_updates(frame_number);
-
         let latest_frame = self.latest_frame();
-        let available_frames_count = self.updates.len().min(LAG_COMPENSATION_FRAMES_LIMIT);
-        let frames_to_skip = self.updates.len() - available_frames_count;
 
-        let mut iter = self.updates.iter_mut();
-        let update_finder = |update: &mut T| update.frame_number() == frame_number;
-        let update_index = if lag_compensate {
-            iter.skip(frames_to_skip).position(update_finder)
-        } else {
-            iter.position(update_finder)
-        };
+        let update_index = self
+            .updates
+            .iter_mut()
+            .position(|update| update.frame_number() == frame_number);
 
-        let update_index = if update_index.is_none() && lag_compensate {
-            log::debug!(
-                "Lag compensating while updating frame {}: skip {} frames",
-                frame_number,
-                frames_to_skip
-            );
-            Some(frames_to_skip)
-        } else {
-            update_index.map(|index| index + frames_to_skip)
-        };
         let update = update_index
             .and_then(move |index| {
                 let update_frame_number = self
@@ -307,33 +295,6 @@ pub struct PlayerActionUpdates {
     pub walk_action_updates: Vec<NetUpdate<ClientActionUpdate<PlayerWalkAction>>>,
     pub cast_action_updates: Vec<NetUpdate<ClientActionUpdate<PlayerCastAction>>>,
     pub look_action_updates: Vec<NetUpdate<ClientActionUpdate<PlayerLookAction>>>,
-}
-
-impl PlayerActionUpdates {
-    pub fn add_walk_action_updates(
-        &mut self,
-        mut action_update: ImmediatePlayerActionsUpdates<PlayerWalkAction>,
-    ) {
-        assert_eq!(self.frame_number, action_update.frame_number);
-        self.walk_action_updates.append(&mut action_update.updates);
-    }
-
-    pub fn add_cast_action_updates(
-        &mut self,
-        mut action_update: ImmediatePlayerActionsUpdates<PlayerCastAction>,
-    ) {
-        assert_eq!(self.frame_number, action_update.frame_number);
-        self.cast_action_updates.append(&mut action_update.updates);
-    }
-
-    pub fn add_look_action_updates(
-        &mut self,
-        action_updates: (u64, Vec<NetUpdate<ClientActionUpdate<PlayerLookAction>>>),
-    ) {
-        let (frame_number, mut action_updates) = action_updates;
-        assert_eq!(self.frame_number, frame_number);
-        self.look_action_updates.append(&mut action_updates);
-    }
 }
 
 impl FramedUpdate for PlayerActionUpdates {

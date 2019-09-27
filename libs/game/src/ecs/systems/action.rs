@@ -142,11 +142,23 @@ impl<'s> System<'s> for ActionSystem {
         framed_updates.reserve_updates(game_time_service.game_frame_number());
         framed_client_side_actions.reserve_updates(game_time_service.game_frame_number());
 
+        // We may update client actions when discarding updates in ClientNetworkSystem,
+        // but as we iterate in framed_updates, we should update its oldest_updated_frame as well.
+        framed_updates.oldest_updated_frame = framed_updates
+            .oldest_updated_frame
+            .min(framed_client_side_actions.oldest_updated_frame);
+
         // Add a world state to save the components to, insure the update is possible.
         world_states.add_world_state(SavedWorldState::default());
         world_states
             .check_update_is_possible(&framed_updates)
-            .unwrap();
+            .unwrap_or_else(|err| {
+                panic!(
+                    "Expected an update to be possible (current frame {}): {:?}",
+                    game_time_service.game_frame_number(),
+                    err
+                )
+            });
 
         // Load the world state of the oldest updated frame.
         let mut world_states_iter =
@@ -231,7 +243,9 @@ impl<'s> System<'s> for ActionSystem {
             world_state_subsystem.save_world_state(world_state);
         }
 
+        drop(client_side_actions_iter);
         framed_updates.oldest_updated_frame = game_time_service.game_frame_number() + 1;
+        framed_client_side_actions.oldest_updated_frame = game_time_service.game_frame_number() + 1;
     }
 }
 

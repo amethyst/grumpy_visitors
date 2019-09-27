@@ -16,6 +16,7 @@ pub enum ServerMessagePayload {
         id: u64,
         updates: Vec<ServerWorldUpdate>,
     },
+    DiscardWalkActions(Vec<NetIdentifier>),
     Ping(NetIdentifier),
     Pong {
         ping_id: NetIdentifier,
