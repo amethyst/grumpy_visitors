@@ -14,8 +14,9 @@ pub struct GameStateHelper<'s> {
 impl<'s> GameStateHelper<'s> {
     pub fn is_running(&self) -> bool {
         let is_playing_multiplayer = self.multiplayer_game_state.is_playing;
-        let multiplayer_is_unpaused =
-            !is_playing_multiplayer || !self.multiplayer_game_state.waiting_network;
+        let multiplayer_is_unpaused = !is_playing_multiplayer
+            || (!self.multiplayer_game_state.waiting_network
+                && !self.multiplayer_game_state.waiting_for_players);
 
         *self.game_engine_state == GameEngineState::Playing && multiplayer_is_unpaused
     }
@@ -25,6 +26,8 @@ impl<'s> GameStateHelper<'s> {
     }
 
     pub fn multiplayer_is_unpaused(&self) -> bool {
-        self.multiplayer_game_state.is_playing && !self.multiplayer_game_state.waiting_network
+        self.multiplayer_game_state.is_playing
+            && !self.multiplayer_game_state.waiting_network
+            && !self.multiplayer_game_state.waiting_for_players
     }
 }
