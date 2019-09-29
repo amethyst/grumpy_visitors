@@ -374,6 +374,7 @@ impl ReceivedServerWorldUpdate {
 pub struct ReceivedPlayerUpdate {
     pub player_walk_actions_updates:
         Vec<NetUpdateWithPosition<ClientActionUpdate<PlayerWalkAction>>>,
+    /// Is empty for controlled players.
     pub player_look_actions_updates: Vec<NetUpdate<ClientActionUpdate<PlayerLookAction>>>,
     pub player_cast_actions_updates: Vec<NetUpdate<ClientActionUpdate<PlayerCastAction>>>,
 }

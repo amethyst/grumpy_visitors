@@ -1,5 +1,7 @@
 use amethyst::ecs::{Entities, Join, ReadExpect, ReadStorage, System, WriteExpect, WriteStorage};
 
+use std::cmp::Ordering;
+
 use ha_client_shared::ecs::resources::MultiplayerRoomState;
 use ha_core::{
     ecs::{
@@ -198,11 +200,18 @@ impl<'s> System<'s> for ClientNetworkSystem {
 
         if *game_engine_state == GameEngineState::Playing && multiplayer_game_state.is_playing {
             // We always skip first INTERPOLATION_FRAME_DELAY frames on game start.
-            if game_time_service.game_frame_number_absolute() < INTERPOLATION_FRAME_DELAY {
-                multiplayer_game_state.waiting_network = true;
-                return;
-            } else if game_time_service.game_frame_number_absolute() == INTERPOLATION_FRAME_DELAY {
-                multiplayer_game_state.waiting_network = false;
+            match game_time_service
+                .game_frame_number_absolute()
+                .cmp(&INTERPOLATION_FRAME_DELAY)
+            {
+                Ordering::Less => {
+                    multiplayer_game_state.waiting_network = true;
+                    return;
+                }
+                Ordering::Equal => {
+                    multiplayer_game_state.waiting_network = false;
+                }
+                _ => {}
             }
 
             // Wait if we a server is lagging behind for PAUSE_FRAME_THRESHOLD frames.
@@ -333,10 +342,8 @@ fn collect_controlled_player_updates(
                 .iter()
                 .position(|action| controlled_players.contains(&action.entity_net_id));
             if let Some(look_action_pos) = look_action_pos {
-                let look_action = update.player_look_actions_updates.remove(look_action_pos);
-                controlled_player_update
-                    .player_look_actions_updates
-                    .push(look_action);
+                // We just remove a look action here, as we are not interested in replaying it.
+                update.player_look_actions_updates.remove(look_action_pos);
             }
 
             controlled_player_update

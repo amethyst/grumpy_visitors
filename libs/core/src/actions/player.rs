@@ -34,6 +34,12 @@ pub struct PlayerLookAction {
     pub direction: Vector2,
 }
 
+impl PartialEq for PlayerLookAction {
+    fn eq(&self, other: &Self) -> bool {
+        (self.direction - other.direction).norm_squared() < 0.001
+    }
+}
+
 impl Default for PlayerLookAction {
     fn default() -> Self {
         Self {
@@ -46,4 +52,11 @@ impl Default for PlayerLookAction {
 pub struct PlayerCastAction {
     pub cast_position: Vector2,
     pub target_position: Vector2,
+}
+
+impl PartialEq for PlayerCastAction {
+    fn eq(&self, other: &Self) -> bool {
+        (self.cast_position - other.cast_position).norm_squared() < 0.001
+            && (self.target_position - other.target_position).norm_squared() < 0.001
+    }
 }

@@ -7,7 +7,10 @@ use ha_core::ecs::resources::world::{ClientWorldUpdates, ReceivedServerWorldUpda
 #[cfg(not(feature = "client"))]
 use ha_core::ecs::resources::world::{PlayerActionUpdates, ServerWorldUpdates};
 use ha_core::{
-    actions::{player::PlayerWalkAction, ClientActionUpdate},
+    actions::{
+        player::{PlayerLookAction, PlayerWalkAction},
+        ClientActionUpdate,
+    },
     ecs::{
         components::{
             damage_history::DamageHistory, missile::Missile, ClientPlayerActions, Dead,
@@ -26,7 +29,7 @@ use crate::ecs::{
     resources::MonsterDefinitions,
     systems::{
         monster::MonsterActionSubsystem,
-        player::{ApplyWalkActionNetArgs, PlayerActionSubsystem},
+        player::{ApplyLookActionNetArgs, ApplyWalkActionNetArgs, PlayerActionSubsystem},
         world_state_subsystem::WorldStateSubsystem,
         ClientFrameUpdate, OutcomingNetUpdates,
     },
@@ -192,11 +195,12 @@ impl<'s> System<'s> for ActionSystem {
             for (entity, mut player, ()) in
                 (&entities, &mut *players.borrow_mut(), !&*dead.borrow()).join()
             {
-                let net_args = if multiplayer_game_state.is_playing {
-                    let player_net_metadata = entity_net_metadata
-                        .get(entity)
-                        .expect("Expected EntityNetMetadata for a player");
+                let player_net_metadata = entity_net_metadata.get(entity);
 
+                // Run walk action.
+                let net_args = if multiplayer_game_state.is_playing {
+                    let player_net_metadata =
+                        player_net_metadata.expect("Expected EntityNetMetadata for a player");
                     let updates =
                         walk_action_update_for_player(&frame_updated, *player_net_metadata);
 
@@ -208,8 +212,30 @@ impl<'s> System<'s> for ActionSystem {
                 } else {
                     None
                 };
-
                 player_action_subsystem.apply_walk_action(
+                    frame_updated.frame_number,
+                    entity,
+                    &mut player,
+                    net_args,
+                    client_side_actions,
+                );
+
+                // Run look action.
+                let net_args = if multiplayer_game_state.is_playing {
+                    let player_net_metadata =
+                        player_net_metadata.expect("Expected EntityNetMetadata for a player");
+                    let updates =
+                        look_action_update_for_player(&frame_updated, *player_net_metadata);
+
+                    Some(ApplyLookActionNetArgs {
+                        entity_net_id: player_net_metadata.id,
+                        outcoming_net_updates,
+                        updates,
+                    })
+                } else {
+                    None
+                };
+                player_action_subsystem.apply_look_action(
                     frame_updated.frame_number,
                     entity,
                     &mut player,
@@ -295,6 +321,31 @@ fn walk_action_update_for_player(
         .iter()
         .find(|actions_updates| actions_updates.entity_net_id == entity_net_metadata.id)
         .map(move |update| (None, update.data.clone()))
+}
+
+#[cfg(feature = "client")]
+fn look_action_update_for_player(
+    frame_updates: &FrameUpdate,
+    entity_net_metadata: EntityNetMetadata,
+) -> Option<ClientActionUpdate<PlayerLookAction>> {
+    frame_updates
+        .player_updates
+        .player_look_actions_updates
+        .iter()
+        .find(|actions_updates| actions_updates.entity_net_id == entity_net_metadata.id)
+        .map(move |update| update.data.clone())
+}
+
+#[cfg(not(feature = "client"))]
+fn look_action_update_for_player(
+    frame_updates: &FrameUpdate,
+    entity_net_metadata: EntityNetMetadata,
+) -> Option<ClientActionUpdate<PlayerLookAction>> {
+    frame_updates
+        .look_action_updates
+        .iter()
+        .find(|actions_updates| actions_updates.entity_net_id == entity_net_metadata.id)
+        .map(move |update| update.data.clone())
 }
 
 //#[cfg(feature = "client")]

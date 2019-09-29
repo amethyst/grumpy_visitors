@@ -3,12 +3,13 @@ use amethyst::{
     ecs::{Entity, ReadExpect, ReadStorage},
 };
 
-#[cfg(feature = "client")]
-use ha_core::net::NetUpdate;
 #[cfg(not(feature = "client"))]
 use ha_core::net::NetUpdateWithPosition;
 use ha_core::{
-    actions::{player::PlayerWalkAction, ClientActionUpdate},
+    actions::{
+        player::{PlayerLookAction, PlayerWalkAction},
+        ClientActionUpdate,
+    },
     ecs::{
         components::{ClientPlayerActions, Player, PlayerActions, WorldPosition},
         resources::{
@@ -18,7 +19,7 @@ use ha_core::{
         system_data::time::GameTimeService,
     },
     math::{Vector2, ZeroVector},
-    net::NetIdentifier,
+    net::{NetIdentifier, NetUpdate},
 };
 
 use super::super::{ClientFrameUpdate, OutcomingNetUpdates, WriteExpectCell, WriteStorageCell};
@@ -38,6 +39,12 @@ pub struct ApplyWalkActionNetArgs<'a> {
     pub entity_net_id: NetIdentifier,
     pub outcoming_net_updates: &'a mut OutcomingNetUpdates,
     pub updates: Option<(Option<WorldPosition>, ClientActionUpdate<PlayerWalkAction>)>,
+}
+
+pub struct ApplyLookActionNetArgs<'a> {
+    pub entity_net_id: NetIdentifier,
+    pub outcoming_net_updates: &'a mut OutcomingNetUpdates,
+    pub updates: Option<ClientActionUpdate<PlayerLookAction>>,
 }
 
 const PLAYER_SPEED: f32 = 200.0;
@@ -139,8 +146,73 @@ impl<'s> PlayerActionSubsystem<'s> {
         }
     }
 
+    pub fn apply_look_action<'a>(
+        &self,
+        frame_number: u64,
+        entity: Entity,
+        player: &mut Player,
+        net_args: Option<ApplyLookActionNetArgs<'a>>,
+        client_side_actions: &mut ClientFrameUpdate,
+    ) {
+        let mut player_actions = self.player_actions.borrow_mut();
+        let player_actions = player_actions
+            .get_mut(entity)
+            .expect("Expected player actions");
+
+        let client_player_actions = self.client_player_actions.get(entity);
+        let new_client_look_action = client_player_actions
+            .as_ref()
+            .map(|actions| actions.look_action.clone());
+        let is_controllable = new_client_look_action.is_some();
+        let is_latest_frame = self.game_time_service.game_frame_number() == frame_number;
+
+        if self.multiplayer_game_state.is_playing {
+            let ApplyLookActionNetArgs {
+                entity_net_id,
+                outcoming_net_updates,
+                updates: updated_look_action,
+            } = net_args.expect("Expected ApplyWalkActionNetArgs in multiplayer");
+            // Decide which source has an actual update and retrieve it.
+            let look_action_update = self.actual_look_action_update(
+                frame_number,
+                updated_look_action,
+                &player_actions.look_action,
+                new_client_look_action,
+                client_side_actions,
+                entity_net_id,
+            );
+
+            if let Some(look_action_update) = look_action_update {
+                log::trace!(
+                    "Applying a new look update for {} (frame {}): {:?}",
+                    entity_net_id,
+                    frame_number,
+                    &look_action_update
+                );
+                // Update player actions.
+                player_actions.look_action = look_action_update.action.clone();
+
+                // Add to network broadcasted updates.
+                self.add_look_action_net_update(
+                    outcoming_net_updates,
+                    entity_net_id,
+                    look_action_update,
+                    frame_number,
+                    is_controllable,
+                    is_latest_frame,
+                );
+            }
+        } else {
+            player_actions.look_action =
+                new_client_look_action.expect("Expected ClientPlayerActions in single player");
+        }
+
+        // Run player actions.
+        player.looking_direction = player_actions.look_action.direction;
+    }
+
     #[cfg(feature = "client")]
-    pub fn actual_walk_action_update(
+    fn actual_walk_action_update(
         &self,
         frame_number: u64,
         updated_player_action: Option<ClientActionUpdate<PlayerWalkAction>>,
@@ -176,7 +248,7 @@ impl<'s> PlayerActionSubsystem<'s> {
     }
 
     #[cfg(not(feature = "client"))]
-    pub fn actual_walk_action_update(
+    fn actual_walk_action_update(
         &self,
         _frame_number: u64,
         updated_player_action: Option<ClientActionUpdate<PlayerWalkAction>>,
@@ -189,7 +261,7 @@ impl<'s> PlayerActionSubsystem<'s> {
     }
 
     #[cfg(feature = "client")]
-    pub fn add_walk_action_net_update(
+    fn add_walk_action_net_update(
         &self,
         outcoming_net_updates: &mut OutcomingNetUpdates,
         entity_net_id: NetIdentifier,
@@ -207,7 +279,7 @@ impl<'s> PlayerActionSubsystem<'s> {
     }
 
     #[cfg(not(feature = "client"))]
-    pub fn add_walk_action_net_update(
+    fn add_walk_action_net_update(
         &self,
         outcoming_net_updates: &mut OutcomingNetUpdates,
         entity_net_id: NetIdentifier,
@@ -222,6 +294,108 @@ impl<'s> PlayerActionSubsystem<'s> {
                 entity_net_id,
                 position: player_position,
                 data: walk_action_update,
+            });
+    }
+
+    #[cfg(feature = "client")]
+    fn actual_look_action_update(
+        &self,
+        frame_number: u64,
+        updated_player_action: Option<ClientActionUpdate<PlayerLookAction>>,
+        current_look_action: &PlayerLookAction,
+        new_client_look_action: Option<PlayerLookAction>,
+        client_side_actions: &mut ClientFrameUpdate,
+        entity_net_id: NetIdentifier,
+    ) -> Option<ClientActionUpdate<PlayerLookAction>> {
+        if let Some(new_client_look_action) = new_client_look_action {
+            if self.game_time_service.game_frame_number() == frame_number {
+                let mut action_update_id_provider = self.action_update_id_provider.borrow_mut();
+                if *current_look_action != new_client_look_action {
+                    let client_action_id = action_update_id_provider.next_update_id();
+                    let client_action_update = ClientActionUpdate {
+                        client_action_id,
+                        action: new_client_look_action,
+                    };
+                    client_side_actions.look_action_updates.push(NetUpdate {
+                        entity_net_id,
+                        data: client_action_update.clone(),
+                    });
+                    return Some(client_action_update);
+                }
+            }
+        }
+        updated_player_action.or_else(|| {
+            client_side_actions
+                .look_action_updates
+                .iter()
+                .find(|action_update| action_update.entity_net_id == entity_net_id)
+                .map(|client_side_action| client_side_action.data.clone())
+        })
+    }
+
+    #[cfg(not(feature = "client"))]
+    fn actual_look_action_update(
+        &self,
+        _frame_number: u64,
+        updated_player_action: Option<ClientActionUpdate<PlayerLookAction>>,
+        _current_look_action: &PlayerLookAction,
+        _new_client_look_action: Option<PlayerLookAction>,
+        _client_side_actions: &mut ClientFrameUpdate,
+        _entity_net_id: NetIdentifier,
+    ) -> Option<ClientActionUpdate<PlayerLookAction>> {
+        updated_player_action
+    }
+
+    #[cfg(feature = "client")]
+    fn add_look_action_net_update(
+        &self,
+        outcoming_net_updates: &mut OutcomingNetUpdates,
+        entity_net_id: NetIdentifier,
+        look_action_update: ClientActionUpdate<PlayerLookAction>,
+        frame_number: u64,
+        is_controllable: bool,
+        is_latest_frame: bool,
+    ) {
+        if is_controllable && is_latest_frame {
+            let has_last_frame = outcoming_net_updates
+                .look_actions_updates
+                .back()
+                .map_or(false, |(update_frame_number, _)| {
+                    *update_frame_number == frame_number
+                });
+            if !has_last_frame {
+                outcoming_net_updates
+                    .look_actions_updates
+                    .push_back((frame_number, Vec::with_capacity(1)));
+            }
+
+            outcoming_net_updates
+                .look_actions_updates
+                .back_mut()
+                .unwrap()
+                .1
+                .push(NetUpdate {
+                    entity_net_id,
+                    data: look_action_update,
+                });
+        }
+    }
+
+    #[cfg(not(feature = "client"))]
+    fn add_look_action_net_update(
+        &self,
+        outcoming_net_updates: &mut OutcomingNetUpdates,
+        entity_net_id: NetIdentifier,
+        look_action_update: ClientActionUpdate<PlayerLookAction>,
+        _frame_number: u64,
+        _is_controllable: bool,
+        _is_latest_frame: bool,
+    ) {
+        outcoming_net_updates
+            .player_look_actions_updates
+            .push(NetUpdate {
+                entity_net_id,
+                data: look_action_update,
             });
     }
 }

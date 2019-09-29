@@ -8,7 +8,7 @@ use ha_core::{
             net::{MultiplayerGameState, MultiplayerRoomPlayer},
             world::{
                 FramedUpdates, ImmediatePlayerActionsUpdates, PlayerActionUpdates,
-                LAG_COMPENSATION_FRAMES_LIMIT,
+                PlayerLookActionUpdates, LAG_COMPENSATION_FRAMES_LIMIT,
             },
             GameEngineState, NewGameEngineState,
         },
@@ -129,6 +129,13 @@ impl<'s> System<'s> for ServerNetworkSystem {
                     //                        action.frame_number = update.frame_number;
                     //                        update.add_cast_action_updates(action);
                     //                    }
+                }
+                NetEvent::Message(ClientMessagePayload::LookActions(actions)) => {
+                    add_look_actions(
+                        &mut *framed_updates,
+                        actions,
+                        game_time_service.game_frame_number(),
+                    );
                 }
                 NetEvent::Message(ClientMessagePayload::AcknowledgeWorldUpdate(frame_number)) => {
                     let mut connection_model = (&mut net_connection_models)
@@ -314,7 +321,7 @@ fn add_walk_actions(
                 .update_frame(actual_frame)
                 .unwrap_or_else(|| panic!("Expected a frame {}", actual_frame));
 
-            log::info!(
+            log::trace!(
                 "Added a walk action update for frame {} to frame {}",
                 added_actions_frame_number,
                 updated_frame.frame_number
@@ -327,4 +334,62 @@ fn add_walk_actions(
     }
 
     discarded_actions
+}
+
+fn add_look_actions(
+    framed_updates: &mut FramedUpdates<PlayerActionUpdates>,
+    actions: PlayerLookActionUpdates,
+    frame_number: u64,
+) {
+    let mut oldest_updated_frame = framed_updates.oldest_updated_frame + 1;
+    let oldest_possible_frame = frame_number - LAG_COMPENSATION_FRAMES_LIMIT as u64;
+    let mut framed_updates_iter = framed_updates.updates_iter_mut(oldest_possible_frame);
+
+    'action_updates: for (update_frame_number, updates) in actions.updates {
+        let mut framed_update = framed_updates_iter
+            .next()
+            .expect("Expected at least one framed update");
+
+        if update_frame_number >= oldest_possible_frame {
+            loop {
+                if update_frame_number == framed_update.frame_number {
+                    break;
+                }
+                framed_update = if let Some(framed_update) = framed_updates_iter.next() {
+                    framed_update
+                } else {
+                    log::warn!(
+                        "Server couldn't apply a look action update for frame {}, while being at frame {}",
+                        update_frame_number,
+                        frame_number,
+                    );
+                    break 'action_updates;
+                }
+            }
+        }
+
+        if !updates.is_empty() {
+            oldest_updated_frame = oldest_updated_frame.min(framed_update.frame_number);
+        }
+
+        for update in updates {
+            if let Some(i) = framed_update
+                .look_action_updates
+                .iter()
+                .position(|net_update| net_update.entity_net_id == update.entity_net_id)
+            {
+                framed_update.look_action_updates[i] = update;
+            } else {
+                framed_update.look_action_updates.push(update);
+            }
+            log::trace!(
+                "Added a look action update for frame {} to frame {}",
+                update_frame_number,
+                framed_update.frame_number
+            );
+        }
+    }
+
+    drop(framed_updates_iter);
+    framed_updates.oldest_updated_frame = oldest_updated_frame;
 }

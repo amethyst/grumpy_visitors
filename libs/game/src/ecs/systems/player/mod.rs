@@ -2,6 +2,6 @@ mod action_subsystem;
 mod dying;
 
 pub use self::{
-    action_subsystem::{ApplyWalkActionNetArgs, PlayerActionSubsystem},
+    action_subsystem::{ApplyLookActionNetArgs, ApplyWalkActionNetArgs, PlayerActionSubsystem},
     dying::PlayerDyingSystem,
 };
