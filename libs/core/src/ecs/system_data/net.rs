@@ -15,7 +15,7 @@ pub struct EntityNetMetadataService<'s> {
 }
 
 impl<'s> EntityNetMetadataService<'s> {
-    pub fn get_entity(&self, entity_net_id: NetIdentifier) -> Entity {
+    pub fn get_entity(&self, entity_net_id: NetIdentifier) -> Option<Entity> {
         self.storage.get_entity(entity_net_id)
     }
 

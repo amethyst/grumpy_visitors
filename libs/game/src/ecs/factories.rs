@@ -110,15 +110,15 @@ impl<'s> LandscapeFactory<'s> {
 
 #[derive(SystemData)]
 pub struct MonsterFactory<'s> {
-    entities: Entities<'s>,
-    transforms: WriteStorage<'s, Transform>,
+    pub entities: Entities<'s>,
+    pub transforms: WriteStorage<'s, Transform>,
     #[cfg(feature = "client")]
-    meshes: WriteStorage<'s, Handle<Mesh>>,
+    pub meshes: WriteStorage<'s, Handle<Mesh>>,
     #[cfg(feature = "client")]
-    materials: WriteStorage<'s, Handle<Material>>,
-    monsters: WriteStorage<'s, Monster>,
-    damage_histories: WriteStorage<'s, DamageHistory>,
-    world_positions: WriteStorage<'s, WorldPosition>,
+    pub materials: WriteStorage<'s, Handle<Material>>,
+    pub monsters: WriteStorage<'s, Monster>,
+    pub damage_histories: WriteStorage<'s, DamageHistory>,
+    pub world_positions: WriteStorage<'s, WorldPosition>,
 }
 
 impl<'s> MonsterFactory<'s> {

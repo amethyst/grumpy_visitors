@@ -16,10 +16,13 @@ use ha_core::ecs::{
         Monster, WorldPosition,
     },
     resources::GameLevelState,
-    system_data::{game_state_helper::GameStateHelper, time::GameTimeService},
+    system_data::time::GameTimeService,
 };
 
-use crate::utils::world::{closest_monster, find_first_hit_monster, random_scene_position};
+use crate::{
+    ecs::system_data::GameStateHelper,
+    utils::world::{closest_monster, find_first_hit_monster, random_scene_position},
+};
 
 pub const MISSILE_MAX_SPEED: f32 = 300.0;
 

@@ -1,11 +1,10 @@
-use amethyst::ecs::{Entities, Join, ReadExpect, ReadStorage, System, WriteExpect, WriteStorage};
+use amethyst::{
+    ecs::{Entities, Join, ReadExpect, ReadStorage, System, World, WriteExpect, WriteStorage},
+    shred::{ResourceId, SystemData},
+};
 
 use std::{cell::RefCell, rc::Rc};
 
-#[cfg(feature = "client")]
-use ha_core::ecs::resources::world::{ClientWorldUpdates, ReceivedServerWorldUpdate};
-#[cfg(not(feature = "client"))]
-use ha_core::ecs::resources::world::{PlayerActionUpdates, ServerWorldUpdates};
 use ha_core::{
     actions::{
         player::{PlayerLookAction, PlayerWalkAction},
@@ -21,99 +20,73 @@ use ha_core::{
             world::{FramedUpdates, SavedWorldState, WorldStates},
             GameLevelState,
         },
-        system_data::{game_state_helper::GameStateHelper, time::GameTimeService},
+        system_data::time::GameTimeService,
     },
 };
 
-use crate::ecs::{
-    resources::MonsterDefinitions,
-    systems::{
-        monster::MonsterActionSubsystem,
-        player::{ApplyLookActionNetArgs, ApplyWalkActionNetArgs, PlayerActionSubsystem},
-        world_state_subsystem::WorldStateSubsystem,
-        ClientFrameUpdate, OutcomingNetUpdates,
+use crate::{
+    ecs::{
+        resources::MonsterDefinitions,
+        system_data::GameStateHelper,
+        systems::{
+            monster::MonsterActionSubsystem,
+            player::{ApplyLookActionNetArgs, ApplyWalkActionNetArgs, PlayerActionSubsystem},
+            world_state_subsystem::WorldStateSubsystem,
+            AggregatedOutcomingUpdates, ClientFrameUpdate, FrameUpdate,
+        },
     },
+    utils::world::outcoming_net_updates_mut,
 };
 
-#[cfg(feature = "client")]
-type FrameUpdate = ReceivedServerWorldUpdate;
-#[cfg(not(feature = "client"))]
-type FrameUpdate = PlayerActionUpdates;
-
-#[cfg(feature = "client")]
-type AggregatedOutcomingUpdates = ClientWorldUpdates;
-#[cfg(not(feature = "client"))]
-type AggregatedOutcomingUpdates = ServerWorldUpdates;
+#[derive(SystemData)]
+pub struct ActionSystemData<'s> {
+    entities: Entities<'s>,
+    game_time_service: GameTimeService<'s>,
+    game_state_helper: GameStateHelper<'s>,
+    game_level_state: ReadExpect<'s, GameLevelState>,
+    multiplayer_game_state: ReadExpect<'s, MultiplayerGameState>,
+    framed_updates: WriteExpect<'s, FramedUpdates<FrameUpdate>>,
+    framed_client_side_actions: WriteExpect<'s, FramedUpdates<ClientFrameUpdate>>,
+    world_states: WriteExpect<'s, WorldStates>,
+    aggregated_outcoming_updates: WriteExpect<'s, AggregatedOutcomingUpdates>,
+    action_update_id_provider: WriteExpect<'s, ActionUpdateIdProvider>,
+    entity_net_metadata_storage: ReadExpect<'s, EntityNetMetadataStorage>,
+    monster_definitions: ReadExpect<'s, MonsterDefinitions>,
+    client_player_actions: ReadStorage<'s, ClientPlayerActions>,
+    entity_net_metadata: WriteStorage<'s, EntityNetMetadata>,
+    players: WriteStorage<'s, Player>,
+    player_actions: WriteStorage<'s, PlayerActions>,
+    monsters: WriteStorage<'s, Monster>,
+    missiles: WriteStorage<'s, Missile>,
+    world_positions: WriteStorage<'s, WorldPosition>,
+    dead: WriteStorage<'s, Dead>,
+    damage_histories: WriteStorage<'s, DamageHistory>,
+}
 
 pub struct ActionSystem;
 
 impl<'s> System<'s> for ActionSystem {
-    type SystemData = (
-        Entities<'s>,
-        GameTimeService<'s>,
-        GameStateHelper<'s>,
-        ReadExpect<'s, GameLevelState>,
-        ReadExpect<'s, MultiplayerGameState>,
-        WriteExpect<'s, FramedUpdates<FrameUpdate>>,
-        WriteExpect<'s, FramedUpdates<ClientFrameUpdate>>,
-        WriteExpect<'s, WorldStates>,
-        WriteExpect<'s, AggregatedOutcomingUpdates>,
-        WriteExpect<'s, ActionUpdateIdProvider>,
-        ReadExpect<'s, EntityNetMetadataStorage>,
-        ReadExpect<'s, MonsterDefinitions>,
-        ReadStorage<'s, EntityNetMetadata>,
-        ReadStorage<'s, ClientPlayerActions>,
-        WriteStorage<'s, Player>,
-        WriteStorage<'s, PlayerActions>,
-        WriteStorage<'s, Monster>,
-        WriteStorage<'s, Missile>,
-        WriteStorage<'s, WorldPosition>,
-        WriteStorage<'s, Dead>,
-        WriteStorage<'s, DamageHistory>,
-    );
+    type SystemData = ActionSystemData<'s>;
 
-    fn run(
-        &mut self,
-        (
-            entities,
-            game_time_service,
-            game_state_helper,
-            game_level_state,
-            multiplayer_game_state,
-            mut framed_updates,
-            mut framed_client_side_actions,
-            mut world_states,
-            mut aggregated_outcoming_updates,
-            action_update_id_provider,
-            entity_net_metadata_storage,
-            monster_definitions,
-            entity_net_metadata,
-            client_player_actions,
-            players,
-            player_actions,
-            monsters,
-            missiles,
-            world_positions,
-            dead,
-            damage_histories,
-        ): Self::SystemData,
-    ) {
-        if !game_state_helper.is_running() {
+    fn run(&mut self, mut system_data: Self::SystemData) {
+        if !system_data.game_state_helper.is_running() {
             return;
         }
-        log::trace!("Frame number: {}", game_time_service.game_frame_number());
+        let frame_number = system_data.game_time_service.game_frame_number();
+        log::trace!("Frame number: {}", frame_number);
 
-        let action_update_id_provider = Rc::new(RefCell::new(action_update_id_provider));
-        let players = Rc::new(RefCell::new(players));
-        let player_actions = Rc::new(RefCell::new(player_actions));
-        let monsters = Rc::new(RefCell::new(monsters));
-        let missiles = Rc::new(RefCell::new(missiles));
-        let world_positions = Rc::new(RefCell::new(world_positions));
-        let dead = Rc::new(RefCell::new(dead));
-        let damage_histories = Rc::new(RefCell::new(damage_histories));
+        let action_update_id_provider =
+            Rc::new(RefCell::new(system_data.action_update_id_provider));
+        let players = Rc::new(RefCell::new(system_data.players));
+        let player_actions = Rc::new(RefCell::new(system_data.player_actions));
+        let monsters = Rc::new(RefCell::new(system_data.monsters));
+        let missiles = Rc::new(RefCell::new(system_data.missiles));
+        let world_positions = Rc::new(RefCell::new(system_data.world_positions));
+        let dead = Rc::new(RefCell::new(system_data.dead));
+        let damage_histories = Rc::new(RefCell::new(system_data.damage_histories));
 
         let world_state_subsystem = WorldStateSubsystem {
-            entities: &entities,
+            entities: &system_data.entities,
             players: players.clone(),
             player_actions: player_actions.clone(),
             monsters: monsters.clone(),
@@ -122,64 +95,71 @@ impl<'s> System<'s> for ActionSystem {
             dead: dead.clone(),
         };
         let player_action_subsystem = PlayerActionSubsystem {
-            game_time_service: &game_time_service,
-            game_level_state: &game_level_state,
-            multiplayer_game_state: &multiplayer_game_state,
-            entity_net_metadata_storage: &entity_net_metadata_storage,
-            client_player_actions: &client_player_actions,
+            game_time_service: &system_data.game_time_service,
+            game_level_state: &system_data.game_level_state,
+            multiplayer_game_state: &system_data.multiplayer_game_state,
+            entity_net_metadata_storage: &system_data.entity_net_metadata_storage,
+            client_player_actions: &system_data.client_player_actions,
             action_update_id_provider: action_update_id_provider.clone(),
             player_actions: player_actions.clone(),
             world_positions: world_positions.clone(),
         };
-        let _monster_action_subsystem = MonsterActionSubsystem {
-            entities: &entities,
-            game_time_service: &game_time_service,
-            monster_definitions: &monster_definitions,
-            game_level_state: &game_level_state,
+        let monster_action_subsystem = MonsterActionSubsystem {
+            entities: &system_data.entities,
+            game_time_service: &system_data.game_time_service,
+            monster_definitions: &system_data.monster_definitions,
+            game_level_state: &system_data.game_level_state,
             players: players.clone(),
             world_positions: world_positions.clone(),
             damage_histories: damage_histories.clone(),
-            monsters: monsters.clone(),
         };
 
-        framed_updates.reserve_updates(game_time_service.game_frame_number());
-        framed_client_side_actions.reserve_updates(game_time_service.game_frame_number());
+        system_data.framed_updates.reserve_updates(frame_number);
+        system_data
+            .framed_client_side_actions
+            .reserve_updates(frame_number);
 
         // We may update client actions when discarding updates in ClientNetworkSystem,
         // but as we iterate in framed_updates, we should update its oldest_updated_frame as well.
-        framed_updates.oldest_updated_frame = framed_updates
+        system_data.framed_updates.oldest_updated_frame = system_data
+            .framed_updates
             .oldest_updated_frame
-            .min(framed_client_side_actions.oldest_updated_frame);
+            .min(system_data.framed_client_side_actions.oldest_updated_frame);
 
         // Add a world state to save the components to, insure the update is possible.
-        world_states.add_world_state(SavedWorldState::default());
-        world_states
-            .check_update_is_possible(&framed_updates)
+        system_data
+            .world_states
+            .add_world_state(SavedWorldState::default());
+        system_data
+            .world_states
+            .check_update_is_possible(&system_data.framed_updates)
             .unwrap_or_else(|err| {
                 panic!(
                     "Expected an update to be possible (current frame {}): {:?}",
-                    game_time_service.game_frame_number(),
-                    err
+                    frame_number, err
                 )
             });
 
+        let oldest_updated_frame = system_data.framed_updates.oldest_updated_frame;
         // Load the world state of the oldest updated frame.
-        let mut world_states_iter =
-            world_states.states_iter_mut(framed_updates.oldest_updated_frame);
+        let mut world_states_iter = system_data
+            .world_states
+            .states_iter_mut(oldest_updated_frame);
         let mut world_state = world_states_iter.next().unwrap_or_else(|| {
             panic!(
                 "Expected to store a world state for frame {}",
-                framed_updates.oldest_updated_frame,
+                oldest_updated_frame,
             )
         });
         world_state_subsystem.load_from_world_state(world_state);
 
         // Run each updated frame.
-        let mut client_side_actions_iter =
-            framed_client_side_actions.updates_iter_mut(framed_updates.oldest_updated_frame);
-        for frame_updated in framed_updates.iter_from_oldest_update() {
+        let mut client_side_actions_iter = system_data
+            .framed_client_side_actions
+            .updates_iter_mut(oldest_updated_frame);
+        for frame_updated in system_data.framed_updates.iter_from_oldest_update() {
             // Update no further than a current frame.
-            if game_time_service.game_frame_number() < frame_updated.frame_number {
+            if frame_number < frame_updated.frame_number {
                 break;
             }
             let client_side_actions = client_side_actions_iter
@@ -187,22 +167,27 @@ impl<'s> System<'s> for ActionSystem {
                 .expect("Expected a framed client-side action");
 
             let outcoming_net_updates = outcoming_net_updates_mut(
-                &mut aggregated_outcoming_updates,
+                &mut system_data.aggregated_outcoming_updates,
                 frame_updated.frame_number,
+                system_data.game_time_service.game_frame_number(),
             );
 
             // Run player actions.
-            for (entity, mut player, ()) in
-                (&entities, &mut *players.borrow_mut(), !&*dead.borrow()).join()
+            for (entity, mut player, ()) in (
+                &system_data.entities,
+                &mut *players.borrow_mut(),
+                !&*dead.borrow(),
+            )
+                .join()
             {
-                let player_net_metadata = entity_net_metadata.get(entity);
+                let player_net_metadata = system_data.entity_net_metadata.get(entity).cloned();
 
                 // Run walk action.
-                let net_args = if multiplayer_game_state.is_playing {
+                let net_args = if system_data.multiplayer_game_state.is_playing {
                     let player_net_metadata =
                         player_net_metadata.expect("Expected EntityNetMetadata for a player");
                     let updates =
-                        walk_action_update_for_player(&frame_updated, *player_net_metadata);
+                        walk_action_update_for_player(&frame_updated, player_net_metadata);
 
                     Some(ApplyWalkActionNetArgs {
                         entity_net_id: player_net_metadata.id,
@@ -221,11 +206,11 @@ impl<'s> System<'s> for ActionSystem {
                 );
 
                 // Run look action.
-                let net_args = if multiplayer_game_state.is_playing {
+                let net_args = if system_data.multiplayer_game_state.is_playing {
                     let player_net_metadata =
                         player_net_metadata.expect("Expected EntityNetMetadata for a player");
                     let updates =
-                        look_action_update_for_player(&frame_updated, *player_net_metadata);
+                        look_action_update_for_player(&frame_updated, player_net_metadata);
 
                     Some(ApplyLookActionNetArgs {
                         entity_net_id: player_net_metadata.id,
@@ -245,17 +230,23 @@ impl<'s> System<'s> for ActionSystem {
             }
 
             // Run mob actions.
-            //for (entity, mob_position, mob_action) in
-            //    mob_actions_updates(&frame_updated, &entity_net_metadata_service)
-            //{
-            //    monster_action_subsystem.decide_monster_action(
-            //        entity,
-            //        &mob_position,
-            //        &mob_action,
-            //        frame_updated.frame_number,
-            //    );
-            //    monster_action_subsystem.process_monster_movement(entity);
-            //}
+            for (entity, mut monster, ()) in (
+                &system_data.entities,
+                &mut *monsters.borrow_mut(),
+                !&*dead.borrow(),
+            )
+                .join()
+            {
+                let monster_entity_net_metadata = system_data.entity_net_metadata.get(entity);
+                let monster_is_spawned = monster_entity_net_metadata
+                    .map(|net_metadata| {
+                        net_metadata.spawned_frame_number <= frame_updated.frame_number
+                    })
+                    .unwrap_or(true);
+                if monster_is_spawned {
+                    monster_action_subsystem.process_monster_movement(entity, &mut monster);
+                }
+            }
 
             // TODO: Run missiles.
 
@@ -270,25 +261,9 @@ impl<'s> System<'s> for ActionSystem {
         }
 
         drop(client_side_actions_iter);
-        framed_updates.oldest_updated_frame = game_time_service.game_frame_number() + 1;
-        framed_client_side_actions.oldest_updated_frame = game_time_service.game_frame_number() + 1;
+        system_data.framed_updates.oldest_updated_frame = frame_number + 1;
+        system_data.framed_client_side_actions.oldest_updated_frame = frame_number + 1;
     }
-}
-
-#[cfg(feature = "client")]
-fn outcoming_net_updates_mut(
-    aggregated_updates: &mut AggregatedOutcomingUpdates,
-    _frame_number: u64,
-) -> &mut OutcomingNetUpdates {
-    aggregated_updates
-}
-
-#[cfg(not(feature = "client"))]
-fn outcoming_net_updates_mut(
-    aggregated_updates: &mut AggregatedOutcomingUpdates,
-    frame_number: u64,
-) -> &mut OutcomingNetUpdates {
-    aggregated_updates.create_new_update(frame_number)
 }
 
 #[cfg(feature = "client")]

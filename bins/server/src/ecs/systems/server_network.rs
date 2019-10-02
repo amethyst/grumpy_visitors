@@ -8,7 +8,7 @@ use ha_core::{
             net::{MultiplayerGameState, MultiplayerRoomPlayer},
             world::{
                 FramedUpdates, ImmediatePlayerActionsUpdates, PlayerActionUpdates,
-                PlayerLookActionUpdates, LAG_COMPENSATION_FRAMES_LIMIT,
+                PlayerLookActionUpdates, ServerWorldUpdates, LAG_COMPENSATION_FRAMES_LIMIT,
             },
             GameEngineState, NewGameEngineState,
         },
@@ -51,6 +51,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
         WriteExpect<'s, MultiplayerGameState>,
         WriteExpect<'s, NewGameEngineState>,
         WriteExpect<'s, FramedUpdates<PlayerActionUpdates>>,
+        WriteExpect<'s, ServerWorldUpdates>,
         WriteStorage<'s, NetConnection>,
         WriteStorage<'s, NetConnectionModel>,
     );
@@ -65,6 +66,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
             mut multiplayer_game_state,
             mut new_game_engine_state,
             mut framed_updates,
+            mut server_world_updates,
             mut net_connections,
             mut net_connection_models,
         ): Self::SystemData,
@@ -236,6 +238,21 @@ impl<'s> System<'s> for ServerNetworkSystem {
                 multiplayer_game_state.waiting_for_players = false;
             }
         }
+
+        // We should reserve new updates only if we're not paused. If we do it regardless, we'll
+        // get redundant updates reserved, as `frames_skipped` gets updated only on
+        if *game_engine_state == GameEngineState::Playing
+            && !(multiplayer_game_state.waiting_network
+                || multiplayer_game_state.waiting_for_players)
+        {
+            let current_frame_number = game_time_service.game_frame_number();
+            server_world_updates.reserve_new_updates(
+                framed_updates
+                    .oldest_updated_frame
+                    .min(current_frame_number),
+                current_frame_number,
+            );
+        }
     }
 }
 
@@ -248,7 +265,7 @@ fn add_walk_actions(
     let mut discarded_actions = Vec::new();
 
     let added_actions_frame_number = actions.frame_number;
-    let oldest_possible_frame = frame_number - LAG_COMPENSATION_FRAMES_LIMIT as u64;
+    let oldest_possible_frame = frame_number.saturating_sub(LAG_COMPENSATION_FRAMES_LIMIT as u64);
     let are_lag_compensated = added_actions_frame_number > oldest_possible_frame;
     let actual_frame = if are_lag_compensated {
         added_actions_frame_number
@@ -256,8 +273,8 @@ fn add_walk_actions(
         oldest_possible_frame
     };
 
-    let is_badly_late =
-        added_actions_frame_number < frame_number - LAG_COMPENSATION_FRAMES_LIMIT as u64 * 2;
+    let is_badly_late = added_actions_frame_number
+        < frame_number.saturating_sub(LAG_COMPENSATION_FRAMES_LIMIT as u64 * 2);
     for action in actions.updates {
         let is_added = {
             if is_badly_late {
@@ -341,8 +358,18 @@ fn add_look_actions(
     actions: PlayerLookActionUpdates,
     frame_number: u64,
 ) {
+    let frame_to_reserve = actions
+        .updates
+        .iter()
+        .filter(|(_, updates)| !updates.is_empty())
+        .map(|(frame_number, _)| frame_number)
+        .max_by(|prev_frame_number, next_frame_number| prev_frame_number.cmp(next_frame_number));
+    if let Some(frame_to_reserve) = frame_to_reserve {
+        framed_updates.reserve_updates(*frame_to_reserve);
+    }
+
     let mut oldest_updated_frame = framed_updates.oldest_updated_frame + 1;
-    let oldest_possible_frame = frame_number - LAG_COMPENSATION_FRAMES_LIMIT as u64;
+    let oldest_possible_frame = frame_number.saturating_sub(LAG_COMPENSATION_FRAMES_LIMIT as u64);
     let mut framed_updates_iter = framed_updates.updates_iter_mut(oldest_possible_frame);
 
     'action_updates: for (update_frame_number, updates) in actions.updates {

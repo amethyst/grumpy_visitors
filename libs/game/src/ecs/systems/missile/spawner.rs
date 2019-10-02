@@ -6,11 +6,14 @@ use ha_core::ecs::{
     components::{
         missile::MissileTarget, Dead, Monster, PlayerActions, PlayerLastCastedSpells, WorldPosition,
     },
-    system_data::{game_state_helper::GameStateHelper, time::GameTimeService},
+    system_data::time::GameTimeService,
 };
 
 use crate::{
-    ecs::{factories::MissileFactory, systems::missile::physics::MISSILE_MAX_SPEED},
+    ecs::{
+        factories::MissileFactory, system_data::GameStateHelper,
+        systems::missile::physics::MISSILE_MAX_SPEED,
+    },
     utils::world::closest_monster,
 };
 

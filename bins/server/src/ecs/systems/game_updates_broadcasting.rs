@@ -2,13 +2,12 @@ use amethyst::ecs::{Join, ReadStorage, System, WriteExpect, WriteStorage};
 
 use ha_core::{
     ecs::{
-        components::NetConnectionModel,
-        resources::world::ServerWorldUpdates,
-        system_data::{game_state_helper::GameStateHelper, time::GameTimeService},
+        components::NetConnectionModel, resources::world::ServerWorldUpdates,
+        system_data::time::GameTimeService,
     },
     net::{server_message::ServerMessagePayload, NetConnection},
 };
-use ha_game::utils::net::send_message_unreliable;
+use ha_game::{ecs::system_data::GameStateHelper, utils::net::send_message_unreliable};
 
 use crate::ecs::resources::LastBroadcastedFrame;
 

@@ -31,13 +31,13 @@ impl MobAction<NetIdentifier> {
             MobAction::Idle => MobAction::Idle,
             MobAction::Move(destination) => MobAction::Move(destination),
             MobAction::Chase(target) => {
-                MobAction::Chase(entity_net_metadata_service.get_entity(target))
+                MobAction::Chase(entity_net_metadata_service.get_entity(target).unwrap())
             }
             MobAction::Attack(MobAttackAction {
                 target,
                 attack_type,
             }) => MobAction::Attack(MobAttackAction {
-                target: entity_net_metadata_service.get_entity(target),
+                target: entity_net_metadata_service.get_entity(target).unwrap(),
                 attack_type,
             }),
         }

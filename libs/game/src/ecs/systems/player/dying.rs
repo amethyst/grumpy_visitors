@@ -7,10 +7,11 @@ use ha_core::{
     ecs::{
         components::{damage_history::DamageHistory, Dead, Player},
         resources::{net::MultiplayerGameState, GameLevelState},
-        system_data::game_state_helper::GameStateHelper,
     },
     math::{Vector2, ZeroVector},
 };
+
+use crate::ecs::system_data::GameStateHelper;
 
 pub struct PlayerDyingSystem {
     damage_history_reader: ReaderId<ComponentEvent>,

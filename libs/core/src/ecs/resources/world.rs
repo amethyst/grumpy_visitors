@@ -6,6 +6,7 @@ use std::{collections::VecDeque, iter::FromIterator};
 use crate::{
     actions::{
         mob::MobAction,
+        monster_spawn::SpawnAction,
         player::{PlayerCastAction, PlayerLookAction, PlayerWalkAction},
         ClientActionUpdate,
     },
@@ -262,16 +263,47 @@ pub struct ServerWorldUpdates {
 }
 
 impl ServerWorldUpdates {
-    pub fn create_new_update(&mut self, frame_number: u64) -> &mut ServerWorldUpdate {
-        let new_update_id = if self.updates.is_empty() {
-            0
+    pub fn reserve_new_updates(&mut self, oldest_updated_frame: u64, current_frame_number: u64) {
+        let mut update_number = if let Some((last_update_number, last_update)) = self.updates.back()
+        {
+            // If the previous update is for the same frame, this call is redundant,
+            // we should just return.
+            if last_update.frame_number == current_frame_number {
+                return;
+            }
+            last_update_number + 1
         } else {
-            let latest_update = &self.updates.back().unwrap();
-            latest_update.0 + 1
+            0
         };
-        self.updates
-            .push_back((new_update_id, ServerWorldUpdate::new(frame_number)));
-        &mut self.updates.back_mut().unwrap().1
+        for frame_number in oldest_updated_frame..=current_frame_number {
+            self.updates
+                .push_back((update_number, ServerWorldUpdate::new(frame_number)));
+            update_number += 1;
+        }
+    }
+
+    pub fn get_update(
+        &mut self,
+        frame_number: u64,
+        current_frame_number: u64,
+    ) -> &mut ServerWorldUpdate {
+        let last_update = &self
+            .updates
+            .back()
+            .expect("Expected at least 1 reserved ServerWorldUpdate")
+            .1;
+        assert_eq!(last_update.frame_number, current_frame_number);
+        let i = self
+            .updates
+            .len()
+            .saturating_sub((1 + current_frame_number - frame_number) as usize);
+        let update = &mut self
+            .updates
+            .get_mut(i)
+            .expect("Expected a reserved ServerWorldUpdate")
+            .1;
+        assert_eq!(update.frame_number, frame_number);
+        update
     }
 }
 
@@ -329,12 +361,19 @@ pub struct PlayerLookActionUpdates {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerWorldUpdate {
     pub frame_number: u64,
+    //    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub player_walk_actions_updates:
         Vec<NetUpdateWithPosition<ClientActionUpdate<PlayerWalkAction>>>,
+    //    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub player_look_actions_updates: Vec<NetUpdate<ClientActionUpdate<PlayerLookAction>>>,
+    //    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub player_cast_actions_updates: Vec<NetUpdate<ClientActionUpdate<PlayerCastAction>>>,
+    //    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub mob_actions_updates: Vec<NetUpdateWithPosition<MobAction<NetIdentifier>>>,
+    //    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub damage_histories_updates: Vec<NetUpdate<DamageHistoryEntries>>,
+    //    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub spawn_actions: Vec<SpawnAction>,
 }
 
 impl ServerWorldUpdate {
@@ -346,6 +385,7 @@ impl ServerWorldUpdate {
             player_cast_actions_updates: Vec::new(),
             mob_actions_updates: Vec::new(),
             damage_histories_updates: Vec::new(),
+            spawn_actions: Vec::new(),
         }
     }
 }
@@ -358,15 +398,18 @@ pub struct ReceivedServerWorldUpdate {
     pub controlled_player_updates: ReceivedPlayerUpdate,
     pub mob_actions_updates: Vec<NetUpdateWithPosition<MobAction<NetIdentifier>>>,
     pub damage_histories_updates: Vec<NetUpdate<DamageHistoryEntries>>,
+    pub spawn_actions: Vec<SpawnAction>,
 }
 
 impl ReceivedServerWorldUpdate {
     pub fn apply_server_update(&mut self, server_update: ServerWorldUpdate) {
+        assert_eq!(self.frame_number, server_update.frame_number);
         self.player_updates.player_walk_actions_updates = server_update.player_walk_actions_updates;
         self.player_updates.player_look_actions_updates = server_update.player_look_actions_updates;
         self.player_updates.player_cast_actions_updates = server_update.player_cast_actions_updates;
         self.mob_actions_updates = server_update.mob_actions_updates;
         self.damage_histories_updates = server_update.damage_histories_updates;
+        self.spawn_actions = server_update.spawn_actions;
     }
 }
 
@@ -387,6 +430,7 @@ impl FramedUpdate for ReceivedServerWorldUpdate {
             controlled_player_updates: ReceivedPlayerUpdate::default(),
             mob_actions_updates: Vec::new(),
             damage_histories_updates: Vec::new(),
+            spawn_actions: Vec::new(),
         }
     }
 

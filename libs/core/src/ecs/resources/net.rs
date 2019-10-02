@@ -66,8 +66,14 @@ impl EntityNetMetadataStorage {
         }
     }
 
-    pub fn get_entity(&self, entity_net_id: NetIdentifier) -> Entity {
-        self.mapping[&entity_net_id]
+    pub fn get_entity(&self, entity_net_id: NetIdentifier) -> Option<Entity> {
+        self.mapping.get(&entity_net_id).cloned()
+    }
+
+    pub fn reserve_ids(&mut self, count: usize) -> Range<NetIdentifier> {
+        let start = self.range.start;
+        self.range.start += count as NetIdentifier;
+        start..self.range.start
     }
 
     pub fn register_new_entity(&mut self, entity: Entity) -> NetIdentifier {

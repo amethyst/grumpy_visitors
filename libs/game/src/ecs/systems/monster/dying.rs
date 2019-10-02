@@ -2,10 +2,9 @@ use amethyst::ecs::{
     prelude::ComponentEvent, BitSet, Entities, Join, ReadStorage, ReaderId, System, WriteStorage,
 };
 
-use ha_core::ecs::{
-    components::{damage_history::DamageHistory, Monster},
-    system_data::game_state_helper::GameStateHelper,
-};
+use ha_core::ecs::components::{damage_history::DamageHistory, Monster};
+
+use crate::ecs::system_data::GameStateHelper;
 
 pub struct MonsterDyingSystem {
     damage_history_reader: ReaderId<ComponentEvent>,

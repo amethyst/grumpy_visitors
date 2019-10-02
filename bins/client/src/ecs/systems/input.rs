@@ -9,12 +9,10 @@ use amethyst::{
 
 use ha_core::{
     actions::player::{PlayerCastAction, PlayerLookAction, PlayerWalkAction},
-    ecs::{
-        components::{ClientPlayerActions, WorldPosition},
-        system_data::game_state_helper::GameStateHelper,
-    },
+    ecs::components::{ClientPlayerActions, WorldPosition},
     math::Vector2,
 };
+use ha_game::ecs::system_data::GameStateHelper;
 
 #[derive(Default)]
 pub struct InputSystem;

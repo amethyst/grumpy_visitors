@@ -30,20 +30,17 @@ pub struct MonsterActionSubsystem<'s> {
     pub players: WriteStorageCell<'s, Player>,
     pub world_positions: WriteStorageCell<'s, WorldPosition>,
     pub damage_histories: WriteStorageCell<'s, DamageHistory>,
-    pub monsters: WriteStorageCell<'s, Monster>,
 }
 
 impl<'s> MonsterActionSubsystem<'s> {
     pub fn decide_monster_action(
         &self,
         entity: Entity,
+        monster: &mut Monster,
         updated_position: &Option<WorldPosition>,
         action: &Option<MobAction<Entity>>,
         frame_number: u64,
     ) {
-        let mut monsters = self.monsters.borrow_mut();
-        let monster = monsters.get_mut(entity).expect("Expected a Monster");
-
         let monster_position = if let Some(updated_position) = updated_position {
             let mut world_positions = self.world_positions.borrow_mut();
             let monster_position = world_positions
@@ -96,10 +93,8 @@ impl<'s> MonsterActionSubsystem<'s> {
         }
     }
 
-    pub fn process_monster_movement(&self, entity: Entity) {
-        let mut monsters = self.monsters.borrow_mut();
+    pub fn process_monster_movement(&self, entity: Entity, monster: &mut Monster) {
         let mut world_positions = self.world_positions.borrow_mut();
-        let monster = monsters.get_mut(entity).expect("Expected a Monster");
         let monster_position = world_positions
             .get_mut(entity)
             .expect("Expected a WorldPosition");

@@ -3,7 +3,7 @@ use amethyst::{
     shred::{ResourceId, SystemData},
 };
 
-use crate::ecs::resources::{net::MultiplayerGameState, GameEngineState};
+use ha_core::ecs::resources::{net::MultiplayerGameState, GameEngineState};
 
 #[derive(SystemData)]
 pub struct GameStateHelper<'s> {
@@ -19,6 +19,20 @@ impl<'s> GameStateHelper<'s> {
                 && !self.multiplayer_game_state.waiting_for_players);
 
         *self.game_engine_state == GameEngineState::Playing && multiplayer_is_unpaused
+    }
+
+    pub fn is_multiplayer(&self) -> bool {
+        self.multiplayer_game_state.is_playing
+    }
+
+    #[cfg(feature = "client")]
+    pub fn is_authoritative(&self) -> bool {
+        !self.is_multiplayer()
+    }
+
+    #[cfg(not(feature = "client"))]
+    pub fn is_authoritative(&self) -> bool {
+        true
     }
 
     pub fn multiplayer_is_running(&self) -> bool {

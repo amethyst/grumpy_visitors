@@ -1,4 +1,4 @@
-#![feature(maybe_uninit_extra)]
+#![feature(drain_filter)]
 #![allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub mod ecs;
 pub mod states;
@@ -74,7 +74,11 @@ pub fn build_game_logic_systems<'a, 'b>(
         .with(
             StateSwitcherSystem,
             "state_switcher_system",
-            &optional_dependencies(&["menu_system"], !is_server),
+            &dependencies_with_optional(
+                &["monster_dying_system", "player_dying_system"],
+                !is_server,
+                &["menu_system"],
+            ),
         );
     Ok(game_data_builder)
 }

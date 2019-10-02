@@ -1,198 +1,237 @@
-use amethyst::ecs::{Entity, ReadExpect, System, WriteExpect};
-use num;
-use rand::{
-    distributions::{Distribution, Standard},
-    Rng,
+use amethyst::{
+    ecs::{Entity, ReadExpect, System, World, WriteExpect, WriteStorage},
+    shred::{ResourceId, SystemData},
 };
 
 use ha_core::{
     actions::{
         mob::MobAction,
-        monster_spawn::{SpawnActions, SpawnType},
+        monster_spawn::{SpawnAction, SpawnActions, SpawnType},
         Action,
     },
     ecs::{
-        resources::GameLevelState,
-        system_data::{game_state_helper::GameStateHelper, time::GameTimeService},
+        components::EntityNetMetadata,
+        resources::{net::EntityNetMetadataStorage, world::FramedUpdates, GameLevelState},
+        system_data::time::GameTimeService,
     },
     math::{Vector2, ZeroVector},
+    net::NetIdentifier,
 };
 
-use crate::ecs::{
-    factories::MonsterFactory,
-    resources::{MonsterDefinition, MonsterDefinitions},
+use crate::{
+    ecs::{
+        factories::MonsterFactory,
+        resources::{MonsterDefinition, MonsterDefinitions},
+        system_data::GameStateHelper,
+        systems::{AggregatedOutcomingUpdates, FrameUpdate, OutcomingNetUpdates},
+    },
+    utils::world::{outcoming_net_updates_mut, spawning_side},
 };
+
+#[derive(SystemData)]
+pub struct MonsterSpawnerSystemData<'s> {
+    pub game_time_service: GameTimeService<'s>,
+    pub game_state_helper: GameStateHelper<'s>,
+    pub monster_definitions: ReadExpect<'s, MonsterDefinitions>,
+    pub game_level_state: ReadExpect<'s, GameLevelState>,
+    pub spawn_actions: WriteExpect<'s, SpawnActions>,
+    pub entity_net_metadata: WriteStorage<'s, EntityNetMetadata>,
+    pub entity_net_metadata_storage: WriteExpect<'s, EntityNetMetadataStorage>,
+    pub monster_factory: MonsterFactory<'s>,
+}
 
 pub struct MonsterSpawnerSystem;
 
 impl<'s> System<'s> for MonsterSpawnerSystem {
     type SystemData = (
-        GameStateHelper<'s>,
-        GameTimeService<'s>,
-        ReadExpect<'s, MonsterDefinitions>,
-        ReadExpect<'s, GameLevelState>,
-        WriteExpect<'s, SpawnActions>,
-        MonsterFactory<'s>,
+        WriteExpect<'s, FramedUpdates<FrameUpdate>>,
+        WriteExpect<'s, AggregatedOutcomingUpdates>,
+        MonsterSpawnerSystemData<'s>,
     );
 
     fn run(
         &mut self,
-        (
-            game_state_helper,
-            game_time_service,
-            monster_definitions,
-            game_level_state,
-            mut spawn_actions,
-            mut monster_factory,
-        ): Self::SystemData,
+        (mut framed_updates, mut aggregated_outcoming_updates, mut system_data): Self::SystemData,
     ) {
-        if !game_state_helper.is_running() {
+        if !system_data.game_state_helper.is_running() {
             return;
         }
 
-        let mut rng = rand::thread_rng();
-        let SpawnActions(ref mut spawn_actions) = *spawn_actions;
-        for spawn_action in spawn_actions.drain(..) {
-            let ghoul = monster_definitions
+        framed_updates.reserve_updates(system_data.game_time_service.game_frame_number());
+
+        for frame_updates in framed_updates.iter_from_oldest_update() {
+            system_data.spawn_monsters(
+                frame_updates,
+                outcoming_net_updates_mut(
+                    &mut *aggregated_outcoming_updates,
+                    frame_updates.frame_number,
+                    system_data.game_time_service.game_frame_number(),
+                ),
+            );
+        }
+    }
+}
+
+impl<'s> MonsterSpawnerSystemData<'s> {
+    pub fn spawn_monsters(
+        &mut self,
+        frame_updates: &FrameUpdate,
+        outcoming_net_updates: &mut OutcomingNetUpdates,
+    ) {
+        if !self.game_state_helper.is_running() {
+            return;
+        }
+
+        let frame_number = frame_updates.frame_number;
+        let spawn_actions = self.get_spawn_actions(&frame_updates);
+        if self.game_state_helper.is_multiplayer()
+            && self.game_state_helper.is_authoritative()
+            && self.game_time_service.game_frame_number() == frame_number
+        {
+            Self::add_action_updates(outcoming_net_updates, spawn_actions.clone());
+        }
+
+        for spawn_action in spawn_actions {
+            let ghoul = self
+                .monster_definitions
                 .0
                 .get("Ghoul")
-                .expect("Failed to get Ghoul monster definition");
-
-            let mut spawn_monster =
-                |position: Vector2,
-                 action: Action<MobAction<Entity>>,
-                 monster_definition: &MonsterDefinition| {
-                    let destination = if let MobAction::Move(destination) = action.action {
-                        destination
-                    } else {
-                        Vector2::zero()
-                    };
-                    monster_factory.create(
-                        monster_definition.clone(),
-                        position,
-                        destination,
-                        action,
-                    );
-                };
+                .expect("Failed to get Ghoul monster definition")
+                .clone();
 
             match spawn_action.spawn_type {
-                SpawnType::Random => {
-                    for _ in 0..spawn_action.monsters.num {
-                        let (side_start, side_end, _) =
-                            spawning_side(rand::random(), &game_level_state);
-                        let d = side_start - side_end;
-                        let random_displacement = Vector2::new(
-                            if d.x == 0.0 {
-                                0.0
-                            } else {
-                                rng.gen_range(0.0, d.x.abs()) * d.x.signum()
-                            },
-                            if d.y == 0.0 {
-                                0.0
-                            } else {
-                                rng.gen_range(0.0, d.y.abs()) * d.y.signum()
-                            },
-                        );
-                        let position = side_start + random_displacement;
-                        spawn_monster(
-                            position,
-                            Action {
-                                frame_number: game_time_service.game_frame_number(),
-                                action: MobAction::Idle,
-                            },
-                            ghoul,
-                        );
-                    }
+                SpawnType::Single {
+                    entity_net_id,
+                    position,
+                } => {
+                    self.spawn_monster(
+                        frame_number,
+                        position,
+                        Action {
+                            frame_number,
+                            action: MobAction::Idle,
+                        },
+                        &ghoul,
+                        entity_net_id,
+                    );
                 }
-                SpawnType::Borderline => {
-                    let spawn_margin = 50.0;
+                SpawnType::Borderline {
+                    count,
+                    mut entity_net_id_range,
+                    side,
+                } => {
                     let (side_start, side_end, destination) =
-                        spawning_side(rand::random(), &game_level_state);
-                    let d = (side_start - side_end) / spawn_margin;
-                    let monsters_to_spawn = num::Float::max(d.x.abs(), d.y.abs()).round() as u8;
-                    let spawn_distance = (side_end - side_start) / f32::from(monsters_to_spawn);
+                        spawning_side(side, &self.game_level_state);
+                    let spawn_distance = (side_end - side_start) / f32::from(count);
 
                     let mut position = side_start;
-                    for _ in 0..monsters_to_spawn {
+                    for _ in 0..count {
                         let action = Action {
-                            frame_number: game_time_service.game_frame_number(),
+                            frame_number,
                             action: MobAction::Move(position + destination),
                         };
-                        spawn_monster(position, action, ghoul);
+                        self.spawn_monster(
+                            frame_number,
+                            position,
+                            action,
+                            &ghoul,
+                            entity_net_id_range.as_mut().map(|entity_net_id_range| {
+                                entity_net_id_range
+                                    .next()
+                                    .expect("Expected a reserved EntityIdentifier")
+                            }),
+                        );
                         position += spawn_distance;
                     }
                 }
             }
         }
     }
-}
 
-fn spawning_side(side: Side, game_level_state: &GameLevelState) -> (Vector2, Vector2, Vector2) {
-    let scene_halfsize = game_level_state.dimensions / 2.0;
-    let border_distance = 100.0;
-    let padding = 25.0;
-    match side {
-        Side::Top => (
-            Vector2::new(
-                -scene_halfsize.x + padding,
-                scene_halfsize.y + border_distance,
-            ),
-            Vector2::new(
-                scene_halfsize.x - padding,
-                scene_halfsize.y + border_distance,
-            ),
-            Vector2::new(0.0, -game_level_state.dimensions.y + border_distance),
-        ),
-        Side::Right => (
-            Vector2::new(
-                scene_halfsize.x + border_distance,
-                scene_halfsize.y - padding,
-            ),
-            Vector2::new(
-                scene_halfsize.x + border_distance,
-                -scene_halfsize.y + padding,
-            ),
-            Vector2::new(-game_level_state.dimensions.x + border_distance, 0.0),
-        ),
-        Side::Bottom => (
-            Vector2::new(
-                scene_halfsize.x - padding,
-                -scene_halfsize.y - border_distance,
-            ),
-            Vector2::new(
-                -scene_halfsize.x + padding,
-                -scene_halfsize.y - border_distance,
-            ),
-            Vector2::new(0.0, game_level_state.dimensions.y - border_distance),
-        ),
-        Side::Left => (
-            Vector2::new(
-                -scene_halfsize.x - border_distance,
-                -scene_halfsize.y + padding,
-            ),
-            Vector2::new(
-                -scene_halfsize.x - border_distance,
-                scene_halfsize.y - padding,
-            ),
-            Vector2::new(game_level_state.dimensions.x - border_distance, 0.0),
-        ),
+    #[cfg(feature = "client")]
+    fn get_spawn_actions(&mut self, frame_updates: &FrameUpdate) -> Vec<SpawnAction> {
+        if self.game_state_helper.is_multiplayer() {
+            frame_updates
+                .spawn_actions
+                .iter()
+                .cloned()
+                .filter(|action| {
+                    let entity_net_id = match &action.spawn_type {
+                        SpawnType::Single { entity_net_id, .. } => *entity_net_id,
+                        SpawnType::Borderline {
+                            entity_net_id_range,
+                            ..
+                        } => entity_net_id_range
+                            .as_ref()
+                            .map(|range| range.end.saturating_sub(1)),
+                    };
+                    entity_net_id
+                        .and_then(|entity_net_id| {
+                            self.entity_net_metadata_storage.get_entity(entity_net_id)
+                        })
+                        .is_none()
+                })
+                .collect()
+        } else {
+            self.spawn_actions.0.drain(..).collect()
+        }
     }
-}
 
-enum Side {
-    Top,
-    Right,
-    Bottom,
-    Left,
-}
+    #[cfg(not(feature = "client"))]
+    fn get_spawn_actions(&mut self, frame_updates: &FrameUpdate) -> Vec<SpawnAction> {
+        if self.game_time_service.game_frame_number() == frame_updates.frame_number {
+            self.spawn_actions.0.drain(..).collect()
+        } else {
+            Vec::new()
+        }
+    }
 
-impl Distribution<Side> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Side {
-        match rng.gen_range(0, 4) {
-            0 => Side::Top,
-            1 => Side::Right,
-            2 => Side::Bottom,
-            _ => Side::Left,
+    #[cfg(feature = "client")]
+    fn add_action_updates(
+        _outcoming_net_update: &mut OutcomingNetUpdates,
+        _spawn_actions: Vec<SpawnAction>,
+    ) {
+    }
+
+    #[cfg(not(feature = "client"))]
+    fn add_action_updates(
+        outcoming_net_update: &mut OutcomingNetUpdates,
+        spawn_actions: Vec<SpawnAction>,
+    ) {
+        outcoming_net_update.spawn_actions = spawn_actions;
+    }
+
+    fn spawn_monster(
+        &mut self,
+        frame_number: u64,
+        position: Vector2,
+        action: Action<MobAction<Entity>>,
+        monster_definition: &MonsterDefinition,
+        net_id: Option<NetIdentifier>,
+    ) {
+        log::trace!("Spawning a monster with net id {:?}", net_id);
+        let destination = if let MobAction::Move(destination) = action.action {
+            destination
+        } else {
+            Vector2::zero()
+        };
+        let monster_entity =
+            self.monster_factory
+                .create(monster_definition.clone(), position, destination, action);
+
+        if let Some(net_id) = net_id {
+            self.entity_net_metadata
+                .insert(
+                    monster_entity,
+                    EntityNetMetadata {
+                        id: net_id,
+                        spawned_frame_number: frame_number,
+                    },
+                )
+                .expect("Expected to insert EntityNetMetadata");
+
+            self.entity_net_metadata_storage
+                .set_net_id(monster_entity, net_id);
         }
     }
 }

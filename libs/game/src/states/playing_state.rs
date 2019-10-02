@@ -20,7 +20,7 @@ use ha_core::net::server_message::ServerMessagePayload;
 #[cfg(not(feature = "client"))]
 use ha_core::net::NetConnection;
 use ha_core::{
-    actions::monster_spawn::{Count, SpawnAction, SpawnActions, SpawnType},
+    actions::monster_spawn::SpawnActions,
     ecs::{
         components::EntityNetMetadata,
         resources::{
@@ -50,26 +50,6 @@ impl SimpleState for PlayingState {
         GameTimeService::fetch(&world).set_game_start_time();
 
         initialize_players(world);
-
-        {
-            let mut spawn_actions = world.fetch_mut::<SpawnActions>();
-            spawn_actions.0.append(&mut vec![
-                SpawnAction {
-                    monsters: Count {
-                        entity: "Ghoul".to_owned(),
-                        num: 1,
-                    },
-                    spawn_type: SpawnType::Borderline,
-                },
-                SpawnAction {
-                    monsters: Count {
-                        entity: "Ghoul".to_owned(),
-                        num: 5,
-                    },
-                    spawn_type: SpawnType::Random,
-                },
-            ]);
-        }
 
         world.exec(|mut landscape_factory: LandscapeFactory| landscape_factory.create());
     }
