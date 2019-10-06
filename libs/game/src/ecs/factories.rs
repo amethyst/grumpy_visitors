@@ -34,6 +34,7 @@ pub struct PlayerFactory<'s> {
     transforms: WriteStorage<'s, Transform>,
     player_actions: WriteStorage<'s, PlayerActions>,
     world_positions: WriteStorage<'s, WorldPosition>,
+    net_world_positions: WriteStorage<'s, NetWorldPosition>,
     players: WriteStorage<'s, Player>,
     player_last_casted_spells: WriteStorage<'s, PlayerLastCastedSpells>,
     damage_histories: WriteStorage<'s, DamageHistory>,
@@ -51,6 +52,10 @@ impl<'s> PlayerFactory<'s> {
             .with(
                 WorldPosition::new(Vector2::zero()),
                 &mut self.world_positions,
+            )
+            .with(
+                NetWorldPosition::new(Vector2::zero()),
+                &mut self.net_world_positions,
             )
             .with(Player::new(), &mut self.players)
             .with(

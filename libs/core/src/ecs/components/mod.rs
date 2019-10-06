@@ -42,6 +42,34 @@ impl Component for WorldPosition {
     type Storage = VecStorage<Self>;
 }
 
+/// On client side this component stores a WorldPosition that a player had
+/// `INTERPOLATION_FRAME_DELAY` frames ago.
+/// This component isn't used on server side and in single player.
+#[derive(Clone, Debug, Serialize, Deserialize, Shrinkwrap)]
+#[shrinkwrap(mutable)]
+pub struct NetWorldPosition {
+    #[shrinkwrap(main_field)]
+    pub position: Vector2,
+}
+
+impl NetWorldPosition {
+    pub fn new(position: Vector2) -> Self {
+        Self { position }
+    }
+}
+
+impl Component for NetWorldPosition {
+    type Storage = DenseVecStorage<Self>;
+}
+
+impl From<WorldPosition> for NetWorldPosition {
+    fn from(world_position: WorldPosition) -> Self {
+        NetWorldPosition {
+            position: world_position.position,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Player {
     pub health: f32,

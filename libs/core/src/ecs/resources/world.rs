@@ -86,6 +86,14 @@ impl WorldStates {
             })
         }
     }
+
+    pub fn len(&self) -> usize {
+        self.world_states.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.world_states.is_empty()
+    }
 }
 
 impl Default for WorldStates {
