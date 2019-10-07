@@ -11,7 +11,7 @@ use amethyst::{
         frame_limiter::FrameRateLimitStrategy, transform::TransformBundle, HideHierarchySystemDesc,
     },
     input::{InputBundle, StringBindings},
-    network::NetworkBundle,
+    network::{NetworkBundle, ServerConfig},
     prelude::{Application, GameDataBuilder},
     renderer::{
         plugins::{RenderFlat2D, RenderFlat3D, RenderToWindow},
@@ -21,6 +21,7 @@ use amethyst::{
     ui::{RenderUi, UiBundle},
     LogLevelFilter, Logger,
 };
+use laminar::Config as LaminarConfig;
 
 use std::time::Duration;
 
@@ -81,8 +82,16 @@ fn main() -> amethyst::Result<()> {
         .world
         .insert(FramedUpdates::<ReceivedServerWorldUpdate>::default());
 
+    let server_config = ServerConfig {
+        udp_socket_addr: socket_addr.parse()?,
+        laminar_config: LaminarConfig {
+            receive_buffer_max_size: 14_500,
+            ..LaminarConfig::default()
+        },
+        ..ServerConfig::default()
+    };
     let mut game_data_builder = GameDataBuilder::default()
-        .with_bundle(NetworkBundle::<EncodedMessage>::new(socket_addr.parse()?))?
+        .with_bundle(NetworkBundle::<EncodedMessage>::from_config(server_config))?
         .with(
             NetConnectionManagerSystem::default(),
             "net_connection_manager_system",

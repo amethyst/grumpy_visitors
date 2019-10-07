@@ -308,7 +308,7 @@ impl ServerWorldUpdates {
         let update = &mut self
             .updates
             .get_mut(i)
-            .expect("Expected a reserved ServerWorldUpdate")
+            .unwrap_or_else(|| panic!("Expected a reserved ServerWorldUpdate (frame_number: {}, current_frame_number: {})", frame_number, current_frame_number))
             .1;
         assert_eq!(update.frame_number, frame_number);
         update

@@ -60,6 +60,10 @@ impl<'s> System<'s> for MonsterSpawnerSystem {
         framed_updates.reserve_updates(system_data.game_time_service.game_frame_number());
 
         for frame_updates in framed_updates.iter_from_oldest_update() {
+            if frame_updates.frame_number > system_data.game_time_service.game_frame_number() {
+                break;
+            }
+
             system_data.spawn_monsters(
                 frame_updates,
                 outcoming_net_updates_mut(

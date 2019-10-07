@@ -4,10 +4,11 @@ mod ecs;
 
 use amethyst::{
     core::{frame_limiter::FrameRateLimitStrategy, transform::TransformBundle},
-    network::NetworkBundle,
+    network::{NetworkBundle, ServerConfig},
     prelude::{Application, GameDataBuilder},
     LogLevelFilter, LoggerConfig, StdoutLog,
 };
+use laminar::Config as LaminarConfig;
 use log::LevelFilter;
 
 use std::{env, io, path::PathBuf, str::FromStr, time::Duration};
@@ -59,8 +60,17 @@ fn main() -> amethyst::Result<()> {
         .insert(FramedUpdates::<DummyFramedUpdate>::default());
     builder.world.insert(ServerWorldUpdates::default());
     builder.world.insert(LastBroadcastedFrame(0));
+
+    let server_config = ServerConfig {
+        udp_socket_addr: socket_addr.parse()?,
+        laminar_config: LaminarConfig {
+            receive_buffer_max_size: 14_500,
+            ..LaminarConfig::default()
+        },
+        ..ServerConfig::default()
+    };
     let mut game_data_builder = GameDataBuilder::default()
-        .with_bundle(NetworkBundle::<EncodedMessage>::new(socket_addr.parse()?))?
+        .with_bundle(NetworkBundle::<EncodedMessage>::from_config(server_config))?
         .with(
             NetConnectionManagerSystem::default(),
             "net_connection_manager_system",

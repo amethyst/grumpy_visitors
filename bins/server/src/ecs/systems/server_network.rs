@@ -30,14 +30,18 @@ use crate::ecs::resources::LastBroadcastedFrame;
 const PAUSE_FRAME_THRESHOLD: u64 =
     (LAG_COMPENSATION_FRAMES_LIMIT + LAG_COMPENSATION_FRAMES_LIMIT / 2) as u64;
 
+const HEARTBEAT_FRAME_INTERVAL: u64 = 2;
+
 pub struct ServerNetworkSystem {
     host_connection_id: NetIdentifier,
+    last_heartbeat_frame: u64,
 }
 
 impl ServerNetworkSystem {
     pub fn new() -> Self {
         Self {
             host_connection_id: 0,
+            last_heartbeat_frame: 0,
         }
     }
 }
@@ -107,6 +111,11 @@ impl<'s> System<'s> for ServerNetworkSystem {
                     new_game_engine_state.0 = GameEngineState::Playing;
                 }
                 NetEvent::Message(ClientMessagePayload::WalkActions(actions)) => {
+                    log::trace!(
+                        "Received WalkAction updates (frame {}): {:?}",
+                        game_time_service.game_frame_number(),
+                        actions
+                    );
                     let discarded_actions = add_walk_actions(
                         &mut *framed_updates,
                         actions,
@@ -114,6 +123,10 @@ impl<'s> System<'s> for ServerNetworkSystem {
                     );
 
                     if !discarded_actions.is_empty() {
+                        log::trace!(
+                            "{} walk actions have been discarded",
+                            discarded_actions.len()
+                        );
                         let (net_connection, _) = (&mut net_connections, &net_connection_models)
                             .join()
                             .find(|(_, net_connection_model)| {
@@ -166,6 +179,13 @@ impl<'s> System<'s> for ServerNetworkSystem {
                 &mut net_connections,
                 &ServerMessagePayload::UpdateRoomPlayers(players.to_owned()),
             );
+        }
+
+        if game_time_service.engine_time().frame_number() - self.last_heartbeat_frame
+            > HEARTBEAT_FRAME_INTERVAL
+        {
+            self.last_heartbeat_frame = game_time_service.engine_time().frame_number();
+            broadcast_message_reliable(&mut net_connections, &ServerMessagePayload::Heartbeat);
         }
 
         // Pause server if one of clients is lagging behind.
@@ -368,7 +388,7 @@ fn add_look_actions(
         framed_updates.reserve_updates(*frame_to_reserve);
     }
 
-    let mut oldest_updated_frame = framed_updates.oldest_updated_frame + 1;
+    let mut oldest_updated_frame = framed_updates.oldest_updated_frame;
     let oldest_possible_frame = frame_number.saturating_sub(LAG_COMPENSATION_FRAMES_LIMIT as u64);
     let mut framed_updates_iter = framed_updates.updates_iter_mut(oldest_possible_frame);
 

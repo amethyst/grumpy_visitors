@@ -22,3 +22,9 @@ pub enum ClientMessagePayload {
         frame_number: u64,
     },
 }
+
+impl ClientMessagePayload {
+    pub fn is_heartbeat(&self) -> bool {
+        false
+    }
+}

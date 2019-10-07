@@ -195,6 +195,10 @@ fn process_connection_event(
                         );
                         (None, None)
                     }
+                    message if message.is_heartbeat() => {
+                        log::trace!("Received a new Heartbeat message");
+                        (None, None)
+                    }
                     _ => {
                         log::debug!("Received a new message: {:?}", &message);
                         (
