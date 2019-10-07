@@ -117,6 +117,7 @@ impl<'s> System<'s> for ActionSystem {
             game_state_helper: &system_data.game_state_helper,
             monster_definitions: &system_data.monster_definitions,
             game_level_state: &system_data.game_level_state,
+            client_player_actions: &system_data.client_player_actions,
             entity_net_metadata: entity_net_metadata.clone(),
             players: players.clone(),
             world_positions: world_positions.clone(),
@@ -162,8 +163,9 @@ impl<'s> System<'s> for ActionSystem {
                 let capacity =
                     system_data.game_time_service.game_frame_number() - oldest_updated_frame + 1;
                 let mut framed_net_positions = Vec::with_capacity(capacity as usize);
-                let mut world_states_iter =
-                    system_data.world_states.states_iter(oldest_updated_frame);
+                let mut world_states_iter = system_data
+                    .world_states
+                    .states_iter(oldest_updated_frame.saturating_sub(INTERPOLATION_FRAME_DELAY));
                 // Filling with empty values as the first INTERPOLATION_FRAME_DELAY frames
                 // we have zero data.
                 let zero_data_frames = INTERPOLATION_FRAME_DELAY

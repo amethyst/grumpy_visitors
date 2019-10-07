@@ -1,4 +1,4 @@
-use amethyst::ecs::{Entities, Entity, Join, ReadExpect, WriteStorage};
+use amethyst::ecs::{Entities, Entity, Join, ReadExpect, ReadStorage, WriteStorage};
 
 use ha_core::{
     actions::{
@@ -7,8 +7,8 @@ use ha_core::{
     },
     ecs::{
         components::{
-            damage_history::DamageHistory, EntityNetMetadata, Monster, NetWorldPosition, Player,
-            WorldPosition,
+            damage_history::DamageHistory, ClientPlayerActions, EntityNetMetadata, Monster,
+            NetWorldPosition, Player, WorldPosition,
         },
         resources::GameLevelState,
         system_data::time::GameTimeService,
@@ -34,6 +34,7 @@ pub struct MonsterActionSubsystem<'s> {
     pub game_state_helper: &'s GameStateHelper<'s>,
     pub monster_definitions: &'s ReadExpect<'s, MonsterDefinitions>,
     pub game_level_state: &'s ReadExpect<'s, GameLevelState>,
+    pub client_player_actions: &'s ReadStorage<'s, ClientPlayerActions>,
     pub entity_net_metadata: WriteStorageCell<'s, EntityNetMetadata>,
     pub players: WriteStorageCell<'s, Player>,
     pub world_positions: WriteStorageCell<'s, WorldPosition>,
@@ -116,6 +117,7 @@ impl<'s> MonsterActionSubsystem<'s> {
                     *target,
                     &world_positions,
                     &net_world_positions,
+                    &self.client_player_actions,
                     is_multiplayer,
                 )),
                 MobAction::Attack(MobAttackAction {
@@ -126,6 +128,7 @@ impl<'s> MonsterActionSubsystem<'s> {
                         *target,
                         &world_positions,
                         &net_world_positions,
+                        &self.client_player_actions,
                         is_multiplayer,
                     )),
                     _ => Some(monster_position.position),
@@ -138,6 +141,7 @@ impl<'s> MonsterActionSubsystem<'s> {
                     target,
                     &world_positions,
                     &net_world_positions,
+                    &self.client_player_actions,
                     is_multiplayer,
                 )),
                 _ => None,
@@ -306,9 +310,11 @@ fn target_position(
     entity: Entity,
     world_positions: &WriteStorage<WorldPosition>,
     net_positions: &WriteStorage<NetWorldPosition>,
+    client_player_actions: &ReadStorage<ClientPlayerActions>,
     is_multiplayer: bool,
 ) -> Vector2 {
-    if is_multiplayer {
+    let is_controllable = client_player_actions.contains(entity);
+    if is_multiplayer && is_controllable {
         **net_positions
             .get(entity)
             .expect("Expected a NetWorldPosition of a mob target")
@@ -324,6 +330,7 @@ fn target_position(
     entity: Entity,
     world_positions: &WriteStorage<WorldPosition>,
     _net_positions: &WriteStorage<NetWorldPosition>,
+    _client_player_actions: &ReadStorage<ClientPlayerActions>,
     _is_multiplayer: bool,
 ) -> Vector2 {
     **world_positions
