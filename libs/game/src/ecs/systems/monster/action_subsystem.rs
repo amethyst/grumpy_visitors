@@ -1,6 +1,4 @@
-#[cfg(not(feature = "client"))]
-use amethyst::ecs::Join;
-use amethyst::ecs::{Entities, Entity, ReadExpect};
+use amethyst::ecs::{Entities, Entity, Join, ReadExpect, WriteStorage};
 
 use ha_core::{
     actions::{
@@ -8,39 +6,59 @@ use ha_core::{
         Action,
     },
     ecs::{
-        components::{damage_history::DamageHistory, Monster, Player, WorldPosition},
+        components::{
+            damage_history::DamageHistory, EntityNetMetadata, Monster, NetWorldPosition, Player,
+            WorldPosition,
+        },
         resources::GameLevelState,
         system_data::time::GameTimeService,
     },
     math::{Vector2, ZeroVector},
+    net::{NetIdentifier, NetUpdateWithPosition},
 };
 
-use crate::ecs::{resources::MonsterDefinitions, systems::WriteStorageCell};
-#[cfg(not(feature = "client"))]
-use crate::utils::world::random_scene_position;
+use crate::{
+    ecs::{
+        resources::MonsterDefinitions,
+        system_data::GameStateHelper,
+        systems::{OutcomingNetUpdates, WriteStorageCell},
+    },
+    utils::world::random_scene_position,
+};
 
-#[cfg(not(feature = "client"))]
 const MAX_IDLE_TIME_SECS: f32 = 0.5;
 
 pub struct MonsterActionSubsystem<'s> {
     pub entities: &'s Entities<'s>,
     pub game_time_service: &'s GameTimeService<'s>,
+    pub game_state_helper: &'s GameStateHelper<'s>,
     pub monster_definitions: &'s ReadExpect<'s, MonsterDefinitions>,
     pub game_level_state: &'s ReadExpect<'s, GameLevelState>,
+    pub entity_net_metadata: WriteStorageCell<'s, EntityNetMetadata>,
     pub players: WriteStorageCell<'s, Player>,
     pub world_positions: WriteStorageCell<'s, WorldPosition>,
+    pub net_world_positions: WriteStorageCell<'s, NetWorldPosition>,
     pub damage_histories: WriteStorageCell<'s, DamageHistory>,
 }
 
+pub struct ApplyMonsterActionNetArgs<'a> {
+    pub entity_net_id: NetIdentifier,
+    pub outcoming_net_updates: &'a mut OutcomingNetUpdates,
+    /// Only clients receive monster action updates.
+    pub updates: Option<(WorldPosition, MobAction<Entity>)>,
+}
+
 impl<'s> MonsterActionSubsystem<'s> {
-    pub fn decide_monster_action(
+    pub fn decide_monster_action<'a>(
         &self,
+        frame_number: u64,
         entity: Entity,
         monster: &mut Monster,
-        updated_position: &Option<WorldPosition>,
-        action: &Option<MobAction<Entity>>,
-        frame_number: u64,
+        net_args: Option<ApplyMonsterActionNetArgs<'a>>,
     ) {
+        let updated_position = net_args
+            .as_ref()
+            .and_then(|net_args| net_args.updates.as_ref().map(|update| update.0.clone()));
         let monster_position = if let Some(updated_position) = updated_position {
             let mut world_positions = self.world_positions.borrow_mut();
             let monster_position = world_positions
@@ -56,27 +74,72 @@ impl<'s> MonsterActionSubsystem<'s> {
                 .clone()
         };
 
-        let world_positions = self.world_positions.borrow();
-        let new_action = action
-            .clone()
-            .or_else(|| self.new_action(&monster, monster_position.clone()));
+        let new_action = if self.game_state_helper.is_multiplayer() {
+            let ApplyMonsterActionNetArgs {
+                entity_net_id,
+                outcoming_net_updates,
+                updates,
+            } = net_args.expect("Expected ApplyMonsterActionNetArgs in multiplayer");
 
+            if self.game_state_helper.is_authoritative() {
+                let action = self.new_action(frame_number, &monster, monster_position.clone());
+                if let Some(action) = &action {
+                    let update = NetUpdateWithPosition {
+                        entity_net_id,
+                        position: monster_position.clone(),
+                        data: action.load_entity_net_id(&*self.entity_net_metadata.borrow_mut()),
+                    };
+                    add_mob_action_update(outcoming_net_updates, update)
+                }
+                action
+            } else {
+                updates.map(|updates| updates.1)
+            }
+        } else {
+            self.new_action(frame_number, &monster, monster_position.clone())
+        };
+
+        let world_positions = self.world_positions.borrow();
+        let net_world_positions = self.net_world_positions.borrow();
+        let is_multiplayer = self.game_state_helper.is_multiplayer();
         let new_destination = if let Some(ref new_action) = new_action {
+            log::info!(
+                "Applying a new mob ({}) action for frame {} (current frame {}): {:?}",
+                entity.id(),
+                frame_number,
+                self.game_time_service.game_frame_number(),
+                new_action
+            );
             match new_action {
                 MobAction::Move(position) => Some(*position),
-                MobAction::Chase(entity) => Some(**world_positions.get(*entity).unwrap()),
+                MobAction::Chase(target) => Some(target_position(
+                    *target,
+                    &world_positions,
+                    &net_world_positions,
+                    is_multiplayer,
+                )),
                 MobAction::Attack(MobAttackAction {
                     target,
                     attack_type,
                 }) => match attack_type {
-                    MobAttackType::Melee => Some(**world_positions.get(*target).unwrap()),
-                    _ => Some(*monster_position),
+                    MobAttackType::Melee => Some(target_position(
+                        *target,
+                        &world_positions,
+                        &net_world_positions,
+                        is_multiplayer,
+                    )),
+                    _ => Some(monster_position.position),
                 },
                 _ => None,
             }
         } else {
             match monster.action.action {
-                MobAction::Chase(entity) => Some(**world_positions.get(entity).unwrap()),
+                MobAction::Chase(target) => Some(target_position(
+                    target,
+                    &world_positions,
+                    &net_world_positions,
+                    is_multiplayer,
+                )),
                 _ => None,
             }
         };
@@ -120,9 +183,9 @@ impl<'s> MonsterActionSubsystem<'s> {
         };
     }
 
-    #[cfg(not(feature = "client"))]
     fn new_action(
         &self,
+        frame_number: u64,
         monster: &Monster,
         monster_position: WorldPosition,
     ) -> Option<MobAction<Entity>> {
@@ -146,7 +209,7 @@ impl<'s> MonsterActionSubsystem<'s> {
                 } else {
                     let time_being_idle = self
                         .game_time_service
-                        .seconds_to_frame(monster.action.frame_number);
+                        .seconds_between_frames(frame_number, monster.action.frame_number);
                     if MAX_IDLE_TIME_SECS < time_being_idle {
                         Some(MobAction::Move(random_scene_position(
                             &*self.game_level_state,
@@ -198,7 +261,7 @@ impl<'s> MonsterActionSubsystem<'s> {
                 let is_cooling_down = match attack_action.attack_type {
                     MobAttackType::SlowMelee { cooldown } => {
                         self.game_time_service
-                            .seconds_to_frame(monster.action.frame_number)
+                            .seconds_between_frames(frame_number, monster.action.frame_number)
                             < cooldown
                     }
                     _ => false,
@@ -222,18 +285,8 @@ impl<'s> MonsterActionSubsystem<'s> {
             }
         }
     }
-
-    #[cfg(feature = "client")]
-    fn new_action(
-        &self,
-        _monster: &Monster,
-        _monster_position: WorldPosition,
-    ) -> Option<MobAction<Entity>> {
-        None
-    }
 }
 
-#[cfg(not(feature = "client"))]
 fn find_player_in_radius<'a>(
     mut players: impl Iterator<Item = (Entity, &'a Player, &'a WorldPosition)>,
     position: Vector2,
@@ -246,4 +299,49 @@ fn find_player_in_radius<'a>(
             (position - ***player_position).norm_squared() < radius_squared + player_radius_squared
         })
         .map(|(entity, _, player_position)| (entity, player_position))
+}
+
+#[cfg(feature = "client")]
+fn target_position(
+    entity: Entity,
+    world_positions: &WriteStorage<WorldPosition>,
+    net_positions: &WriteStorage<NetWorldPosition>,
+    is_multiplayer: bool,
+) -> Vector2 {
+    if is_multiplayer {
+        **net_positions
+            .get(entity)
+            .expect("Expected a NetWorldPosition of a mob target")
+    } else {
+        **world_positions
+            .get(entity)
+            .expect("Expected a WorldPosition of a mob target")
+    }
+}
+
+#[cfg(not(feature = "client"))]
+fn target_position(
+    entity: Entity,
+    world_positions: &WriteStorage<WorldPosition>,
+    _net_positions: &WriteStorage<NetWorldPosition>,
+    _is_multiplayer: bool,
+) -> Vector2 {
+    **world_positions
+        .get(entity)
+        .expect("Expected a WorldPosition of a mob target")
+}
+
+#[cfg(feature = "client")]
+fn add_mob_action_update(
+    _outcoming_net_updates: &mut OutcomingNetUpdates,
+    _action: NetUpdateWithPosition<MobAction<NetIdentifier>>,
+) {
+}
+
+#[cfg(not(feature = "client"))]
+fn add_mob_action_update(
+    outcoming_net_updates: &mut OutcomingNetUpdates,
+    action: NetUpdateWithPosition<MobAction<NetIdentifier>>,
+) {
+    outcoming_net_updates.mob_actions_updates.push(action);
 }

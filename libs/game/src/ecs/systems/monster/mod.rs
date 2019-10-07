@@ -3,6 +3,7 @@ mod dying;
 mod spawner;
 
 pub use self::{
-    action_subsystem::MonsterActionSubsystem, dying::MonsterDyingSystem,
+    action_subsystem::{ApplyMonsterActionNetArgs, MonsterActionSubsystem},
+    dying::MonsterDyingSystem,
     spawner::MonsterSpawnerSystem,
 };

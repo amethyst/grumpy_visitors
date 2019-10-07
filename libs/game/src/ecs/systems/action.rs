@@ -32,7 +32,7 @@ use crate::{
         resources::MonsterDefinitions,
         system_data::GameStateHelper,
         systems::{
-            monster::MonsterActionSubsystem,
+            monster::{ApplyMonsterActionNetArgs, MonsterActionSubsystem},
             player::{ApplyLookActionNetArgs, ApplyWalkActionNetArgs, PlayerActionSubsystem},
             world_state_subsystem::WorldStateSubsystem,
             AggregatedOutcomingUpdates, ClientFrameUpdate, FrameUpdate,
@@ -40,6 +40,7 @@ use crate::{
     },
     utils::world::outcoming_net_updates_mut,
 };
+use ha_core::actions::mob::MobAction;
 
 #[derive(SystemData)]
 pub struct ActionSystemData<'s> {
@@ -81,6 +82,7 @@ impl<'s> System<'s> for ActionSystem {
 
         let action_update_id_provider =
             Rc::new(RefCell::new(system_data.action_update_id_provider));
+        let entity_net_metadata = Rc::new(RefCell::new(system_data.entity_net_metadata));
         let players = Rc::new(RefCell::new(system_data.players));
         let player_actions = Rc::new(RefCell::new(system_data.player_actions));
         let monsters = Rc::new(RefCell::new(system_data.monsters));
@@ -112,10 +114,13 @@ impl<'s> System<'s> for ActionSystem {
         let monster_action_subsystem = MonsterActionSubsystem {
             entities: &system_data.entities,
             game_time_service: &system_data.game_time_service,
+            game_state_helper: &system_data.game_state_helper,
             monster_definitions: &system_data.monster_definitions,
             game_level_state: &system_data.game_level_state,
+            entity_net_metadata: entity_net_metadata.clone(),
             players: players.clone(),
             world_positions: world_positions.clone(),
+            net_world_positions: net_world_positions.clone(),
             damage_histories: damage_histories.clone(),
         };
 
@@ -222,15 +227,18 @@ impl<'s> System<'s> for ActionSystem {
             }
 
             // Run player actions.
-            for (entity, mut player, ()) in (
+            let players_net_metadata = entity_net_metadata.borrow();
+            for (entity, mut player, player_net_metadata) in (
                 &system_data.entities,
                 &mut *players.borrow_mut(),
                 !&*dead.borrow(),
             )
                 .join()
+                .map(move |(entity, player, ())| {
+                    (entity, player, players_net_metadata.get(entity).cloned())
+                })
+                .collect::<Vec<_>>()
             {
-                let player_net_metadata = system_data.entity_net_metadata.get(entity).cloned();
-
                 // Run walk action.
                 let net_args = if system_data.multiplayer_game_state.is_playing {
                     let player_net_metadata =
@@ -279,20 +287,48 @@ impl<'s> System<'s> for ActionSystem {
             }
 
             // Run mob actions.
-            for (entity, mut monster, ()) in (
+            let monsters_net_metadata = entity_net_metadata.borrow();
+            for (entity, mut monster, monster_net_metadata) in (
                 &system_data.entities,
                 &mut *monsters.borrow_mut(),
                 !&*dead.borrow(),
             )
                 .join()
+                .map(move |(entity, monster, ())| {
+                    (entity, monster, monsters_net_metadata.get(entity).cloned())
+                })
+                .collect::<Vec<_>>()
             {
-                let monster_entity_net_metadata = system_data.entity_net_metadata.get(entity);
-                let monster_is_spawned = monster_entity_net_metadata
+                let monster_is_spawned = monster_net_metadata
                     .map(|net_metadata| {
                         net_metadata.spawned_frame_number <= frame_updated.frame_number
                     })
                     .unwrap_or(true);
                 if monster_is_spawned {
+                    let net_args = if system_data.multiplayer_game_state.is_playing {
+                        let monster_net_metadata =
+                            monster_net_metadata.expect("Expected EntityNetMetadata for a monster");
+                        let updates = mob_actions_update(
+                            &frame_updated,
+                            monster_net_metadata,
+                            &system_data.entity_net_metadata_storage,
+                        );
+
+                        Some(ApplyMonsterActionNetArgs {
+                            entity_net_id: monster_net_metadata.id,
+                            outcoming_net_updates,
+                            updates,
+                        })
+                    } else {
+                        None
+                    };
+
+                    monster_action_subsystem.decide_monster_action(
+                        frame_updated.frame_number,
+                        entity,
+                        &mut monster,
+                        net_args,
+                    );
                     monster_action_subsystem.process_monster_movement(entity, &mut monster);
                 }
             }
@@ -309,7 +345,9 @@ impl<'s> System<'s> for ActionSystem {
             world_state_subsystem.save_world_state(world_state);
 
             // Update net_positions if we're updating more than INTERPOLATION_FRAME_DELAY frames.
-            if frame_updated.frame_number - oldest_updated_frame >= INTERPOLATION_FRAME_DELAY {
+            if frame_updated.frame_number - oldest_updated_frame >= INTERPOLATION_FRAME_DELAY
+                && !system_data.game_state_helper.is_authoritative()
+            {
                 let i =
                     frame_updated.frame_number - oldest_updated_frame - INTERPOLATION_FRAME_DELAY;
                 framed_net_positions[i as usize] = world_state
@@ -384,27 +422,32 @@ fn look_action_update_for_player(
         .map(move |update| update.data.clone())
 }
 
-//#[cfg(feature = "client")]
-//fn mob_actions_updates<'a>(
-//    frame_updates: &'a FrameUpdate,
-//    entity_net_metadata_service: &'a EntityNetMetadataStorage,
-//) -> impl Iterator<Item = (Entity, Option<WorldPosition>, MobAction<Entity>)> + 'a {
-//    frame_updates.mob_actions_updates.iter().map(move |update| {
-//        (
-//            entity_net_metadata_service.get_entity(update.entity_net_id),
-//            Some(update.position.clone()),
-//            update
-//                .data
-//                .clone()
-//                .load_entity_by_net_id(&entity_net_metadata_service),
-//        )
-//    })
-//}
-//
-//#[cfg(not(feature = "client"))]
-//fn mob_actions_updates<'a>(
-//    _frame_updates: &'a FrameUpdate,
-//    _entity_net_metadata_service: &'a EntityNetMetadataStorage,
-//) -> impl Iterator<Item = (Entity, Option<WorldPosition>, MobAction<Entity>)> + 'a {
-//    std::iter::empty()
-//}
+#[cfg(feature = "client")]
+fn mob_actions_update<'a>(
+    frame_updates: &'a FrameUpdate,
+    entity_net_metadata: EntityNetMetadata,
+    entity_net_metadata_service: &'a EntityNetMetadataStorage,
+) -> Option<(WorldPosition, MobAction<Entity>)> {
+    frame_updates
+        .mob_actions_updates
+        .iter()
+        .find(|update| update.entity_net_id == entity_net_metadata.id)
+        .map(move |update| {
+            (
+                update.position.clone(),
+                update
+                    .data
+                    .clone()
+                    .load_entity_by_net_id(&entity_net_metadata_service),
+            )
+        })
+}
+
+#[cfg(not(feature = "client"))]
+fn mob_actions_update<'a>(
+    _frame_updates: &'a FrameUpdate,
+    _entity_net_metadata: EntityNetMetadata,
+    _entity_net_metadata_service: &'a EntityNetMetadataStorage,
+) -> Option<(WorldPosition, MobAction<Entity>)> {
+    None
+}

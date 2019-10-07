@@ -1,8 +1,12 @@
-use amethyst::ecs::Entity;
+use amethyst::ecs::{storage::GenericReadStorage, Entity};
 use rand::Rng;
 use serde_derive::{Deserialize, Serialize};
 
-use crate::{ecs::resources::net::EntityNetMetadataStorage, math::Vector2, net::NetIdentifier};
+use crate::{
+    ecs::{components::EntityNetMetadata, resources::net::EntityNetMetadataStorage},
+    math::Vector2,
+    net::NetIdentifier,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MobAction<T> {
@@ -19,6 +23,28 @@ pub enum MobAction<T> {
 impl<T> Default for MobAction<T> {
     fn default() -> Self {
         Self::Idle
+    }
+}
+
+impl MobAction<Entity> {
+    pub fn load_entity_net_id(
+        &self,
+        entity_net_metadata: &impl GenericReadStorage<Component = EntityNetMetadata>,
+    ) -> MobAction<NetIdentifier> {
+        match self {
+            MobAction::Idle => MobAction::Idle,
+            MobAction::Move(destination) => MobAction::Move(*destination),
+            MobAction::Chase(target) => {
+                MobAction::Chase(entity_net_metadata.get(*target).unwrap().id)
+            }
+            MobAction::Attack(MobAttackAction {
+                target,
+                attack_type,
+            }) => MobAction::Attack(MobAttackAction {
+                target: entity_net_metadata.get(*target).unwrap().id,
+                attack_type: attack_type.clone(),
+            }),
+        }
     }
 }
 

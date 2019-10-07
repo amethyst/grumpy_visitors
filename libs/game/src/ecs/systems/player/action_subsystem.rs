@@ -38,6 +38,9 @@ pub struct PlayerActionSubsystem<'s> {
 pub struct ApplyWalkActionNetArgs<'a> {
     pub entity_net_id: NetIdentifier,
     pub outcoming_net_updates: &'a mut OutcomingNetUpdates,
+    /// If there's an update, this field will have WorldPosition on client side
+    /// (as it receives such updates from server), and both client and server will have
+    /// PlayerWalkAction update.
     pub updates: Option<(Option<WorldPosition>, ClientActionUpdate<PlayerWalkAction>)>,
 }
 

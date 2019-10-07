@@ -46,8 +46,8 @@ impl<'a> GameTimeService<'a> {
 
     pub fn seconds_to_frame(&self, frame_number: u64) -> f32 {
         self.seconds_between_frames(
-            self.game_time.started_at_frame_number,
-            frame_number.saturating_sub(self.game_time.frames_skipped),
+            self.game_time.started_at_frame_number + self.game_time.frames_skipped,
+            frame_number,
         )
     }
 

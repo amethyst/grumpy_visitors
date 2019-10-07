@@ -3,7 +3,7 @@ use amethyst::ecs::{System, WriteExpect};
 use std::time::Duration;
 
 use ha_core::{
-    actions::monster_spawn::{Side, SpawnAction, SpawnActions, SpawnType},
+    actions::monster_spawn::{SpawnAction, SpawnActions, SpawnType},
     ecs::{
         resources::{net::EntityNetMetadataStorage, GameLevelState},
         system_data::time::GameTimeService,
@@ -43,34 +43,6 @@ impl<'s> System<'s> for LevelSystem {
     ) {
         if !game_state_helper.is_running() || !game_state_helper.is_authoritative() {
             return;
-        }
-
-        // For debug purpose. Someday we'll remove this.
-        if game_time_service.game_frame_number() == 0 {
-            let side = Side::Left;
-
-            let spawn_margin = 50.0;
-            let (side_start, side_end, _) = spawning_side(side, &game_level_state);
-            let d = (side_start - side_end) / spawn_margin;
-            let monsters_to_spawn = num::Float::max(d.x.abs(), d.y.abs()).round() as usize;
-
-            let entity_net_id_range = if game_state_helper.is_multiplayer() {
-                Some(entity_net_metadata_storage.reserve_ids(monsters_to_spawn))
-            } else {
-                None
-            };
-
-            log::info!(
-                "Spawning {} monster(s) (SpawnType::Borderline)",
-                monsters_to_spawn
-            );
-            spawn_actions.0.push(SpawnAction {
-                spawn_type: SpawnType::Borderline {
-                    count: monsters_to_spawn as u8,
-                    entity_net_id_range,
-                    side,
-                },
-            });
         }
 
         let now = game_time_service.level_duration();
