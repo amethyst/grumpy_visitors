@@ -11,7 +11,7 @@ use ha_core::{
     },
     net::{client_message::ClientMessagePayload, NetConnection, INTERPOLATION_FRAME_DELAY},
 };
-use ha_game::{ecs::system_data::GameStateHelper, utils::net::send_message_reliable};
+use ha_game::{ecs::system_data::GameStateHelper, utils::net::send_reliable};
 
 const BROADCAST_FRAME_INTERVAL: u64 = 5;
 
@@ -47,7 +47,7 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
             .expect("Expected a server connection");
 
         if !client_world_updates.walk_action_updates.is_empty() {
-            send_message_reliable(
+            send_reliable(
                 net_connection,
                 &ClientMessagePayload::WalkActions(ImmediatePlayerActionsUpdates {
                     frame_number: game_time_service.game_frame_number() + INTERPOLATION_FRAME_DELAY,
@@ -58,7 +58,7 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
         }
 
         if !client_world_updates.cast_action_updates.is_empty() {
-            send_message_reliable(
+            send_reliable(
                 net_connection,
                 &ClientMessagePayload::CastActions(ImmediatePlayerActionsUpdates {
                     frame_number: game_time_service.game_frame_number() + INTERPOLATION_FRAME_DELAY,
@@ -77,7 +77,7 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
         }
         self.last_broadcasted_frame = game_time_service.game_frame_number();
 
-        send_message_reliable(
+        send_reliable(
             net_connection,
             &ClientMessagePayload::LookActions(PlayerLookActionUpdates {
                 updates: Vec::from_iter(client_world_updates.look_actions_updates.drain(..).map(

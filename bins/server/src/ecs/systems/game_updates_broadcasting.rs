@@ -7,7 +7,7 @@ use ha_core::{
     },
     net::{server_message::ServerMessagePayload, NetConnection},
 };
-use ha_game::{ecs::system_data::GameStateHelper, utils::net::send_message_unreliable};
+use ha_game::{ecs::system_data::GameStateHelper, utils::net::send_reliable_ordered};
 
 use crate::ecs::resources::LastBroadcastedFrame;
 
@@ -60,24 +60,9 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
             (latest_update.0, latest_update.1.frame_number)
         };
 
-        // We'll use these to drop server updates that are no longer needed.
-        let mut oldest_actual_update = latest_update_number + 1;
-        let mut oldest_actual_update_index = 0;
-
-        for (i, (net_connection_model, net_connection)) in
-            (&net_connection_models, &mut net_connections)
-                .join()
-                .enumerate()
+        for (net_connection_model, net_connection) in
+            (&net_connection_models, &mut net_connections).join()
         {
-            let last_acknowledged_is_older = net_connection_model
-                .last_acknowledged_update
-                .map(|last_acknowledged| oldest_actual_update > last_acknowledged)
-                .unwrap_or(true);
-            if last_acknowledged_is_older {
-                oldest_actual_update = net_connection_model.last_acknowledged_update.unwrap_or(0);
-                oldest_actual_update_index = i;
-            }
-
             // Gather the updates this client needs based on its last_acknowledged_update.
             let mut oldest_added_frame = latest_update_frame_number + 1;
             let updates = server_world_updates
@@ -98,7 +83,7 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
                 .collect::<Vec<_>>();
             let updates = updates.into_iter().rev().collect();
 
-            send_message_unreliable(
+            send_reliable_ordered(
                 net_connection,
                 &ServerMessagePayload::UpdateWorld {
                     id: latest_update_number,
@@ -107,11 +92,6 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
             );
         }
 
-        // We don't need to store these updates anymore, as clients have already acknowledged them.
-        if oldest_actual_update <= latest_update_number {
-            server_world_updates
-                .updates
-                .drain(0..=oldest_actual_update_index);
-        }
+        server_world_updates.updates.clear();
     }
 }

@@ -23,7 +23,7 @@ use ha_core::{
 };
 use ha_game::{
     ecs::resources::ConnectionEvents,
-    utils::net::{send_message_reliable, send_message_unreliable},
+    utils::net::{send_reliable, send_reliable_ordered},
 };
 
 use crate::ecs::resources::LastAcknowledgedUpdate;
@@ -90,7 +90,7 @@ impl<'s> System<'s> for ClientNetworkSystem {
                 .join()
                 .next()
                 .expect("Expected a server connection");
-            send_message_reliable(connection, &ClientMessagePayload::StartHostedGame);
+            send_reliable(connection, &ClientMessagePayload::StartHostedGame);
         }
 
         for connection_event in connection_events.0.drain(..) {
@@ -103,7 +103,7 @@ impl<'s> System<'s> for ClientNetworkSystem {
                         .expect("Expected a server connection");
                     multiplayer_room_state.connection_id = connection_id;
 
-                    send_message_reliable(
+                    send_reliable(
                         connection,
                         &ClientMessagePayload::JoinRoom {
                             nickname: multiplayer_room_state.nickname.clone(),
@@ -133,11 +133,15 @@ impl<'s> System<'s> for ClientNetworkSystem {
                         .join()
                         .next()
                         .expect("Expected a server connection");
-                    send_message_unreliable(
+                    send_reliable_ordered(
                         connection,
                         &ClientMessagePayload::AcknowledgeWorldUpdate(id),
                     );
 
+                    // This check was used to drop older updates if they came unordered.
+                    // Now we use reliable sequenced packets for world updates, so this is
+                    // redundant, but let's leave it as-is for now in case we change it again
+                    // (cause we might).
                     if last_acknowledged_update.id < id {
                         updates.sort_by(|a, b| a.frame_number.cmp(&b.frame_number));
 

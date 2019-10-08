@@ -33,7 +33,7 @@ use ha_core::{
 
 use crate::ecs::factories::{LandscapeFactory, PlayerFactory};
 #[cfg(not(feature = "client"))]
-use crate::utils::net::broadcast_message_reliable;
+use crate::utils::net::broadcast_reliable;
 
 #[derive(Default)]
 pub struct PlayingState;
@@ -163,7 +163,7 @@ fn initialize_players(world: &mut World) {
                     entity_net_id
                 })
                 .collect();
-            broadcast_message_reliable(
+            broadcast_reliable(
                 &mut net_connections,
                 &ServerMessagePayload::StartGame(player_net_identifiers),
             );

@@ -21,7 +21,6 @@ use amethyst::{
     ui::{RenderUi, UiBundle},
     LogLevelFilter, Logger,
 };
-use laminar::Config as LaminarConfig;
 
 use std::time::Duration;
 
@@ -57,7 +56,7 @@ fn main() -> amethyst::Result<()> {
         .level_for("ha_game::ecs::systems", LogLevelFilter::Debug)
         .level_for(
             "ha_game::ecs::systems::net_connection_manager",
-            LogLevelFilter::Info,
+            LogLevelFilter::Trace,
         )
         .level_for("ha_game::utils::net", LogLevelFilter::Info)
         .level_for("ha_client", LogLevelFilter::Debug)
@@ -84,10 +83,6 @@ fn main() -> amethyst::Result<()> {
 
     let server_config = ServerConfig {
         udp_socket_addr: socket_addr.parse()?,
-        laminar_config: LaminarConfig {
-            receive_buffer_max_size: 14_500,
-            ..LaminarConfig::default()
-        },
         ..ServerConfig::default()
     };
     let mut game_data_builder = GameDataBuilder::default()

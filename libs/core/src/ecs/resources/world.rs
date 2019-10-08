@@ -267,26 +267,16 @@ pub trait FramedUpdate {
 /// The resource which aggregates all the updates a server is going to broadcast.
 #[derive(Default)]
 pub struct ServerWorldUpdates {
+    last_update_id: u64,
     pub updates: VecDeque<(u64, ServerWorldUpdate)>,
 }
 
 impl ServerWorldUpdates {
     pub fn reserve_new_updates(&mut self, oldest_updated_frame: u64, current_frame_number: u64) {
-        let mut update_number = if let Some((last_update_number, last_update)) = self.updates.back()
-        {
-            // If the previous update is for the same frame, this call is redundant,
-            // we should just return.
-            if last_update.frame_number == current_frame_number {
-                return;
-            }
-            last_update_number + 1
-        } else {
-            0
-        };
         for frame_number in oldest_updated_frame..=current_frame_number {
             self.updates
-                .push_back((update_number, ServerWorldUpdate::new(frame_number)));
-            update_number += 1;
+                .push_back((self.last_update_id, ServerWorldUpdate::new(frame_number)));
+            self.last_update_id += 1;
         }
     }
 

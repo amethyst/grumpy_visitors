@@ -21,7 +21,7 @@ use ha_core::{
 };
 use ha_game::{
     ecs::resources::ConnectionEvents,
-    utils::net::{broadcast_message_reliable, send_message_reliable},
+    utils::net::{broadcast_reliable, send_reliable},
 };
 
 use crate::ecs::resources::LastBroadcastedFrame;
@@ -89,7 +89,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
                         .join()
                         .find(|(_, net_connection_model)| net_connection_model.id == connection_id)
                         .expect("Expected to find a NetConnection");
-                    send_message_reliable(
+                    send_reliable(
                         net_connection,
                         &ServerMessagePayload::Handshake(connection_id),
                     );
@@ -133,7 +133,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
                                 net_connection_model.id == connection_id
                             })
                             .expect("Expected to find a NetConnection");
-                        send_message_reliable(
+                        send_reliable(
                             net_connection,
                             &ServerMessagePayload::DiscardWalkActions(discarded_actions),
                         );
@@ -175,7 +175,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
         }
 
         if let Some(players) = multiplayer_game_state.read_updated_players() {
-            broadcast_message_reliable(
+            broadcast_reliable(
                 &mut net_connections,
                 &ServerMessagePayload::UpdateRoomPlayers(players.to_owned()),
             );
@@ -185,7 +185,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
             > HEARTBEAT_FRAME_INTERVAL
         {
             self.last_heartbeat_frame = game_time_service.engine_time().frame_number();
-            broadcast_message_reliable(&mut net_connections, &ServerMessagePayload::Heartbeat);
+            broadcast_reliable(&mut net_connections, &ServerMessagePayload::Heartbeat);
         }
 
         // Pause server if one of clients is lagging behind.
@@ -240,7 +240,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
             multiplayer_game_state.lagging_players = lagging_players.clone();
             if !multiplayer_game_state.waiting_for_players && !lagging_players.is_empty() {
                 multiplayer_game_state.waiting_for_players_pause_id += 1;
-                broadcast_message_reliable(
+                broadcast_reliable(
                     &mut net_connections,
                     &ServerMessagePayload::PauseWaitingForPlayers {
                         id: multiplayer_game_state.waiting_for_players_pause_id,
@@ -249,7 +249,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
                 );
                 multiplayer_game_state.waiting_for_players = true;
             } else if multiplayer_game_state.waiting_for_players && lagging_players.is_empty() {
-                broadcast_message_reliable(
+                broadcast_reliable(
                     &mut net_connections,
                     &ServerMessagePayload::UnpauseWaitingForPlayers(
                         multiplayer_game_state.waiting_for_players_pause_id,

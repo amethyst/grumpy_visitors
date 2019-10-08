@@ -9,10 +9,11 @@ use ha_core::net::server_message::ServerMessagePayload;
 use ha_core::net::NetConnection;
 
 #[cfg(not(feature = "client"))]
-pub fn broadcast_message_reliable(
+pub fn broadcast_reliable(
     net_connections: &mut WriteStorage<NetConnection>,
     message: &ServerMessagePayload,
 ) {
+    log::trace!("Sending: {:#?}", message);
     let send_message = NetEvent::Packet(NetPacket::reliable_unordered(
         bincode::serialize(&message).expect("Expected to serialize a broadcasted message"),
     ));
@@ -22,7 +23,8 @@ pub fn broadcast_message_reliable(
 }
 
 #[cfg(feature = "client")]
-pub fn send_message_reliable(net_connection: &mut NetConnection, message: &ClientMessagePayload) {
+pub fn send_reliable(net_connection: &mut NetConnection, message: &ClientMessagePayload) {
+    log::trace!("Sending: {:#?}", message);
     let send_message = NetEvent::Packet(NetPacket::reliable_unordered(
         bincode::serialize(&message).expect("Expected to serialize a client message"),
     ));
@@ -30,7 +32,8 @@ pub fn send_message_reliable(net_connection: &mut NetConnection, message: &Clien
 }
 
 #[cfg(not(feature = "client"))]
-pub fn send_message_reliable(net_connection: &mut NetConnection, message: &ServerMessagePayload) {
+pub fn send_reliable(net_connection: &mut NetConnection, message: &ServerMessagePayload) {
+    log::trace!("Sending: {:#?}", message);
     let send_message = NetEvent::Packet(NetPacket::reliable_unordered(
         bincode::serialize(&message).expect("Expected to serialize a server message"),
     ));
@@ -38,7 +41,27 @@ pub fn send_message_reliable(net_connection: &mut NetConnection, message: &Serve
 }
 
 #[cfg(feature = "client")]
-pub fn send_message_unreliable(net_connection: &mut NetConnection, message: &ClientMessagePayload) {
+pub fn send_reliable_ordered(net_connection: &mut NetConnection, message: &ClientMessagePayload) {
+    log::trace!("Sending: {:#?}", message);
+    let send_message = NetEvent::Packet(NetPacket::reliable_ordered(
+        bincode::serialize(&message).expect("Expected to serialize a client message"),
+        None,
+    ));
+    net_connection.queue(send_message);
+}
+
+#[cfg(not(feature = "client"))]
+pub fn send_reliable_ordered(net_connection: &mut NetConnection, message: &ServerMessagePayload) {
+    log::info!("Sending: {:#?}", message);
+    let send_message = NetEvent::Packet(NetPacket::reliable_ordered(
+        bincode::serialize(&message).expect("Expected to serialize a server message"),
+        None,
+    ));
+    net_connection.queue(send_message);
+}
+
+#[cfg(feature = "client")]
+pub fn send_unreliable(net_connection: &mut NetConnection, message: &ClientMessagePayload) {
     log::trace!("Sending: {:#?}", message);
     let send_message = NetEvent::Packet(NetPacket::unreliable(
         bincode::serialize(&message).expect("Expected to serialize a client message"),
@@ -47,12 +70,11 @@ pub fn send_message_unreliable(net_connection: &mut NetConnection, message: &Cli
 }
 
 #[cfg(not(feature = "client"))]
-pub fn send_message_unreliable(net_connection: &mut NetConnection, message: &ServerMessagePayload) {
+pub fn send_unreliable(net_connection: &mut NetConnection, message: &ServerMessagePayload) {
     log::trace!("Sending: {:#?}", message);
     let packet = NetPacket::unreliable(
         bincode::serialize(&message).expect("Expected to serialize a server message"),
     );
-    log::trace!("Packet len: {}", packet.content().len());
     let send_message = NetEvent::Packet(packet);
     net_connection.queue(send_message);
 }
