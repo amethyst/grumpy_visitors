@@ -5,9 +5,7 @@ authors = []
 edition = "2018"
 
 [dependencies.amethyst]
-version = "0.13.0"
-git = "https://github.com/mvlabat/amethyst.git"
-branch = "hide-hierarchy-system-desc"
+version = "0.13.2"
 
 [dependencies]
 serde = "1.0.91"

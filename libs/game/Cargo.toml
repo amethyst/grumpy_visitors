@@ -9,9 +9,7 @@ default = []
 client = ["ha_client_shared"]
 
 [dependencies.amethyst]
-version = "0.13.0"
-git = "https://github.com/mvlabat/amethyst.git"
-branch = "hide-hierarchy-system-desc"
+version = "0.13.2"
 
 [dependencies]
 bincode = "1.1.4"

@@ -8,7 +8,7 @@ edition = "2018"
 path = "../libs/animation_prefabs"
 
 [dependencies.amethyst]
-version = "0.13.0"
+version = "0.13.2"
 features = ["nightly", "empty"]
 
 [dependencies]
