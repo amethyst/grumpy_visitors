@@ -1,19 +1,25 @@
 use amethyst::{
     core::math::clamp,
-    ecs::{Entity, ReadExpect, ReadStorage},
+    ecs::{Entities, Entity, Join, ReadExpect, ReadStorage},
 };
 
+use std::time::Duration;
+
+use crate::ecs::system_data::GameStateHelper;
 #[cfg(not(feature = "client"))]
 use ha_core::net::NetUpdateWithPosition;
 use ha_core::{
     actions::{
-        player::{PlayerLookAction, PlayerWalkAction},
+        player::{PlayerCastAction, PlayerLookAction, PlayerWalkAction},
         ClientActionUpdate,
     },
     ecs::{
-        components::{ClientPlayerActions, Player, PlayerActions, WorldPosition},
+        components::{
+            missile::Missile, ClientPlayerActions, Player, PlayerActions, PlayerLastCastedSpells,
+            WorldPosition,
+        },
         resources::{
-            net::{ActionUpdateIdProvider, EntityNetMetadataStorage, MultiplayerGameState},
+            net::{ActionUpdateIdProvider, CastActionsToExecute, MultiplayerGameState},
             GameLevelState,
         },
         system_data::time::GameTimeService,
@@ -23,15 +29,22 @@ use ha_core::{
 };
 
 use super::super::{ClientFrameUpdate, OutcomingNetUpdates, WriteExpectCell, WriteStorageCell};
+use ha_core::actions::IdentifiableAction;
+
+const MISSILE_CAST_COOLDOWN: Duration = Duration::from_millis(500);
 
 pub struct PlayerActionSubsystem<'s> {
     pub game_time_service: &'s GameTimeService<'s>,
+    pub game_state_helper: &'s GameStateHelper<'s>,
+    pub entities: &'s Entities<'s>,
     pub game_level_state: &'s ReadExpect<'s, GameLevelState>,
     pub multiplayer_game_state: &'s ReadExpect<'s, MultiplayerGameState>,
-    pub entity_net_metadata_storage: &'s ReadExpect<'s, EntityNetMetadataStorage>,
     pub client_player_actions: &'s ReadStorage<'s, ClientPlayerActions>,
     pub action_update_id_provider: WriteExpectCell<'s, ActionUpdateIdProvider>,
+    pub cast_actions_to_execute: WriteExpectCell<'s, CastActionsToExecute>,
     pub player_actions: WriteStorageCell<'s, PlayerActions>,
+    pub player_last_casted_spells: WriteStorageCell<'s, PlayerLastCastedSpells>,
+    pub missiles: WriteStorageCell<'s, Missile>,
     pub world_positions: WriteStorageCell<'s, WorldPosition>,
 }
 
@@ -47,7 +60,13 @@ pub struct ApplyWalkActionNetArgs<'a> {
 pub struct ApplyLookActionNetArgs<'a> {
     pub entity_net_id: NetIdentifier,
     pub outcoming_net_updates: &'a mut OutcomingNetUpdates,
-    pub updates: Option<ClientActionUpdate<PlayerLookAction>>,
+    pub update: Option<ClientActionUpdate<PlayerLookAction>>,
+}
+
+pub struct ApplyCastActionNetArgs<'a> {
+    pub entity_net_id: NetIdentifier,
+    pub outcoming_net_updates: &'a mut OutcomingNetUpdates,
+    pub update: Option<IdentifiableAction<ClientActionUpdate<PlayerCastAction>>>,
 }
 
 const PLAYER_SPEED: f32 = 200.0;
@@ -105,7 +124,7 @@ impl<'s> PlayerActionSubsystem<'s> {
             );
 
             if let Some(walk_action_update) = walk_action_update {
-                log::debug!(
+                log::trace!(
                     "Applying a new walk update for {} (frame {}): {:?}",
                     entity_net_id,
                     frame_number,
@@ -173,8 +192,8 @@ impl<'s> PlayerActionSubsystem<'s> {
             let ApplyLookActionNetArgs {
                 entity_net_id,
                 outcoming_net_updates,
-                updates: updated_look_action,
-            } = net_args.expect("Expected ApplyWalkActionNetArgs in multiplayer");
+                update: updated_look_action,
+            } = net_args.expect("Expected ApplyLookActionNetArgs in multiplayer");
             // Decide which source has an actual update and retrieve it.
             let look_action_update = self.actual_look_action_update(
                 frame_number,
@@ -212,6 +231,154 @@ impl<'s> PlayerActionSubsystem<'s> {
 
         // Run player actions.
         player.looking_direction = player_actions.look_action.direction;
+    }
+
+    pub fn apply_cast_action<'a>(
+        &self,
+        frame_number: u64,
+        entity: Entity,
+        mut net_args: Option<ApplyCastActionNetArgs<'a>>,
+        _client_side_actions: &mut ClientFrameUpdate,
+    ) {
+        let mut player_actions = self.player_actions.borrow_mut();
+        let player_actions = player_actions
+            .get_mut(entity)
+            .expect("Expected player actions");
+
+        let mut player_last_casted_spells = self.player_last_casted_spells.borrow_mut();
+        let player_last_casted_spells = player_last_casted_spells
+            .get_mut(entity)
+            .expect("Expected PlayerLastCastedSpells component");
+
+        let mut world_positions = self.world_positions.borrow_mut();
+        let player_position = world_positions
+            .get_mut(entity)
+            .expect("Expected a WorldPosition")
+            .clone();
+
+        let mut cast_actions_to_execute = self.cast_actions_to_execute.borrow_mut();
+
+        let client_player_actions = self.client_player_actions.get(entity);
+
+        let is_latest_frame = self.game_time_service.game_frame_number() == frame_number;
+        let is_cooling_down = self
+            .game_time_service
+            .seconds_between_frames(frame_number, player_last_casted_spells.missile)
+            < MISSILE_CAST_COOLDOWN.as_secs_f32();
+
+        player_actions.cast_action = None;
+
+        if self.multiplayer_game_state.is_playing {
+            let ApplyCastActionNetArgs {
+                entity_net_id,
+                outcoming_net_updates,
+                update: cast_action_update,
+            } = net_args
+                .as_mut()
+                .expect("Expected ApplyCastActionNetArgs in multiplayer");
+
+            if let Some(IdentifiableAction {
+                action_id,
+                action: mut cast_action,
+            }) = cast_action_update.clone()
+            {
+                if !is_cooling_down || !self.game_state_helper.is_authoritative() {
+                    log::debug!(
+                        "Applying a new cast update ({}) for {} (frame {}): {:?}",
+                        action_id,
+                        entity_net_id,
+                        frame_number,
+                        &cast_action
+                    );
+                }
+
+                if self.game_state_helper.is_authoritative() && !is_cooling_down {
+                    // Update player actions.
+                    player_last_casted_spells.missile = frame_number;
+                    cast_action.action.cast_position = *player_position;
+                    player_actions.cast_action = Some(cast_action.action.clone());
+
+                    // Add to network broadcasted updates.
+                    self.add_cast_action_net_update(
+                        outcoming_net_updates,
+                        *entity_net_id,
+                        Some(action_id),
+                        cast_action,
+                    );
+                } else if !self.game_state_helper.is_authoritative() {
+                    player_last_casted_spells.missile = frame_number;
+                    player_actions.cast_action = Some(cast_action.action);
+                }
+
+                if let Some(cast_action) = &player_actions.cast_action {
+                    if let Some(missile) = self.already_casted_missile(action_id) {
+                        let missile_position = world_positions
+                            .get_mut(missile)
+                            .expect("Expected a WorldPosition for a Missile");
+                        **missile_position = cast_action.cast_position;
+                    } else {
+                        cast_actions_to_execute.actions.push(IdentifiableAction {
+                            action_id,
+                            action: cast_action.clone(),
+                        });
+                    }
+
+                    return;
+                }
+            }
+        }
+
+        if let Some(client_player_actions) = client_player_actions.cloned() {
+            if is_latest_frame {
+                if let Some(mut cast_action) = client_player_actions.cast_action {
+                    if !is_cooling_down {
+                        if self.multiplayer_game_state.is_playing {
+                            let ApplyCastActionNetArgs {
+                                entity_net_id,
+                                outcoming_net_updates,
+                                ..
+                            } = net_args.expect("Expected ApplyCastActionNetArgs in multiplayer");
+                            log::debug!(
+                                "Sending a new cast update (for {}) to a server (frame {}): {:?}",
+                                entity_net_id,
+                                frame_number,
+                                &cast_action
+                            );
+
+                            let mut action_update_id_provider =
+                                self.action_update_id_provider.borrow_mut();
+                            cast_action.cast_position = *player_position;
+
+                            self.add_cast_action_net_update(
+                                outcoming_net_updates,
+                                entity_net_id,
+                                None,
+                                ClientActionUpdate {
+                                    client_action_id: action_update_id_provider.next_update_id(),
+                                    action: cast_action.clone(),
+                                },
+                            );
+                        } else {
+                            log::debug!(
+                                "Applying a new cast update for {} (frame {}): {:?}",
+                                entity.id(),
+                                frame_number,
+                                &cast_action
+                            );
+                            cast_actions_to_execute.actions.push(IdentifiableAction {
+                                action_id: 0,
+                                action: cast_action.clone(),
+                            });
+                        }
+
+                        player_actions.cast_action = Some(cast_action);
+                    }
+                }
+            }
+            if player_actions.cast_action.is_some() {
+                player_last_casted_spells.missile = frame_number;
+            }
+        }
     }
 
     #[cfg(feature = "client")]
@@ -400,5 +567,46 @@ impl<'s> PlayerActionSubsystem<'s> {
                 entity_net_id,
                 data: look_action_update,
             });
+    }
+
+    #[cfg(feature = "client")]
+    fn add_cast_action_net_update(
+        &self,
+        outcoming_net_updates: &mut OutcomingNetUpdates,
+        entity_net_id: NetIdentifier,
+        _action_id: Option<NetIdentifier>,
+        cast_action_update: ClientActionUpdate<PlayerCastAction>,
+    ) {
+        outcoming_net_updates.cast_action_updates.push(NetUpdate {
+            entity_net_id,
+            data: cast_action_update,
+        });
+    }
+
+    #[cfg(not(feature = "client"))]
+    fn add_cast_action_net_update(
+        &self,
+        outcoming_net_updates: &mut OutcomingNetUpdates,
+        entity_net_id: NetIdentifier,
+        action_id: Option<NetIdentifier>,
+        cast_action_update: ClientActionUpdate<PlayerCastAction>,
+    ) {
+        outcoming_net_updates
+            .player_cast_actions_updates
+            .push(NetUpdate {
+                entity_net_id,
+                data: IdentifiableAction {
+                    action_id: action_id.expect("Expected an action id passed for server"),
+                    action: cast_action_update,
+                },
+            });
+    }
+
+    fn already_casted_missile(&self, cast_action_id: NetIdentifier) -> Option<Entity> {
+        let missiles = self.missiles.borrow();
+        (&*missiles, self.entities)
+            .join()
+            .find(|(missile, _)| missile.action_id == cast_action_id)
+            .map(|(_, entity)| entity)
     }
 }

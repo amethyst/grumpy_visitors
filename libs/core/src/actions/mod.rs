@@ -22,3 +22,9 @@ pub struct ClientActionUpdate<T> {
     /// Action payload.
     pub action: T,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IdentifiableAction<T> {
+    pub action_id: NetIdentifier,
+    pub action: T,
+}

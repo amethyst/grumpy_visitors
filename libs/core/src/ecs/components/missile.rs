@@ -1,30 +1,31 @@
 use amethyst::ecs::prelude::{Component, DenseVecStorage, Entity};
 
-use std::time::Duration;
-
-use crate::math::Vector2;
+use crate::{math::Vector2, net::NetIdentifier};
 
 #[derive(Clone, Debug)]
 pub struct Missile {
+    pub action_id: NetIdentifier,
     pub radius: f32,
     pub target: MissileTarget<Entity>,
     pub velocity: Vector2,
-    pub time_spawned: Duration,
+    pub frame_spawned: u64,
     pub damage: f32,
 }
 
 impl Missile {
     pub fn new(
+        action_id: u64,
         radius: f32,
         target: MissileTarget<Entity>,
         velocity: Vector2,
-        time_spawned: Duration,
+        frame_spawned: u64,
     ) -> Self {
         Self {
+            action_id,
             radius,
             target,
             velocity,
-            time_spawned,
+            frame_spawned,
             damage: 50.0,
         }
     }

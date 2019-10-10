@@ -1,7 +1,10 @@
 use serde_derive::{Deserialize, Serialize};
 
 use crate::{
-    actions::player::{PlayerCastAction, PlayerWalkAction},
+    actions::{
+        player::{PlayerCastAction, PlayerWalkAction},
+        ClientActionUpdate,
+    },
     ecs::resources::world::{ImmediatePlayerActionsUpdates, PlayerLookActionUpdates},
     net::NetIdentifier,
 };
@@ -13,8 +16,8 @@ pub enum ClientMessagePayload {
     },
     StartHostedGame,
     AcknowledgeWorldUpdate(u64),
-    WalkActions(ImmediatePlayerActionsUpdates<PlayerWalkAction>),
-    CastActions(ImmediatePlayerActionsUpdates<PlayerCastAction>),
+    WalkActions(ImmediatePlayerActionsUpdates<ClientActionUpdate<PlayerWalkAction>>),
+    CastActions(ImmediatePlayerActionsUpdates<ClientActionUpdate<PlayerCastAction>>),
     LookActions(PlayerLookActionUpdates),
     Ping(NetIdentifier),
     Pong {

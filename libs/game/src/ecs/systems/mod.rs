@@ -18,14 +18,27 @@ pub use self::{
 };
 
 use amethyst::ecs::{WriteExpect, WriteStorage};
+#[cfg(feature = "client")]
+use amethyst::{
+    assets::Handle,
+    ecs::ReadExpect,
+    renderer::{Material, Mesh},
+};
 
+#[cfg(not(feature = "client"))]
+use std::marker::PhantomData;
 use std::{cell::RefCell, rc::Rc};
 
-use ha_core::ecs::resources::world::PlayerActionUpdates;
 #[cfg(feature = "client")]
-use ha_core::ecs::resources::world::{ClientWorldUpdates, ReceivedServerWorldUpdate};
+use ha_client_shared::ecs::resources::MissileGraphics;
+#[cfg(feature = "client")]
+use ha_core::ecs::resources::world::{
+    ClientWorldUpdates, PlayerActionUpdates, ReceivedServerWorldUpdate,
+};
 #[cfg(not(feature = "client"))]
-use ha_core::ecs::resources::world::{DummyFramedUpdate, ServerWorldUpdate, ServerWorldUpdates};
+use ha_core::ecs::resources::world::{
+    DummyFramedUpdate, ReceivedClientActionUpdates, ServerWorldUpdate, ServerWorldUpdates,
+};
 
 #[cfg(feature = "client")]
 pub type AggregatedOutcomingUpdates = ClientWorldUpdates;
@@ -45,7 +58,19 @@ type ClientFrameUpdate = DummyFramedUpdate;
 #[cfg(feature = "client")]
 type FrameUpdate = ReceivedServerWorldUpdate;
 #[cfg(not(feature = "client"))]
-type FrameUpdate = PlayerActionUpdates;
+type FrameUpdate = ReceivedClientActionUpdates;
 
 type WriteStorageCell<'s, T> = Rc<RefCell<WriteStorage<'s, T>>>;
 type WriteExpectCell<'s, T> = Rc<RefCell<WriteExpect<'s, T>>>;
+
+#[cfg(feature = "client")]
+pub struct GraphicsResourceBundle<'s> {
+    missile_graphics: ReadExpect<'s, MissileGraphics>,
+    meshes: WriteStorageCell<'s, Handle<Mesh>>,
+    materials: WriteStorageCell<'s, Handle<Material>>,
+}
+
+#[cfg(not(feature = "client"))]
+pub struct GraphicsResourceBundle<'s> {
+    _lifetime: PhantomData<&'s ()>,
+}

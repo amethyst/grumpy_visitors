@@ -1,24 +1,39 @@
+#[cfg(feature = "client")]
 use amethyst::{
+    assets::Handle,
+    renderer::{Material, Mesh},
+};
+use amethyst::{
+    core::{HiddenPropagate, Transform},
     ecs::{
         Entities, Entity, Join, ReadExpect, ReadStorage, System, World, WriteExpect, WriteStorage,
     },
     shred::{ResourceId, SystemData},
 };
 
+#[cfg(not(feature = "client"))]
+use std::marker::PhantomData;
 use std::{cell::RefCell, rc::Rc};
 
+#[cfg(feature = "client")]
+use ha_client_shared::ecs::resources::MissileGraphics;
 use ha_core::{
     actions::{
-        player::{PlayerLookAction, PlayerWalkAction},
-        ClientActionUpdate,
+        mob::MobAction,
+        player::{PlayerCastAction, PlayerLookAction, PlayerWalkAction},
+        ClientActionUpdate, IdentifiableAction,
     },
     ecs::{
         components::{
             damage_history::DamageHistory, missile::Missile, ClientPlayerActions, Dead,
-            EntityNetMetadata, Monster, NetWorldPosition, Player, PlayerActions, WorldPosition,
+            EntityNetMetadata, Monster, NetWorldPosition, Player, PlayerActions,
+            PlayerLastCastedSpells, WorldPosition,
         },
         resources::{
-            net::{ActionUpdateIdProvider, EntityNetMetadataStorage, MultiplayerGameState},
+            net::{
+                ActionUpdateIdProvider, CastActionsToExecute, EntityNetMetadataStorage,
+                MultiplayerGameState,
+            },
             world::{FramedUpdates, SavedWorldState, WorldStates},
             GameLevelState,
         },
@@ -32,40 +47,62 @@ use crate::{
         resources::MonsterDefinitions,
         system_data::GameStateHelper,
         systems::{
+            missile::{MissileFactory, MissilePhysicsSubsystem, MissileSpawnerSubsystem},
             monster::{ApplyMonsterActionNetArgs, MonsterActionSubsystem},
-            player::{ApplyLookActionNetArgs, ApplyWalkActionNetArgs, PlayerActionSubsystem},
+            player::{
+                ApplyCastActionNetArgs, ApplyLookActionNetArgs, ApplyWalkActionNetArgs,
+                PlayerActionSubsystem,
+            },
             world_state_subsystem::WorldStateSubsystem,
-            AggregatedOutcomingUpdates, ClientFrameUpdate, FrameUpdate,
+            AggregatedOutcomingUpdates, ClientFrameUpdate, FrameUpdate, GraphicsResourceBundle,
         },
     },
     utils::world::outcoming_net_updates_mut,
 };
-use ha_core::actions::mob::MobAction;
 
 #[derive(SystemData)]
 pub struct ActionSystemData<'s> {
     entities: Entities<'s>,
     game_time_service: GameTimeService<'s>,
     game_state_helper: GameStateHelper<'s>,
+    graphics_system_data: GraphicsSystemData<'s>,
     game_level_state: ReadExpect<'s, GameLevelState>,
     multiplayer_game_state: ReadExpect<'s, MultiplayerGameState>,
     framed_updates: WriteExpect<'s, FramedUpdates<FrameUpdate>>,
     framed_client_side_actions: WriteExpect<'s, FramedUpdates<ClientFrameUpdate>>,
     world_states: WriteExpect<'s, WorldStates>,
     aggregated_outcoming_updates: WriteExpect<'s, AggregatedOutcomingUpdates>,
+    entity_net_metadata_storage: WriteExpect<'s, EntityNetMetadataStorage>,
     action_update_id_provider: WriteExpect<'s, ActionUpdateIdProvider>,
-    entity_net_metadata_storage: ReadExpect<'s, EntityNetMetadataStorage>,
+    cast_actions_to_execute: WriteExpect<'s, CastActionsToExecute>,
     monster_definitions: ReadExpect<'s, MonsterDefinitions>,
     client_player_actions: ReadStorage<'s, ClientPlayerActions>,
+    transforms: WriteStorage<'s, Transform>,
     entity_net_metadata: WriteStorage<'s, EntityNetMetadata>,
     players: WriteStorage<'s, Player>,
     player_actions: WriteStorage<'s, PlayerActions>,
+    player_last_casted_spells: WriteStorage<'s, PlayerLastCastedSpells>,
     monsters: WriteStorage<'s, Monster>,
     missiles: WriteStorage<'s, Missile>,
     world_positions: WriteStorage<'s, WorldPosition>,
     net_world_positions: WriteStorage<'s, NetWorldPosition>,
     dead: WriteStorage<'s, Dead>,
     damage_histories: WriteStorage<'s, DamageHistory>,
+    hidden_propagates: WriteStorage<'s, HiddenPropagate>,
+}
+
+#[cfg(feature = "client")]
+#[derive(SystemData)]
+pub struct GraphicsSystemData<'s> {
+    missile_graphics: ReadExpect<'s, MissileGraphics>,
+    meshes: WriteStorage<'s, Handle<Mesh>>,
+    materials: WriteStorage<'s, Handle<Material>>,
+}
+
+#[cfg(not(feature = "client"))]
+#[derive(SystemData)]
+pub struct GraphicsSystemData<'s> {
+    _lifetime: PhantomData<&'s ()>,
 }
 
 pub struct ActionSystem;
@@ -80,22 +117,33 @@ impl<'s> System<'s> for ActionSystem {
         let game_frame_number = system_data.game_time_service.game_frame_number();
         log::trace!("Frame number: {}", game_frame_number);
 
+        let graphics_resource_bundle =
+            create_graphics_resource_bundle(system_data.graphics_system_data);
+
+        let transforms = Rc::new(RefCell::new(system_data.transforms));
+        let entity_net_metadata_storage =
+            Rc::new(RefCell::new(system_data.entity_net_metadata_storage));
         let action_update_id_provider =
             Rc::new(RefCell::new(system_data.action_update_id_provider));
         let entity_net_metadata = Rc::new(RefCell::new(system_data.entity_net_metadata));
         let players = Rc::new(RefCell::new(system_data.players));
         let player_actions = Rc::new(RefCell::new(system_data.player_actions));
+        let player_last_casted_spells =
+            Rc::new(RefCell::new(system_data.player_last_casted_spells));
         let monsters = Rc::new(RefCell::new(system_data.monsters));
         let missiles = Rc::new(RefCell::new(system_data.missiles));
+        let cast_actions_to_execute = Rc::new(RefCell::new(system_data.cast_actions_to_execute));
         let world_positions = Rc::new(RefCell::new(system_data.world_positions));
         let net_world_positions = Rc::new(RefCell::new(system_data.net_world_positions));
         let dead = Rc::new(RefCell::new(system_data.dead));
         let damage_histories = Rc::new(RefCell::new(system_data.damage_histories));
+        let hidden_propagates = Rc::new(RefCell::new(system_data.hidden_propagates));
 
         let world_state_subsystem = WorldStateSubsystem {
             entities: &system_data.entities,
             players: players.clone(),
             player_actions: player_actions.clone(),
+            player_last_casted_spells: player_last_casted_spells.clone(),
             monsters: monsters.clone(),
             missiles: missiles.clone(),
             world_positions: world_positions.clone(),
@@ -103,12 +151,16 @@ impl<'s> System<'s> for ActionSystem {
         };
         let player_action_subsystem = PlayerActionSubsystem {
             game_time_service: &system_data.game_time_service,
+            game_state_helper: &system_data.game_state_helper,
+            entities: &system_data.entities,
             game_level_state: &system_data.game_level_state,
             multiplayer_game_state: &system_data.multiplayer_game_state,
-            entity_net_metadata_storage: &system_data.entity_net_metadata_storage,
             client_player_actions: &system_data.client_player_actions,
             action_update_id_provider: action_update_id_provider.clone(),
+            cast_actions_to_execute: cast_actions_to_execute.clone(),
             player_actions: player_actions.clone(),
+            player_last_casted_spells: player_last_casted_spells.clone(),
+            missiles: missiles.clone(),
             world_positions: world_positions.clone(),
         };
         let monster_action_subsystem = MonsterActionSubsystem {
@@ -123,6 +175,33 @@ impl<'s> System<'s> for ActionSystem {
             world_positions: world_positions.clone(),
             net_world_positions: net_world_positions.clone(),
             damage_histories: damage_histories.clone(),
+        };
+        let missile_factory = MissileFactory::new(
+            &system_data.entities,
+            transforms.clone(),
+            missiles.clone(),
+            &graphics_resource_bundle,
+        );
+        let missile_spawner_subsystem = MissileSpawnerSubsystem {
+            game_time_service: &system_data.game_time_service,
+            game_state_helper: &system_data.game_state_helper,
+            entities: &system_data.entities,
+            missile_factory: &missile_factory,
+            cast_actions_to_execute: cast_actions_to_execute.clone(),
+            monsters: monsters.clone(),
+            world_positions: world_positions.clone(),
+        };
+        let missile_physics_subsystem = MissilePhysicsSubsystem {
+            game_time_service: &system_data.game_time_service,
+            game_state_helper: &system_data.game_state_helper,
+            game_level_state: &system_data.game_level_state,
+            entities: &system_data.entities,
+            monsters: monsters.clone(),
+            missiles: missiles.clone(),
+            dead: dead.clone(),
+            damage_histories: damage_histories.clone(),
+            world_positions: world_positions.clone(),
+            hidden_propagates: hidden_propagates.clone(),
         };
 
         system_data
@@ -274,7 +353,7 @@ impl<'s> System<'s> for ActionSystem {
                     Some(ApplyLookActionNetArgs {
                         entity_net_id: player_net_metadata.id,
                         outcoming_net_updates,
-                        updates,
+                        update: updates,
                     })
                 } else {
                     None
@@ -286,9 +365,31 @@ impl<'s> System<'s> for ActionSystem {
                     net_args,
                     client_side_actions,
                 );
+
+                // Run cast action.
+                let net_args = if system_data.multiplayer_game_state.is_playing {
+                    let player_net_metadata =
+                        player_net_metadata.expect("Expected EntityNetMetadata for a player");
+                    let update = cast_action_update_for_player(&frame_updated, player_net_metadata);
+
+                    Some(ApplyCastActionNetArgs {
+                        entity_net_id: player_net_metadata.id,
+                        outcoming_net_updates,
+                        update,
+                    })
+                } else {
+                    None
+                };
+                player_action_subsystem.apply_cast_action(
+                    frame_updated.frame_number,
+                    entity,
+                    net_args,
+                    client_side_actions,
+                );
             }
 
             // Run mob actions.
+            let entity_net_metadata_storage = entity_net_metadata_storage.borrow();
             let monsters_net_metadata = entity_net_metadata.borrow();
             for (entity, mut monster, monster_net_metadata) in (
                 &system_data.entities,
@@ -313,7 +414,7 @@ impl<'s> System<'s> for ActionSystem {
                         let updates = mob_actions_update(
                             &frame_updated,
                             monster_net_metadata,
-                            &system_data.entity_net_metadata_storage,
+                            &entity_net_metadata_storage,
                         );
 
                         Some(ApplyMonsterActionNetArgs {
@@ -335,7 +436,9 @@ impl<'s> System<'s> for ActionSystem {
                 }
             }
 
-            // TODO: Run missiles.
+            // Spawn missiles.
+            missile_spawner_subsystem.spawn_missiles(frame_updated.frame_number);
+            missile_physics_subsystem.process_physics(frame_updated.frame_number);
 
             // Get the next world state and save the current world to it.
             world_state = world_states_iter.next().unwrap_or_else(|| {
@@ -364,6 +467,22 @@ impl<'s> System<'s> for ActionSystem {
         drop(client_side_actions_iter);
         system_data.framed_updates.oldest_updated_frame = game_frame_number + 1;
         system_data.framed_client_side_actions.oldest_updated_frame = game_frame_number + 1;
+    }
+}
+
+#[cfg(feature = "client")]
+fn create_graphics_resource_bundle(system_data: GraphicsSystemData) -> GraphicsResourceBundle {
+    GraphicsResourceBundle {
+        missile_graphics: system_data.missile_graphics,
+        meshes: Rc::new(RefCell::new(system_data.meshes)),
+        materials: Rc::new(RefCell::new(system_data.materials)),
+    }
+}
+
+#[cfg(not(feature = "client"))]
+fn create_graphics_resource_bundle(_system_data: GraphicsSystemData) -> GraphicsResourceBundle {
+    GraphicsResourceBundle {
+        _lifetime: PhantomData,
     }
 }
 
@@ -419,6 +538,38 @@ fn look_action_update_for_player(
 ) -> Option<ClientActionUpdate<PlayerLookAction>> {
     frame_updates
         .look_action_updates
+        .iter()
+        .find(|actions_updates| actions_updates.entity_net_id == entity_net_metadata.id)
+        .map(move |update| update.data.clone())
+}
+
+#[cfg(feature = "client")]
+fn cast_action_update_for_player(
+    frame_updates: &FrameUpdate,
+    entity_net_metadata: EntityNetMetadata,
+) -> Option<IdentifiableAction<ClientActionUpdate<PlayerCastAction>>> {
+    frame_updates
+        .player_updates
+        .player_cast_actions_updates
+        .iter()
+        .find(|actions_updates| actions_updates.entity_net_id == entity_net_metadata.id)
+        .or_else(|| {
+            frame_updates
+                .controlled_player_updates
+                .player_cast_actions_updates
+                .iter()
+                .find(|actions_updates| actions_updates.entity_net_id == entity_net_metadata.id)
+        })
+        .map(move |update| update.data.clone())
+}
+
+#[cfg(not(feature = "client"))]
+fn cast_action_update_for_player(
+    frame_updates: &FrameUpdate,
+    entity_net_metadata: EntityNetMetadata,
+) -> Option<IdentifiableAction<ClientActionUpdate<PlayerCastAction>>> {
+    frame_updates
+        .cast_action_updates
         .iter()
         .find(|actions_updates| actions_updates.entity_net_id == entity_net_metadata.id)
         .map(move |update| update.data.clone())

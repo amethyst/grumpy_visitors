@@ -1,7 +1,10 @@
 use amethyst::ecs::Entities;
 
 use ha_core::ecs::{
-    components::{missile::Missile, Dead, Monster, Player, PlayerActions, WorldPosition},
+    components::{
+        missile::Missile, Dead, Monster, Player, PlayerActions, PlayerLastCastedSpells,
+        WorldPosition,
+    },
     resources::world::SavedWorldState,
 };
 
@@ -11,6 +14,7 @@ pub struct WorldStateSubsystem<'s> {
     pub entities: &'s Entities<'s>,
     pub players: WriteStorageCell<'s, Player>,
     pub player_actions: WriteStorageCell<'s, PlayerActions>,
+    pub player_last_casted_spells: WriteStorageCell<'s, PlayerLastCastedSpells>,
     pub monsters: WriteStorageCell<'s, Monster>,
     pub missiles: WriteStorageCell<'s, Missile>,
     pub world_positions: WriteStorageCell<'s, WorldPosition>,
@@ -24,6 +28,10 @@ impl<'s> WorldStateSubsystem<'s> {
         saved_world_state.player_actions = SavedWorldState::copy_from_write_storage(
             &self.entities,
             &*self.player_actions.borrow_mut(),
+        );
+        saved_world_state.player_last_casted_spells = SavedWorldState::copy_from_write_storage(
+            &self.entities,
+            &*self.player_last_casted_spells.borrow_mut(),
         );
         saved_world_state.monsters =
             SavedWorldState::copy_from_write_storage(&self.entities, &*self.monsters.borrow_mut());
@@ -45,6 +53,10 @@ impl<'s> WorldStateSubsystem<'s> {
         SavedWorldState::load_storage_from(
             &mut self.player_actions.borrow_mut(),
             &saved_world_state.player_actions,
+        );
+        SavedWorldState::load_storage_from(
+            &mut self.player_last_casted_spells.borrow_mut(),
+            &saved_world_state.player_last_casted_spells,
         );
         SavedWorldState::load_storage_from(
             &mut self.monsters.borrow_mut(),

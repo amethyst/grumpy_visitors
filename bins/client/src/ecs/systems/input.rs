@@ -110,6 +110,8 @@ impl InputSystem {
                 cast_position: player_position,
                 target_position: mouse_world_position,
             });
+        } else {
+            client_player_actions.cast_action = None;
         }
     }
 

@@ -14,7 +14,9 @@ use log::LevelFilter;
 use std::{env, io, path::PathBuf, str::FromStr, time::Duration};
 
 use ha_core::{
-    ecs::resources::world::{DummyFramedUpdate, FramedUpdates, ServerWorldUpdates},
+    ecs::resources::world::{
+        DummyFramedUpdate, FramedUpdates, ReceivedClientActionUpdates, ServerWorldUpdates,
+    },
     net::EncodedMessage,
 };
 use ha_game::{
@@ -58,6 +60,9 @@ fn main() -> amethyst::Result<()> {
     builder
         .world
         .insert(FramedUpdates::<DummyFramedUpdate>::default());
+    builder
+        .world
+        .insert(FramedUpdates::<ReceivedClientActionUpdates>::default());
     builder.world.insert(ServerWorldUpdates::default());
     builder.world.insert(LastBroadcastedFrame(0));
 

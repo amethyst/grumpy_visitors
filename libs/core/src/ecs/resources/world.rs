@@ -8,11 +8,11 @@ use crate::{
         mob::MobAction,
         monster_spawn::SpawnAction,
         player::{PlayerCastAction, PlayerLookAction, PlayerWalkAction},
-        ClientActionUpdate,
+        ClientActionUpdate, IdentifiableAction,
     },
     ecs::components::{
         damage_history::DamageHistoryEntries, missile::Missile, Dead, Monster, Player,
-        PlayerActions, WorldPosition,
+        PlayerActions, PlayerLastCastedSpells, WorldPosition,
     },
     net::{NetIdentifier, NetUpdate, NetUpdateWithPosition},
 };
@@ -110,6 +110,7 @@ pub struct SavedWorldState {
     pub frame_number: u64,
     pub players: Vec<(Entity, Player)>,
     pub player_actions: Vec<(Entity, PlayerActions)>,
+    pub player_last_casted_spells: Vec<(Entity, PlayerLastCastedSpells)>,
     pub monsters: Vec<(Entity, Monster)>,
     pub missiles: Vec<(Entity, Missile)>,
     pub world_positions: Vec<(Entity, WorldPosition)>,
@@ -144,9 +145,12 @@ impl SavedWorldState {
         saved_components: &[(Entity, T)],
     ) {
         for (entity, component) in saved_components {
-            storage
-                .insert(entity.clone(), component.clone())
-                .expect("Expected to insert a saved component");
+            let is_the_same_generation = storage.contains(*entity);
+            if is_the_same_generation {
+                storage
+                    .insert(entity.clone(), component.clone())
+                    .expect("Expected to insert a saved component");
+            }
         }
     }
 }
@@ -326,9 +330,7 @@ pub struct ClientWorldUpdates {
     pub look_actions_updates: VecDeque<(u64, Vec<NetUpdate<ClientActionUpdate<PlayerLookAction>>>)>,
 }
 
-/// Both client and server side framed update.
 /// Client uses it to store the updates until it receives their confirmations from a server.
-/// Server uses it as the main resource of client updates, stores SAVED_WORLD_STATES_LIMIT of them.
 #[derive(Debug)]
 pub struct PlayerActionUpdates {
     pub frame_number: u64,
@@ -352,11 +354,36 @@ impl FramedUpdate for PlayerActionUpdates {
     }
 }
 
+/// Server uses it as the main resource of client updates, stores SAVED_WORLD_STATES_LIMIT of them.
+#[derive(Debug)]
+pub struct ReceivedClientActionUpdates {
+    pub frame_number: u64,
+    pub walk_action_updates: Vec<NetUpdate<ClientActionUpdate<PlayerWalkAction>>>,
+    pub cast_action_updates:
+        Vec<NetUpdate<IdentifiableAction<ClientActionUpdate<PlayerCastAction>>>>,
+    pub look_action_updates: Vec<NetUpdate<ClientActionUpdate<PlayerLookAction>>>,
+}
+
+impl FramedUpdate for ReceivedClientActionUpdates {
+    fn new_update(frame_number: u64) -> Self {
+        Self {
+            frame_number,
+            walk_action_updates: Vec::new(),
+            cast_action_updates: Vec::new(),
+            look_action_updates: Vec::new(),
+        }
+    }
+
+    fn frame_number(&self) -> u64 {
+        self.frame_number
+    }
+}
+
 /// Is sent by client, gets aggregated into PlayerActionUpdates on server side.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ImmediatePlayerActionsUpdates<T> {
     pub frame_number: u64,
-    pub updates: Vec<NetUpdate<ClientActionUpdate<T>>>,
+    pub updates: Vec<NetUpdate<T>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -375,7 +402,8 @@ pub struct ServerWorldUpdate {
     //    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub player_look_actions_updates: Vec<NetUpdate<ClientActionUpdate<PlayerLookAction>>>,
     //    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub player_cast_actions_updates: Vec<NetUpdate<ClientActionUpdate<PlayerCastAction>>>,
+    pub player_cast_actions_updates:
+        Vec<NetUpdate<IdentifiableAction<ClientActionUpdate<PlayerCastAction>>>>,
     //    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub mob_actions_updates: Vec<NetUpdateWithPosition<MobAction<NetIdentifier>>>,
     //    #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -427,7 +455,8 @@ pub struct ReceivedPlayerUpdate {
         Vec<NetUpdateWithPosition<ClientActionUpdate<PlayerWalkAction>>>,
     /// Is empty for controlled players.
     pub player_look_actions_updates: Vec<NetUpdate<ClientActionUpdate<PlayerLookAction>>>,
-    pub player_cast_actions_updates: Vec<NetUpdate<ClientActionUpdate<PlayerCastAction>>>,
+    pub player_cast_actions_updates:
+        Vec<NetUpdate<IdentifiableAction<ClientActionUpdate<PlayerCastAction>>>>,
 }
 
 impl FramedUpdate for ReceivedServerWorldUpdate {

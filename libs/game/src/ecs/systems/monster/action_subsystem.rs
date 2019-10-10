@@ -104,7 +104,7 @@ impl<'s> MonsterActionSubsystem<'s> {
         let net_world_positions = self.net_world_positions.borrow();
         let is_multiplayer = self.game_state_helper.is_multiplayer();
         let new_destination = if let Some(ref new_action) = new_action {
-            log::info!(
+            log::trace!(
                 "Applying a new mob ({}) action for frame {} (current frame {}): {:?}",
                 entity.id(),
                 frame_number,

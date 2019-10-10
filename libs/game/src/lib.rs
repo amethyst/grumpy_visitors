@@ -12,14 +12,17 @@ use amethyst::{
 use ha_core::ecs::{
     components::damage_history::DamageHistory,
     resources::{
-        net::{ActionUpdateIdProvider, EntityNetMetadataStorage, MultiplayerGameState},
+        net::{
+            ActionUpdateIdProvider, CastActionsToExecute, EntityNetMetadataStorage,
+            MultiplayerGameState,
+        },
         world::{FramedUpdates, PlayerActionUpdates, WorldStates},
     },
 };
 
 use crate::ecs::{
     resources::ConnectionEvents,
-    systems::{missile::*, monster::*, player::*, *},
+    systems::{missile::MissileDyingSystem, monster::*, player::*, *},
 };
 
 pub fn build_game_logic_systems<'a, 'b>(
@@ -33,6 +36,7 @@ pub fn build_game_logic_systems<'a, 'b>(
     world.insert(MultiplayerGameState::new());
     world.insert(EntityNetMetadataStorage::new());
     world.insert(ActionUpdateIdProvider::default());
+    world.insert(CastActionsToExecute::default());
 
     world.register::<DamageHistory>();
     let mut damage_history_storage = world.write_storage::<DamageHistory>();
@@ -42,28 +46,23 @@ pub fn build_game_logic_systems<'a, 'b>(
         .with(LevelSystem::default(), "level_system", &["pause_system"])
         .with(MonsterSpawnerSystem, "spawner_system", &["level_system"])
         .with(
-            MissileSpawnerSystem,
-            "missile_spawner_system",
-            &dependencies_with_optional(&["level_system"], !is_server, &["input_system"]),
-        )
-        .with(
             ActionSystem,
             "action_system",
-            &dependencies_with_optional(
-                &["missile_spawner_system", "spawner_system"],
-                !is_server,
-                &["input_system"],
-            ),
+            &dependencies_with_optional(&["spawner_system"], !is_server, &["input_system"]),
         )
-        .with(MissileSystem, "missile_system", &["action_system"])
         .with(
             MonsterDyingSystem::new(damage_history_storage.register_reader()),
             "monster_dying_system",
-            &["missile_system"],
+            &["action_system"],
         )
         .with(
             PlayerDyingSystem::new(damage_history_storage.register_reader()),
             "player_dying_system",
+            &["action_system"],
+        )
+        .with(
+            MissileDyingSystem,
+            "missile_dying_system",
             &["action_system"],
         )
         .with(

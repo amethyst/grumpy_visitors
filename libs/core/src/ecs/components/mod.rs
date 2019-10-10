@@ -2,16 +2,13 @@ pub mod damage_history;
 pub mod missile;
 
 use amethyst::{
-    ecs::{Component, DenseVecStorage, Entity, FlaggedStorage, NullStorage, ReaderId, VecStorage},
+    ecs::{Component, DenseVecStorage, Entity, ReaderId, VecStorage},
     network::NetEvent,
 };
 use serde_derive::{Deserialize, Serialize};
 use shrinkwraprs::Shrinkwrap;
 
-use std::{
-    collections::VecDeque,
-    time::{Duration, Instant},
-};
+use std::{collections::VecDeque, time::Instant};
 
 use crate::{
     actions::{
@@ -126,9 +123,10 @@ impl Component for ClientPlayerActions {
     type Storage = DenseVecStorage<Self>;
 }
 
-#[derive(Default)]
+/// Stores frame numbers.
+#[derive(Clone, Default)]
 pub struct PlayerLastCastedSpells {
-    pub missile: Duration,
+    pub missile: u64,
 }
 
 impl Component for PlayerLastCastedSpells {
@@ -151,10 +149,18 @@ impl Component for Monster {
 }
 
 #[derive(Clone, Default)]
-pub struct Dead;
+pub struct Dead {
+    pub dead_since_frame: u64,
+}
+
+impl Dead {
+    pub fn new(dead_since_frame: u64) -> Self {
+        Self { dead_since_frame }
+    }
+}
 
 impl Component for Dead {
-    type Storage = FlaggedStorage<Self, NullStorage<Self>>;
+    type Storage = VecStorage<Self>;
 }
 
 pub struct NetConnectionModel {

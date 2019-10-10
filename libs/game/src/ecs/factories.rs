@@ -13,14 +13,12 @@ use amethyst::{
     utils::tag::Tag,
 };
 
-use std::time::Duration;
-
 #[cfg(feature = "client")]
-use ha_client_shared::ecs::resources::{AssetHandles, EntityGraphics, MissileGraphics};
+use ha_client_shared::ecs::resources::{AssetHandles, EntityGraphics};
 use ha_core::{
     actions::{mob::MobAction, Action},
     ecs::{
-        components::{damage_history::DamageHistory, missile::*, *},
+        components::{damage_history::DamageHistory, *},
         tags::*,
     },
     math::{Vector2, ZeroVector},
@@ -207,73 +205,6 @@ impl<'s> MonsterFactory<'s> {
                 &mut self.monsters,
             )
             .with(DamageHistory::default(), &mut self.damage_histories)
-            .build()
-    }
-}
-
-#[derive(SystemData)]
-pub struct MissileFactory<'s> {
-    entities: Entities<'s>,
-    #[cfg(feature = "client")]
-    missile_graphics: ReadExpect<'s, MissileGraphics>,
-    transforms: WriteStorage<'s, Transform>,
-    #[cfg(feature = "client")]
-    meshes: WriteStorage<'s, Handle<Mesh>>,
-    #[cfg(feature = "client")]
-    materials: WriteStorage<'s, Handle<Material>>,
-    missiles: WriteStorage<'s, Missile>,
-}
-
-impl<'s> MissileFactory<'s> {
-    #[cfg(feature = "client")]
-    pub fn create(
-        &mut self,
-        world_positions: &mut WriteStorage<'s, WorldPosition>,
-        radius: f32,
-        target: MissileTarget<Entity>,
-        velocity: Vector2,
-        time_spawned: Duration,
-        position: Vector2,
-    ) -> Entity {
-        let mut transform = Transform::default();
-        transform.set_translation_xyz(position.x, position.y, 0.0);
-
-        let EntityGraphics { mesh, material } = self.missile_graphics.0.clone();
-
-        self.entities
-            .build_entity()
-            .with(mesh.clone(), &mut self.meshes)
-            .with(material.clone(), &mut self.materials)
-            .with(transform, &mut self.transforms)
-            .with(WorldPosition::new(position), world_positions)
-            .with(
-                Missile::new(radius, target, velocity, time_spawned),
-                &mut self.missiles,
-            )
-            .build()
-    }
-
-    #[cfg(not(feature = "client"))]
-    pub fn create(
-        &mut self,
-        world_positions: &mut WriteStorage<'s, WorldPosition>,
-        radius: f32,
-        target: MissileTarget<Entity>,
-        velocity: Vector2,
-        time_spawned: Duration,
-        position: Vector2,
-    ) -> Entity {
-        let mut transform = Transform::default();
-        transform.set_translation_xyz(position.x, position.y, 0.0);
-
-        self.entities
-            .build_entity()
-            .with(transform, &mut self.transforms)
-            .with(WorldPosition::new(position), world_positions)
-            .with(
-                Missile::new(radius, target, velocity, time_spawned),
-                &mut self.missiles,
-            )
             .build()
     }
 }

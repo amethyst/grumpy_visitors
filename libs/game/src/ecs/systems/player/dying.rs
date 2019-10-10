@@ -7,6 +7,7 @@ use ha_core::{
     ecs::{
         components::{damage_history::DamageHistory, Dead, Player},
         resources::{net::MultiplayerGameState, GameLevelState},
+        system_data::time::GameTimeService,
     },
     math::{Vector2, ZeroVector},
 };
@@ -30,6 +31,7 @@ impl PlayerDyingSystem {
 impl<'s> System<'s> for PlayerDyingSystem {
     type SystemData = (
         GameStateHelper<'s>,
+        GameTimeService<'s>,
         Entities<'s>,
         ReadStorage<'s, DamageHistory>,
         ReadExpect<'s, MultiplayerGameState>,
@@ -42,6 +44,7 @@ impl<'s> System<'s> for PlayerDyingSystem {
         &mut self,
         (
             game_state_helper,
+            game_time_service,
             entities,
             damage_histories,
             multiplayer_game_state,
@@ -81,8 +84,11 @@ impl<'s> System<'s> for PlayerDyingSystem {
                     game_level_state.is_over = true;
                 }
                 player.velocity = Vector2::zero();
-                dead.insert(player_entity, Dead)
-                    .expect("Expected to insert Dead component");
+                dead.insert(
+                    player_entity,
+                    Dead::new(game_time_service.game_frame_number()),
+                )
+                .expect("Expected to insert Dead component");
             }
         }
     }

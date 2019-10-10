@@ -3,7 +3,10 @@ use serde_derive::{Deserialize, Serialize};
 
 use std::{collections::HashMap, ops::Range};
 
-use crate::net::NetIdentifier;
+use crate::{
+    actions::{player::PlayerCastAction, IdentifiableAction},
+    net::NetIdentifier,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MultiplayerRoomPlayer {
@@ -112,4 +115,9 @@ impl ActionUpdateIdProvider {
         self.update_id_autoinc = self.update_id_autoinc.wrapping_add(1);
         id
     }
+}
+
+#[derive(Default)]
+pub struct CastActionsToExecute {
+    pub actions: Vec<IdentifiableAction<PlayerCastAction>>,
 }

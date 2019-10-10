@@ -1,14 +1,17 @@
 use amethyst::ecs::{Join, ReadExpect, System, WriteExpect, WriteStorage};
 
 use ha_core::{
-    actions::player::PlayerWalkAction,
+    actions::{
+        player::{PlayerCastAction, PlayerWalkAction},
+        ClientActionUpdate, IdentifiableAction,
+    },
     ecs::{
         components::NetConnectionModel,
         resources::{
-            net::{MultiplayerGameState, MultiplayerRoomPlayer},
+            net::{ActionUpdateIdProvider, MultiplayerGameState, MultiplayerRoomPlayer},
             world::{
-                FramedUpdates, ImmediatePlayerActionsUpdates, PlayerActionUpdates,
-                PlayerLookActionUpdates, ServerWorldUpdates, LAG_COMPENSATION_FRAMES_LIMIT,
+                FramedUpdates, ImmediatePlayerActionsUpdates, PlayerLookActionUpdates,
+                ReceivedClientActionUpdates, ServerWorldUpdates, LAG_COMPENSATION_FRAMES_LIMIT,
             },
             GameEngineState, NewGameEngineState,
         },
@@ -16,7 +19,7 @@ use ha_core::{
     },
     net::{
         client_message::ClientMessagePayload, server_message::ServerMessagePayload, NetConnection,
-        NetEvent, NetIdentifier, INTERPOLATION_FRAME_DELAY,
+        NetEvent, NetIdentifier, NetUpdate, INTERPOLATION_FRAME_DELAY,
     },
 };
 use ha_game::{
@@ -54,8 +57,9 @@ impl<'s> System<'s> for ServerNetworkSystem {
         WriteExpect<'s, ConnectionEvents>,
         WriteExpect<'s, MultiplayerGameState>,
         WriteExpect<'s, NewGameEngineState>,
-        WriteExpect<'s, FramedUpdates<PlayerActionUpdates>>,
+        WriteExpect<'s, FramedUpdates<ReceivedClientActionUpdates>>,
         WriteExpect<'s, ServerWorldUpdates>,
+        WriteExpect<'s, ActionUpdateIdProvider>,
         WriteStorage<'s, NetConnection>,
         WriteStorage<'s, NetConnectionModel>,
     );
@@ -71,6 +75,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
             mut new_game_engine_state,
             mut framed_updates,
             mut server_world_updates,
+            mut action_update_id_provider,
             mut net_connections,
             mut net_connection_models,
         ): Self::SystemData,
@@ -139,11 +144,13 @@ impl<'s> System<'s> for ServerNetworkSystem {
                         );
                     }
                 }
-                NetEvent::Message(ClientMessagePayload::CastActions(_actions)) => {
-                    //                    if let Some(update) = framed_updates.update_frame(action.frame_number, true) {
-                    //                        action.frame_number = update.frame_number;
-                    //                        update.add_cast_action_updates(action);
-                    //                    }
+                NetEvent::Message(ClientMessagePayload::CastActions(actions)) => {
+                    add_cast_actions(
+                        &mut *framed_updates,
+                        actions,
+                        &mut *action_update_id_provider,
+                        game_time_service.game_frame_number(),
+                    );
                 }
                 NetEvent::Message(ClientMessagePayload::LookActions(actions)) => {
                     add_look_actions(
@@ -278,8 +285,8 @@ impl<'s> System<'s> for ServerNetworkSystem {
 
 /// Returns discarded actions.
 fn add_walk_actions(
-    framed_updates: &mut FramedUpdates<PlayerActionUpdates>,
-    actions: ImmediatePlayerActionsUpdates<PlayerWalkAction>,
+    framed_updates: &mut FramedUpdates<ReceivedClientActionUpdates>,
+    actions: ImmediatePlayerActionsUpdates<ClientActionUpdate<PlayerWalkAction>>,
     frame_number: u64,
 ) -> Vec<NetIdentifier> {
     let mut discarded_actions = Vec::new();
@@ -374,7 +381,7 @@ fn add_walk_actions(
 }
 
 fn add_look_actions(
-    framed_updates: &mut FramedUpdates<PlayerActionUpdates>,
+    framed_updates: &mut FramedUpdates<ReceivedClientActionUpdates>,
     actions: PlayerLookActionUpdates,
     frame_number: u64,
 ) {
@@ -439,4 +446,53 @@ fn add_look_actions(
 
     drop(framed_updates_iter);
     framed_updates.oldest_updated_frame = oldest_updated_frame;
+}
+
+fn add_cast_actions(
+    framed_updates: &mut FramedUpdates<ReceivedClientActionUpdates>,
+    actions: ImmediatePlayerActionsUpdates<ClientActionUpdate<PlayerCastAction>>,
+    action_update_id_provider: &mut ActionUpdateIdProvider,
+    frame_number: u64,
+) {
+    let added_actions_frame_number = actions.frame_number;
+    let oldest_possible_frame = frame_number.saturating_sub(LAG_COMPENSATION_FRAMES_LIMIT as u64);
+    let are_lag_compensated = added_actions_frame_number > oldest_possible_frame;
+    let actual_frame = if are_lag_compensated {
+        added_actions_frame_number
+    } else {
+        oldest_possible_frame
+    };
+
+    for action_update in actions.updates {
+        let is_added = !framed_updates
+            .updates
+            .iter()
+            .skip_while(|update| update.frame_number < actual_frame)
+            .any(|update| {
+                update
+                    .cast_action_updates
+                    .iter()
+                    .any(|net_update| net_update.entity_net_id == action_update.entity_net_id)
+            });
+
+        if is_added {
+            let updated_frame = framed_updates
+                .update_frame(actual_frame)
+                .unwrap_or_else(|| panic!("Expected a frame {}", actual_frame));
+
+            log::trace!(
+                "Added a walk action update for frame {} to frame {}",
+                added_actions_frame_number,
+                updated_frame.frame_number
+            );
+
+            updated_frame.cast_action_updates.push(NetUpdate {
+                entity_net_id: action_update.entity_net_id,
+                data: IdentifiableAction {
+                    action_id: action_update_id_provider.next_update_id(),
+                    action: action_update.data,
+                },
+            });
+        }
+    }
 }

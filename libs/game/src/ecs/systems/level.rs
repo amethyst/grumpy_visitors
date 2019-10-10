@@ -74,7 +74,7 @@ impl<'s> System<'s> for LevelSystem {
                 None
             };
 
-            log::info!(
+            log::trace!(
                 "Spawning {} monster(s) (SpawnType::Borderline)",
                 monsters_to_spawn
             );
@@ -91,7 +91,7 @@ impl<'s> System<'s> for LevelSystem {
         let monsters_to_spawn = game_level_state.spawn_level.min(255) as u8;
         if now - game_level_state.last_random_spawn > random_spawn_interval {
             game_level_state.last_random_spawn = now;
-            log::info!(
+            log::trace!(
                 "Spawning {} monster(s) (SpawnType::Single)",
                 monsters_to_spawn
             );

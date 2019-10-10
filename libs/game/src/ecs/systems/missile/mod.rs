@@ -1,4 +1,9 @@
-mod physics;
-mod spawner;
+mod dying;
+mod physics_subsystem;
+mod spawner_subsystem;
 
-pub use self::{physics::MissileSystem, spawner::MissileSpawnerSystem};
+pub use self::{
+    dying::MissileDyingSystem,
+    physics_subsystem::MissilePhysicsSubsystem,
+    spawner_subsystem::{MissileFactory, MissileSpawnerSubsystem},
+};
