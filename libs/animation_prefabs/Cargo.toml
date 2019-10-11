@@ -1,20 +1,11 @@
 [package]
-name = "animation_prefabs"
+name = "ha_animation_prefabs"
 version = "0.1.0"
 authors = []
 edition = "2018"
 
 [dependencies.amethyst]
-git = "https://github.com/amethyst/amethyst.git"
-rev = "7abfcfc"
-features = ["nightly"]
-
-# Bad news: https://github.com/rust-lang/cargo/issues/1197
-
-#[target.'cfg(target_os = "macos")'.dependencies.amethyst]
-#git = "https://github.com/amethyst/amethyst.git"
-#rev = "7abfcfc"
-#features = ["metal"]
+version = "0.13.2"
 
 [dependencies]
 serde = "1.0.91"

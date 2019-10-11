@@ -1,51 +1,11 @@
 cargo-features = ["profile-overrides"]
 
-[package]
-name = "hello_amethyst"
-version = "0.1.0"
-authors = []
-edition = "2018"
-
 [workspace]
 members = [
     "assets_packer",
+    "bins/client",
+    "bins/server",
 ]
-
-# Bad news: https://github.com/rust-lang/cargo/issues/1197
-
-#[target.'cfg(target_os = "macos")'.dependencies.amethyst]
-#git = "https://github.com/amethyst/amethyst.git"
-#rev = "7abfcfc"
-#features = ["metal"]
-
-[dependencies]
-directories = "1.0.2"
-failure = "0.1.5"
-lazy_static = "1.3.0"
-log = "0.4.6"
-num = "0.2.0"
-rand = "0.6.5"
-ron = "0.5.1"
-winit = "0.19"
-shred = "0.7"
-shred-derive = "0.5"
-shrinkwraprs = "0.2.1"
-
-[dependencies.amethyst]
-git = "https://github.com/amethyst/amethyst.git"
-rev = "7abfcfc"
-features = ["nightly", "shader-compiler"]
-
-[dependencies.animation_prefabs]
-path = "libs/animation_prefabs"
-
-[target.'cfg(not(target_os = "macos"))'.dependencies.amethyst]
-git = "https://github.com/amethyst/amethyst.git"
-rev = "7abfcfc"
-features = ["vulkan"]
 
 [profile.dev.overrides."*"]
 opt-level = 2
-
-#[patch."https://github.com/amethyst/amethyst.git"]
-#amethyst = { path = "../amethyst" }

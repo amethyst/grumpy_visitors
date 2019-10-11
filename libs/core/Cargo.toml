@@ -1,0 +1,18 @@
+[package]
+name = "ha_core"
+version = "0.1.0"
+authors = []
+edition = "2018"
+
+[dependencies.amethyst]
+version = "0.13.2"
+
+[dependencies]
+bincode = "1.1.4"
+nalgebra = { version = "0.18.0", features = ["serde-serialize"] }
+log = "0.4.6"
+num = "0.2.0"
+rand = "0.6.5"
+serde = "1.0.91"
+serde_derive = "1.0.91"
+shrinkwraprs = "0.2.1"
