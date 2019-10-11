@@ -283,7 +283,7 @@ impl<'s> PlayerActionSubsystem<'s> {
             }) = cast_action_update.clone()
             {
                 if !is_cooling_down || !self.game_state_helper.is_authoritative() {
-                    log::debug!(
+                    log::trace!(
                         "Applying a new cast update ({}) for {} (frame {}): {:?}",
                         action_id,
                         entity_net_id,
@@ -359,7 +359,7 @@ impl<'s> PlayerActionSubsystem<'s> {
                                 },
                             );
                         } else {
-                            log::debug!(
+                            log::trace!(
                                 "Applying a new cast update for {} (frame {}): {:?}",
                                 entity.id(),
                                 frame_number,

@@ -22,7 +22,7 @@ use ha_core::ecs::{
 
 use crate::ecs::{
     resources::ConnectionEvents,
-    systems::{missile::MissileDyingSystem, monster::*, player::*, *},
+    systems::{missile::MissileDyingSystem, monster::*, *},
 };
 
 pub fn build_game_logic_systems<'a, 'b>(
@@ -39,7 +39,6 @@ pub fn build_game_logic_systems<'a, 'b>(
     world.insert(CastActionsToExecute::default());
 
     world.register::<DamageHistory>();
-    let mut damage_history_storage = world.write_storage::<DamageHistory>();
 
     let game_data_builder = game_data_builder
         .with(PauseSystem, "pause_system", &["game_network_system"])
@@ -51,13 +50,8 @@ pub fn build_game_logic_systems<'a, 'b>(
             &dependencies_with_optional(&["spawner_system"], !is_server, &["input_system"]),
         )
         .with(
-            MonsterDyingSystem::new(damage_history_storage.register_reader()),
+            MonsterDyingSystem,
             "monster_dying_system",
-            &["action_system"],
-        )
-        .with(
-            PlayerDyingSystem::new(damage_history_storage.register_reader()),
-            "player_dying_system",
             &["action_system"],
         )
         .with(
@@ -74,7 +68,7 @@ pub fn build_game_logic_systems<'a, 'b>(
             StateSwitcherSystem,
             "state_switcher_system",
             &dependencies_with_optional(
-                &["monster_dying_system", "player_dying_system"],
+                &["monster_dying_system", "missile_dying_system"],
                 !is_server,
                 &["menu_system"],
             ),

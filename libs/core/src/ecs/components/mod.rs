@@ -287,7 +287,7 @@ impl Component for NetConnectionModel {
     type Storage = DenseVecStorage<Self>;
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct EntityNetMetadata {
     pub id: NetIdentifier,
     pub spawned_frame_number: u64,

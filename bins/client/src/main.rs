@@ -132,7 +132,7 @@ fn main() -> amethyst::Result<()> {
             "",
             &["parent_hierarchy_system"],
         )
-        .with(HealthUiSystem, "health_ui_system", &["player_dying_system"])
+        .with(HealthUiSystem, "health_ui_system", &["action_system"])
         .with_bundle(UiBundle::<StringBindings>::new())?
         .with(
             AnimationSystem,

@@ -5,7 +5,7 @@ use amethyst::{
 
 use ha_core::ecs::{
     components::{missile::Missile, Dead},
-    resources::world::LAG_COMPENSATION_FRAMES_LIMIT,
+    resources::world::SAVED_WORLD_STATES_LIMIT,
     system_data::time::GameTimeService,
 };
 
@@ -13,7 +13,8 @@ use crate::ecs::system_data::GameStateHelper;
 
 pub struct MissileDyingSystem;
 
-const DYING_TIME_FRAMES: u64 = LAG_COMPENSATION_FRAMES_LIMIT as u64 * 3;
+// Anything more clever?
+const DYING_TIME_FRAMES: u64 = SAVED_WORLD_STATES_LIMIT as u64;
 
 impl<'s> System<'s> for MissileDyingSystem {
     type SystemData = (
@@ -36,7 +37,9 @@ impl<'s> System<'s> for MissileDyingSystem {
         for (missile_entity, dead, _, _) in (&entities, &dead, &hidden_propagates, &missiles).join()
         {
             let to_be_deleted = !game_state_helper.is_multiplayer()
-                || game_time_service.game_frame_number() - dead.dead_since_frame
+                || game_time_service
+                    .game_frame_number()
+                    .saturating_sub(dead.dead_since_frame)
                     > DYING_TIME_FRAMES;
             if to_be_deleted {
                 entities

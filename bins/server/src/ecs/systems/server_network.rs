@@ -267,7 +267,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
         }
 
         // We should reserve new updates only if we're not paused. If we do it regardless, we'll
-        // get redundant updates reserved, as `frames_skipped` gets updated only on
+        // get redundant updates reserved.
         if *game_engine_state == GameEngineState::Playing
             && !(multiplayer_game_state.waiting_network
                 || multiplayer_game_state.waiting_for_players)

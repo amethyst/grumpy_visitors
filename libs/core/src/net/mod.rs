@@ -52,15 +52,3 @@ impl<T> NetIdentifiable for NetUpdateWithPosition<T> {
         self.entity_net_id
     }
 }
-
-//pub trait MergableNetUpdates {
-//    fn merge(&mut self, other: Self);
-//}
-//
-//impl<T: NetIdentifiable> MergableNetUpdates for Vec<T> {
-//    fn merge(&mut self, mut other: Self) {
-//        //        *self = other;
-//        self.retain(|update| !other.iter().any(|other| update.net_id() == other.net_id()));
-//        self.append(&mut other);
-//    }
-//}

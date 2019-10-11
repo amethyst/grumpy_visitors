@@ -8,7 +8,7 @@ use amethyst::{
 
 use ha_core::ecs::{
     components::{
-        damage_history::DamageHistory,
+        damage_history::{DamageHistory, DamageHistoryEntry},
         missile::{Missile, MissileTarget},
         Dead, Monster, WorldPosition,
     },
@@ -18,7 +18,10 @@ use ha_core::ecs::{
 
 use crate::{
     ecs::{system_data::GameStateHelper, systems::WriteStorageCell},
-    utils::world::{closest_monster, find_first_hit_monster, random_scene_position},
+    utils::{
+        entities::is_dead,
+        world::{closest_monster, find_first_hit_monster, random_scene_position},
+    },
 };
 
 pub const MISSILE_MAX_SPEED: f32 = 300.0;
@@ -51,12 +54,13 @@ impl<'s> MissilePhysicsSubsystem<'s> {
         let monsters = self.monsters.borrow();
         let mut missiles = self.missiles.borrow_mut();
         let mut dead = self.dead.borrow_mut();
-        let _damage_histories = self.damage_histories.borrow_mut();
+        let mut damage_histories = self.damage_histories.borrow_mut();
         let mut world_positions = self.world_positions.borrow_mut();
         let mut hidden_propagates = self.hidden_propagates.borrow_mut();
 
         for (missile_entity, mut missile) in (self.entities, &mut *missiles).join() {
-            if missile.frame_spawned > frame_number || dead.contains(missile_entity) {
+            if missile.frame_spawned > frame_number || is_dead(missile_entity, &*dead, frame_number)
+            {
                 continue;
             }
 
@@ -68,7 +72,7 @@ impl<'s> MissilePhysicsSubsystem<'s> {
                 .seconds_between_frames(frame_number, missile.frame_spawned)
                 > MISSILE_LIFESPAN_SECS as f32;
             if missile_lifespan_ended {
-                dead.insert(missile_entity, Dead::new(frame_number))
+                dead.insert(missile_entity, Dead::new(frame_number + 1))
                     .expect("Expected to insert a Dead component");
                 hidden_propagates
                     .insert(missile_entity, HiddenPropagate)
@@ -85,6 +89,8 @@ impl<'s> MissilePhysicsSubsystem<'s> {
                         &world_positions,
                         &self.entities,
                         &monsters,
+                        &*dead,
+                        frame_number,
                     ) {
                         (target_position, Some(MissileTarget::Target(target)))
                     } else {
@@ -101,6 +107,8 @@ impl<'s> MissilePhysicsSubsystem<'s> {
                         &world_positions,
                         &self.entities,
                         &monsters,
+                        &*dead,
+                        frame_number,
                     ) {
                         (target_position, Some(MissileTarget::Target(target)))
                     } else if (destination - missile_position).norm_squared()
@@ -121,23 +129,27 @@ impl<'s> MissilePhysicsSubsystem<'s> {
             }
 
             let direction = if let MissileTarget::Target(target) = missile.target {
-                if let Some(_hit_monster) = find_first_hit_monster(
+                if let Some(hit_monster) = find_first_hit_monster(
                     missile_position,
                     missile.radius,
                     &monsters,
                     &world_positions,
                     &self.entities,
+                    &*dead,
+                    frame_number,
                 ) {
-                    // damage_histories
-                    //     .get_mut(hit_monster)
-                    //     .expect("Expected a DamageHistory")
-                    //     .add_entry(
-                    //         game_time_service.game_frame_number(),
-                    //         DamageHistoryEntry {
-                    //             damage: missile.damage,
-                    //         },
-                    //     );
-                    dead.insert(missile_entity, Dead::new(frame_number))
+                    if self.game_state_helper.is_authoritative() {
+                        damage_histories
+                            .get_mut(hit_monster)
+                            .expect("Expected a DamageHistory")
+                            .add_entry(
+                                frame_number,
+                                DamageHistoryEntry {
+                                    damage: missile.damage,
+                                },
+                            );
+                    }
+                    dead.insert(missile_entity, Dead::new(frame_number + 1))
                         .expect("Expected to insert a Dead component");
                     hidden_propagates
                         .insert(missile_entity, HiddenPropagate)

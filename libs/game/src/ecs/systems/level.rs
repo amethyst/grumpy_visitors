@@ -8,6 +8,7 @@ use ha_core::{
         resources::{net::EntityNetMetadataStorage, GameLevelState},
         system_data::time::GameTimeService,
     },
+    math::Vector2,
 };
 
 use crate::{
@@ -50,6 +51,15 @@ impl<'s> System<'s> for LevelSystem {
         if now - game_level_state.spawn_level_started > Duration::from_secs(SECS_PER_LEVEL) {
             game_level_state.spawn_level += 1;
             game_level_state.spawn_level_started = now;
+        }
+
+        if game_time_service.game_frame_number() == 10 {
+            spawn_actions.0.push(SpawnAction {
+                spawn_type: SpawnType::Single {
+                    entity_net_id: Some(entity_net_metadata_storage.reserve_ids(1).start),
+                    position: Vector2::new(0.0, 300.0),
+                },
+            });
         }
 
         let borderline_spawn_interval = MIN_BORDERLINE_INTERVAL_SECS

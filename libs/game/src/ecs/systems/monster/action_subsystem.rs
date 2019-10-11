@@ -7,8 +7,9 @@ use ha_core::{
     },
     ecs::{
         components::{
-            damage_history::DamageHistory, ClientPlayerActions, EntityNetMetadata, Monster,
-            NetWorldPosition, Player, WorldPosition,
+            damage_history::{DamageHistory, DamageHistoryEntry},
+            ClientPlayerActions, EntityNetMetadata, Monster, NetWorldPosition, Player,
+            WorldPosition,
         },
         resources::GameLevelState,
         system_data::time::GameTimeService,
@@ -195,6 +196,7 @@ impl<'s> MonsterActionSubsystem<'s> {
     ) -> Option<MobAction<Entity>> {
         let players = self.players.borrow();
         let world_positions = self.world_positions.borrow();
+        let mut damage_histories = self.damage_histories.borrow_mut();
 
         let monster_definition = self
             .monster_definitions
@@ -242,17 +244,17 @@ impl<'s> MonsterActionSubsystem<'s> {
                     *monster_position,
                     monster.radius,
                 ) {
-                    // TODO: synchronize damage histories.
-
-                    //                let damage_history = damage_histories
-                    //                    .get_mut(target)
-                    //                    .expect("Expected player's DamageHistory");
-                    //                damage_history.add_entry(
-                    //                    game_time_service.game_frame_number(),
-                    //                    DamageHistoryEntry {
-                    //                        damage: monster.attack_damage,
-                    //                    },
-                    //                );
+                    if self.game_state_helper.is_authoritative() {
+                        let damage_history = damage_histories
+                            .get_mut(target)
+                            .expect("Expected player's DamageHistory");
+                        damage_history.add_entry(
+                            frame_number,
+                            DamageHistoryEntry {
+                                damage: monster.attack_damage,
+                            },
+                        );
+                    }
                     Some(MobAction::Attack(MobAttackAction {
                         target,
                         attack_type: monster_definition.attack_type.randomize_params(0.2),

@@ -8,7 +8,7 @@ use ha_client_shared::ecs::resources::EntityGraphics;
 use ha_core::{
     actions::IdentifiableAction,
     ecs::{
-        components::{missile::*, Monster, WorldPosition},
+        components::{missile::*, Dead, Monster, WorldPosition},
         resources::net::CastActionsToExecute,
         system_data::time::GameTimeService,
     },
@@ -33,6 +33,7 @@ pub struct MissileSpawnerSubsystem<'a, 's> {
     pub missile_factory: &'a MissileFactory<'a, 's>,
     pub cast_actions_to_execute: WriteExpectCell<'s, CastActionsToExecute>,
     pub monsters: WriteStorageCell<'s, Monster>,
+    pub dead: WriteStorageCell<'s, Dead>,
     pub world_positions: WriteStorageCell<'s, WorldPosition>,
 }
 
@@ -40,6 +41,7 @@ impl<'a, 's> MissileSpawnerSubsystem<'a, 's> {
     pub fn spawn_missiles(&self, frame_number: u64) {
         let mut world_positions = self.world_positions.borrow_mut();
         let mut cast_actions_to_execute = self.cast_actions_to_execute.borrow_mut();
+        let dead = self.dead.borrow();
         let monsters = self.monsters.borrow();
 
         for cast_action in cast_actions_to_execute.actions.drain(..) {
@@ -50,9 +52,11 @@ impl<'a, 's> MissileSpawnerSubsystem<'a, 's> {
 
             let search_result = closest_monster(
                 cast_action.target_position,
-                &world_positions,
+                &*world_positions,
                 &self.entities,
                 &*monsters,
+                &*dead,
+                frame_number,
             );
 
             let target = if let Some((monster, _)) = search_result {

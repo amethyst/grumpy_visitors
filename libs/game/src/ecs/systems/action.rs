@@ -25,9 +25,10 @@ use ha_core::{
     },
     ecs::{
         components::{
-            damage_history::DamageHistory, missile::Missile, ClientPlayerActions, Dead,
-            EntityNetMetadata, Monster, NetWorldPosition, Player, PlayerActions,
-            PlayerLastCastedSpells, WorldPosition,
+            damage_history::{DamageHistory, DamageHistoryEntries},
+            missile::Missile,
+            ClientPlayerActions, Dead, EntityNetMetadata, Monster, NetWorldPosition, Player,
+            PlayerActions, PlayerLastCastedSpells, WorldPosition,
         },
         resources::{
             net::{
@@ -39,7 +40,7 @@ use ha_core::{
         },
         system_data::time::GameTimeService,
     },
-    net::INTERPOLATION_FRAME_DELAY,
+    net::{NetUpdate, INTERPOLATION_FRAME_DELAY},
 };
 
 use crate::{
@@ -54,10 +55,11 @@ use crate::{
                 PlayerActionSubsystem,
             },
             world_state_subsystem::WorldStateSubsystem,
-            AggregatedOutcomingUpdates, ClientFrameUpdate, FrameUpdate, GraphicsResourceBundle,
+            AggregatedOutcomingUpdates, ClientFrameUpdate, DamageSubsystem, FrameUpdate,
+            GraphicsResourceBundle,
         },
     },
-    utils::world::outcoming_net_updates_mut,
+    utils::{entities::is_dead, world::outcoming_net_updates_mut},
 };
 
 #[derive(SystemData)]
@@ -189,6 +191,7 @@ impl<'s> System<'s> for ActionSystem {
             missile_factory: &missile_factory,
             cast_actions_to_execute: cast_actions_to_execute.clone(),
             monsters: monsters.clone(),
+            dead: dead.clone(),
             world_positions: world_positions.clone(),
         };
         let missile_physics_subsystem = MissilePhysicsSubsystem {
@@ -201,6 +204,17 @@ impl<'s> System<'s> for ActionSystem {
             dead: dead.clone(),
             damage_histories: damage_histories.clone(),
             world_positions: world_positions.clone(),
+            hidden_propagates: hidden_propagates.clone(),
+        };
+        let damage_subsystem = DamageSubsystem {
+            game_state_helper: &system_data.game_state_helper,
+            entities: &system_data.entities,
+            entity_net_metadata_storage: entity_net_metadata_storage.clone(),
+            entity_net_metadata: entity_net_metadata.clone(),
+            players: players.clone(),
+            monsters: monsters.clone(),
+            damage_histories: damage_histories.clone(),
+            dead: dead.clone(),
             hidden_propagates: hidden_propagates.clone(),
         };
 
@@ -307,18 +321,21 @@ impl<'s> System<'s> for ActionSystem {
                 );
             }
 
+            damage_subsystem.reset_damage_entries(frame_updated.frame_number);
+
+            let dead_entities = dead.borrow();
             // Run player actions.
             let players_net_metadata = entity_net_metadata.borrow();
-            for (entity, mut player, player_net_metadata) in (
-                &system_data.entities,
-                &mut *players.borrow_mut(),
-                !&*dead.borrow(),
-            )
-                .join()
-                .map(move |(entity, player, ())| {
-                    (entity, player, players_net_metadata.get(entity).cloned())
-                })
-                .collect::<Vec<_>>()
+            for (entity, mut player, player_net_metadata) in
+                (&system_data.entities, &mut *players.borrow_mut())
+                    .join()
+                    .filter(|(entity, _)| {
+                        !is_dead(*entity, &*dead_entities, frame_updated.frame_number)
+                    })
+                    .map(move |(entity, player)| {
+                        (entity, player, players_net_metadata.get(entity).cloned())
+                    })
+                    .collect::<Vec<_>>()
             {
                 // Run walk action.
                 let net_args = if system_data.multiplayer_game_state.is_playing {
@@ -391,16 +408,16 @@ impl<'s> System<'s> for ActionSystem {
             // Run mob actions.
             let entity_net_metadata_storage = entity_net_metadata_storage.borrow();
             let monsters_net_metadata = entity_net_metadata.borrow();
-            for (entity, mut monster, monster_net_metadata) in (
-                &system_data.entities,
-                &mut *monsters.borrow_mut(),
-                !&*dead.borrow(),
-            )
-                .join()
-                .map(move |(entity, monster, ())| {
-                    (entity, monster, monsters_net_metadata.get(entity).cloned())
-                })
-                .collect::<Vec<_>>()
+            for (entity, mut monster, monster_net_metadata) in
+                (&system_data.entities, &mut *monsters.borrow_mut())
+                    .join()
+                    .filter(|(entity, _)| {
+                        !is_dead(*entity, &*dead_entities, frame_updated.frame_number)
+                    })
+                    .map(move |(entity, monster)| {
+                        (entity, monster, monsters_net_metadata.get(entity).cloned())
+                    })
+                    .collect::<Vec<_>>()
             {
                 let monster_is_spawned = monster_net_metadata
                     .map(|net_metadata| {
@@ -435,10 +452,19 @@ impl<'s> System<'s> for ActionSystem {
                     monster_action_subsystem.process_monster_movement(entity, &mut monster);
                 }
             }
+            drop(dead_entities);
+            drop(entity_net_metadata_storage);
 
-            // Spawn missiles.
+            // Run missile systems.
             missile_spawner_subsystem.spawn_missiles(frame_updated.frame_number);
             missile_physics_subsystem.process_physics(frame_updated.frame_number);
+
+            // Process damage history and add updates, if server.
+            damage_subsystem.process_damage_history(
+                frame_updated.frame_number,
+                damage_histories_updates(&frame_updated),
+                outcoming_net_updates,
+            );
 
             // Get the next world state and save the current world to it.
             world_state = world_states_iter.next().unwrap_or_else(|| {
@@ -484,6 +510,20 @@ fn create_graphics_resource_bundle(_system_data: GraphicsSystemData) -> Graphics
     GraphicsResourceBundle {
         _lifetime: PhantomData,
     }
+}
+
+#[cfg(feature = "client")]
+fn damage_histories_updates(
+    frame_updates: &FrameUpdate,
+) -> Option<&Vec<NetUpdate<DamageHistoryEntries>>> {
+    Some(&frame_updates.damage_histories_updates)
+}
+
+#[cfg(not(feature = "client"))]
+fn damage_histories_updates(
+    _frame_updates: &FrameUpdate,
+) -> Option<&Vec<NetUpdate<DamageHistoryEntries>>> {
+    None
 }
 
 #[cfg(feature = "client")]

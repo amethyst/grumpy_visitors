@@ -60,7 +60,7 @@ impl<'s> PlayerFactory<'s> {
                 PlayerLastCastedSpells::default(),
                 &mut self.player_last_casted_spells,
             )
-            .with(DamageHistory::default(), &mut self.damage_histories)
+            .with(DamageHistory::new(0), &mut self.damage_histories)
             .build()
     }
 }
@@ -128,6 +128,7 @@ impl<'s> MonsterFactory<'s> {
     #[cfg(feature = "client")]
     pub fn create(
         &mut self,
+        frame_spawned: u64,
         definition: MonsterDefinition,
         position: Vector2,
         destination: Vector2,
@@ -164,13 +165,17 @@ impl<'s> MonsterFactory<'s> {
                 },
                 &mut self.monsters,
             )
-            .with(DamageHistory::default(), &mut self.damage_histories)
+            .with(
+                DamageHistory::new(frame_spawned),
+                &mut self.damage_histories,
+            )
             .build()
     }
 
     #[cfg(not(feature = "client"))]
     pub fn create(
         &mut self,
+        frame_spawned: u64,
         definition: MonsterDefinition,
         position: Vector2,
         destination: Vector2,
@@ -204,7 +209,10 @@ impl<'s> MonsterFactory<'s> {
                 },
                 &mut self.monsters,
             )
-            .with(DamageHistory::default(), &mut self.damage_histories)
+            .with(
+                DamageHistory::new(frame_spawned),
+                &mut self.damage_histories,
+            )
             .build()
     }
 }

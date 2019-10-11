@@ -17,7 +17,7 @@ use crate::{
     net::{NetIdentifier, NetUpdate, NetUpdateWithPosition},
 };
 
-const SAVED_WORLD_STATES_LIMIT: usize = 600;
+pub const SAVED_WORLD_STATES_LIMIT: usize = 600;
 pub const LAG_COMPENSATION_FRAMES_LIMIT: usize = 20;
 
 #[derive(Debug)]
@@ -299,23 +299,37 @@ impl ServerWorldUpdates {
         frame_number: u64,
         current_frame_number: u64,
     ) -> &mut ServerWorldUpdate {
+        let update = &mut self
+            .updates
+            .get_mut(self.get_update_index(frame_number, current_frame_number))
+            .unwrap_or_else(|| panic!("Expected a reserved ServerWorldUpdate (frame_number: {}, current_frame_number: {})", frame_number, current_frame_number))
+            .1;
+        assert_eq!(update.frame_number, frame_number);
+        update
+    }
+
+    pub fn updates_iter(
+        &mut self,
+        start_with_frame: u64,
+        current_frame_number: u64,
+    ) -> impl Iterator<Item = &mut ServerWorldUpdate> {
+        let update_index = self.get_update_index(start_with_frame, current_frame_number);
+        self.updates
+            .iter_mut()
+            .skip(update_index)
+            .map(|update| &mut update.1)
+    }
+
+    fn get_update_index(&self, frame_number: u64, current_frame_number: u64) -> usize {
         let last_update = &self
             .updates
             .back()
             .expect("Expected at least 1 reserved ServerWorldUpdate")
             .1;
         assert_eq!(last_update.frame_number, current_frame_number);
-        let i = self
-            .updates
+        self.updates
             .len()
-            .saturating_sub((1 + current_frame_number - frame_number) as usize);
-        let update = &mut self
-            .updates
-            .get_mut(i)
-            .unwrap_or_else(|| panic!("Expected a reserved ServerWorldUpdate (frame_number: {}, current_frame_number: {})", frame_number, current_frame_number))
-            .1;
-        assert_eq!(update.frame_number, frame_number);
-        update
+            .saturating_sub((1 + current_frame_number - frame_number) as usize)
     }
 }
 

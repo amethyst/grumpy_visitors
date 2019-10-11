@@ -1,65 +1,57 @@
-use amethyst::ecs::{
-    prelude::ComponentEvent, BitSet, Entities, Join, ReadStorage, ReaderId, System, WriteStorage,
+use amethyst::{
+    core::HiddenPropagate,
+    ecs::{Entities, Join, ReadStorage, System},
 };
 
-use ha_core::ecs::components::{damage_history::DamageHistory, Monster};
+use ha_core::ecs::{
+    components::{Dead, Monster},
+    resources::world::SAVED_WORLD_STATES_LIMIT,
+    system_data::time::GameTimeService,
+};
 
 use crate::ecs::system_data::GameStateHelper;
 
-pub struct MonsterDyingSystem {
-    damage_history_reader: ReaderId<ComponentEvent>,
-    monsters_hit: BitSet,
-}
+pub struct MonsterDyingSystem;
 
-impl MonsterDyingSystem {
-    pub fn new(damage_history_reader: ReaderId<ComponentEvent>) -> Self {
-        Self {
-            damage_history_reader,
-            monsters_hit: BitSet::new(),
-        }
-    }
-}
+// Anything more clever?
+const DYING_TIME_FRAMES: u64 = SAVED_WORLD_STATES_LIMIT as u64;
 
 impl<'s> System<'s> for MonsterDyingSystem {
     type SystemData = (
         GameStateHelper<'s>,
+        GameTimeService<'s>,
         Entities<'s>,
-        ReadStorage<'s, DamageHistory>,
-        WriteStorage<'s, Monster>,
+        ReadStorage<'s, Monster>,
+        ReadStorage<'s, Dead>,
+        ReadStorage<'s, HiddenPropagate>,
     );
 
     fn run(
         &mut self,
-        (game_state_helper, entities, damage_histories, mut monsters): Self::SystemData,
+        (
+            game_state_helper,
+            game_time_service,
+            entities,
+            monsters,
+            dead,
+            hidden_propagates,
+        ): Self::SystemData,
     ) {
         if !game_state_helper.is_running() {
             return;
         }
 
-        self.monsters_hit.clear();
-        let events = damage_histories
-            .channel()
-            .read(&mut self.damage_history_reader);
-
-        for event in events {
-            if let ComponentEvent::Modified(index) = event {
-                let entity = entities.entity(*index);
-                let damage_history = damage_histories
-                    .get(entity)
-                    .expect("Expected a DamageHistory");
-                let monster = monsters.get_mut(entity);
-                if let Some(monster) = monster {
-                    for entry in &damage_history.last_entries().entries {
-                        monster.health -= entry.damage;
-                    }
-                    self.monsters_hit.add(*index);
-                }
-            }
-        }
-
-        for (monster_entity, monster, _) in (&entities, &mut monsters, &self.monsters_hit).join() {
-            if monster.health <= 0.001 {
-                entities.delete(monster_entity).unwrap();
+        for (monster_entity, dead, _, _) in (&entities, &dead, &hidden_propagates, &monsters).join()
+        {
+            let to_be_deleted = !game_state_helper.is_multiplayer()
+                || game_time_service
+                    .game_frame_number()
+                    .saturating_sub(dead.dead_since_frame)
+                    > DYING_TIME_FRAMES;
+            if to_be_deleted {
+                entities
+                    .delete(monster_entity)
+                    .expect("Expected to delete a Monster");
             }
         }
     }

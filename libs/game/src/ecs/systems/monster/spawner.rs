@@ -219,9 +219,13 @@ impl<'s> MonsterSpawnerSystemData<'s> {
         } else {
             Vector2::zero()
         };
-        let monster_entity =
-            self.monster_factory
-                .create(monster_definition.clone(), position, destination, action);
+        let monster_entity = self.monster_factory.create(
+            frame_number,
+            monster_definition.clone(),
+            position,
+            destination,
+            action,
+        );
 
         if let Some(net_id) = net_id {
             self.entity_net_metadata
