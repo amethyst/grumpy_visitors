@@ -1,5 +1,5 @@
 [package]
-name = "ha_server"
+name = "gv_server"
 version = "0.1.0"
 authors = []
 edition = "2018"
@@ -13,13 +13,13 @@ lazy_static = "1.3.0"
 log = "0.4.6"
 clap = "2.33.0"
 
-[dependencies.ha_animation_prefabs]
+[dependencies.gv_animation_prefabs]
 path = "../../libs/animation_prefabs"
 
-[dependencies.ha_core]
+[dependencies.gv_core]
 path = "../../libs/core"
 
-[dependencies.ha_game]
+[dependencies.gv_game]
 path = "../../libs/game"
 features = []
 

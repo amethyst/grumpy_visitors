@@ -47,7 +47,7 @@ impl ServerProcess {
         let executable_path = {
             let mut path = current_exe()?;
             path.pop();
-            path.join("ha_server")
+            path.join("gv_server")
         };
 
         let cmd = Command::new(executable_path)

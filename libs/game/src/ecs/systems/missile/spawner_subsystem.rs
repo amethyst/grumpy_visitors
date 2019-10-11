@@ -4,8 +4,8 @@ use amethyst::{
 };
 
 #[cfg(feature = "client")]
-use ha_client_shared::ecs::resources::EntityGraphics;
-use ha_core::{
+use gv_client_shared::ecs::resources::EntityGraphics;
+use gv_core::{
     actions::IdentifiableAction,
     ecs::{
         components::{missile::*, Dead, Monster, WorldPosition},

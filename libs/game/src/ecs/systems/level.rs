@@ -2,7 +2,7 @@ use amethyst::ecs::{System, WriteExpect};
 
 use std::time::Duration;
 
-use ha_core::{
+use gv_core::{
     actions::monster_spawn::{SpawnAction, SpawnActions, SpawnType},
     ecs::{
         resources::{net::EntityNetMetadataStorage, world::FramedUpdates, GameLevelState},

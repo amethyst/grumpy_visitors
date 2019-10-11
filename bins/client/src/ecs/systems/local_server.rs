@@ -5,7 +5,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use ha_core::net::NetConnection;
+use gv_core::net::NetConnection;
 
 use crate::ecs::resources::ServerCommand;
 

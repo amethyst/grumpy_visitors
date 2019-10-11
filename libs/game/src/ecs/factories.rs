@@ -14,8 +14,8 @@ use amethyst::{
 };
 
 #[cfg(feature = "client")]
-use ha_client_shared::ecs::resources::{AssetHandles, EntityGraphics};
-use ha_core::{
+use gv_client_shared::ecs::resources::{AssetHandles, EntityGraphics};
+use gv_core::{
     actions::{mob::MobAction, Action},
     ecs::{
         components::{damage_history::DamageHistory, *},

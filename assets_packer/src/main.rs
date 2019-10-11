@@ -33,7 +33,7 @@ use std::{
     path::Path,
 };
 
-use ha_animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
+use gv_animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
 
 struct SpriteSceneData {
     sprite_sheet: SpriteSheetPrefab,

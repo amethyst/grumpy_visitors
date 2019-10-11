@@ -449,7 +449,7 @@ version = "0.1.0"
 dependencies = [
  "amethyst 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "ha_animation_prefabs 0.1.0",
+ "gv_animation_prefabs 0.1.0",
  "image 0.21.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "ron 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "texture_packer 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1292,7 +1292,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ha_animation_prefabs"
+name = "gv_animation_prefabs"
 version = "0.1.0"
 dependencies = [
  "amethyst 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1301,17 +1301,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "ha_client"
+name = "gv_client"
 version = "0.1.0"
 dependencies = [
  "amethyst 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bincode 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "ha_animation_prefabs 0.1.0",
- "ha_client_shared 0.1.0",
- "ha_core 0.1.0",
- "ha_game 0.1.0",
+ "gv_animation_prefabs 0.1.0",
+ "gv_client_shared 0.1.0",
+ "gv_core 0.1.0",
+ "gv_game 0.1.0",
  "laminar 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1319,13 +1319,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "ha_client_shared"
+name = "gv_client_shared"
 version = "0.1.0"
 dependencies = [
  "amethyst 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "directories 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "ha_animation_prefabs 0.1.0",
- "ha_core 0.1.0",
+ "gv_animation_prefabs 0.1.0",
+ "gv_core 0.1.0",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "ron 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1334,7 +1334,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ha_core"
+name = "gv_core"
 version = "0.1.0"
 dependencies = [
  "amethyst 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1349,14 +1349,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "ha_game"
+name = "gv_game"
 version = "0.1.0"
 dependencies = [
  "amethyst 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bincode 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ha_animation_prefabs 0.1.0",
- "ha_client_shared 0.1.0",
- "ha_core 0.1.0",
+ "gv_animation_prefabs 0.1.0",
+ "gv_client_shared 0.1.0",
+ "gv_core 0.1.0",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1365,7 +1365,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ha_server"
+name = "gv_server"
 version = "0.1.0"
 dependencies = [
  "amethyst 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1373,9 +1373,9 @@ dependencies = [
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "fern 0.5.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "ha_animation_prefabs 0.1.0",
- "ha_core 0.1.0",
- "ha_game 0.1.0",
+ "gv_animation_prefabs 0.1.0",
+ "gv_core 0.1.0",
+ "gv_game 0.1.0",
  "laminar 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",

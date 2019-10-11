@@ -13,20 +13,20 @@ use log::LevelFilter;
 
 use std::{env, io, path::PathBuf, str::FromStr, time::Duration};
 
-use ha_core::{
+use gv_core::{
     ecs::resources::world::{
         DummyFramedUpdate, FramedUpdates, ReceivedClientActionUpdates, ServerWorldUpdates,
     },
     net::EncodedMessage,
 };
-use ha_game::{
+use gv_game::{
     build_game_logic_systems, ecs::systems::NetConnectionManagerSystem, states::LoadingState,
 };
 
 use crate::ecs::{resources::LastBroadcastedFrame, systems::*};
 
 fn main() -> amethyst::Result<()> {
-    let cli_matches = clap::App::new("hello_amethyst")
+    let cli_matches = clap::App::new("grumpy_visitors")
         .version("0.1")
         .author("Vladyslav Batyrenko <mvlabat@gmail.com>")
         .about("A prototype of a top-down EvilInvasion-like 2D arcade/action")
@@ -47,13 +47,13 @@ fn main() -> amethyst::Result<()> {
 
     Logger::from_config(Default::default())
         .level_for("gfx_backend_vulkan", LogLevelFilter::Warn)
-        .level_for("ha_game::ecs::systems", LogLevelFilter::Debug)
+        .level_for("gv_game::ecs::systems", LogLevelFilter::Debug)
         .level_for(
-            "ha_game::ecs::systems::net_connection_manager",
+            "gv_game::ecs::systems::net_connection_manager",
             LogLevelFilter::Info,
         )
-        .level_for("ha_game::utils::net", LogLevelFilter::Info)
-        .level_for("ha_server", LogLevelFilter::Debug)
+        .level_for("gv_game::utils::net", LogLevelFilter::Info)
+        .level_for("gv_server", LogLevelFilter::Debug)
         .start();
 
     let mut builder = Application::build("./", LoadingState::default())?;

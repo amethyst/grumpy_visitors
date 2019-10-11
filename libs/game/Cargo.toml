@@ -1,12 +1,12 @@
 [package]
-name = "ha_game"
+name = "gv_game"
 version = "0.1.0"
 authors = []
 edition = "2018"
 
 [features]
 default = []
-client = ["ha_client_shared"]
+client = ["gv_client_shared"]
 
 [dependencies.amethyst]
 version = "0.13.2"
@@ -19,12 +19,12 @@ num = "0.2.0"
 rand = "0.6.5"
 shrinkwraprs = "0.2.1"
 
-[dependencies.ha_animation_prefabs]
+[dependencies.gv_animation_prefabs]
 path = "../animation_prefabs"
 
-[dependencies.ha_client_shared]
+[dependencies.gv_client_shared]
 path = "../client_shared"
 optional = true
 
-[dependencies.ha_core]
+[dependencies.gv_core]
 path = "../core"

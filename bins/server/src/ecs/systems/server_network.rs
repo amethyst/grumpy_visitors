@@ -1,6 +1,6 @@
 use amethyst::ecs::{Join, ReadExpect, System, WriteExpect, WriteStorage};
 
-use ha_core::{
+use gv_core::{
     actions::{
         player::{PlayerCastAction, PlayerWalkAction},
         ClientActionUpdate, IdentifiableAction,
@@ -22,7 +22,7 @@ use ha_core::{
         NetEvent, NetIdentifier, NetUpdate, INTERPOLATION_FRAME_DELAY,
     },
 };
-use ha_game::{
+use gv_game::{
     ecs::resources::ConnectionEvents,
     utils::net::{broadcast_message_reliable, send_message_reliable},
 };

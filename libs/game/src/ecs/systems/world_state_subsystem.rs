@@ -1,6 +1,6 @@
 use amethyst::ecs::Entities;
 
-use ha_core::ecs::{
+use gv_core::ecs::{
     components::{
         missile::Missile, Dead, Monster, Player, PlayerActions, PlayerLastCastedSpells,
         WorldPosition,

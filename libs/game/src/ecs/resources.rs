@@ -5,15 +5,15 @@ use amethyst::renderer::palette::LinSrgba;
 use std::collections::HashMap;
 
 #[cfg(feature = "client")]
-use ha_client_shared::{
+use gv_client_shared::{
     ecs::resources::EntityGraphics,
     utils::graphic_helpers::{create_color_material, create_mesh, generate_circle_vertices},
 };
 #[cfg(not(feature = "client"))]
-use ha_core::net::client_message::ClientMessagePayload;
+use gv_core::net::client_message::ClientMessagePayload;
 #[cfg(feature = "client")]
-use ha_core::net::server_message::ServerMessagePayload;
-use ha_core::{actions::mob::MobAttackType, net::ConnectionNetEvent};
+use gv_core::net::server_message::ServerMessagePayload;
+use gv_core::{actions::mob::MobAttackType, net::ConnectionNetEvent};
 
 #[derive(Clone)]
 pub struct MonsterDefinition {

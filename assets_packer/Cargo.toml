@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = []
 edition = "2018"
 
-[dependencies.ha_animation_prefabs]
+[dependencies.gv_animation_prefabs]
 path = "../libs/animation_prefabs"
 
 [dependencies.amethyst]

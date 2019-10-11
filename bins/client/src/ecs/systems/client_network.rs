@@ -2,8 +2,8 @@ use amethyst::ecs::{Entities, Join, ReadExpect, ReadStorage, System, WriteExpect
 
 use std::cmp::Ordering;
 
-use ha_client_shared::ecs::resources::MultiplayerRoomState;
-use ha_core::{
+use gv_client_shared::ecs::resources::MultiplayerRoomState;
+use gv_core::{
     actions::monster_spawn::SpawnActions,
     ecs::{
         components::NetConnectionModel,
@@ -22,7 +22,7 @@ use ha_core::{
         NetEvent, NetIdentifier, INTERPOLATION_FRAME_DELAY,
     },
 };
-use ha_game::{
+use gv_game::{
     ecs::resources::ConnectionEvents,
     utils::net::{send_message_reliable, send_message_unreliable},
 };

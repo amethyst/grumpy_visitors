@@ -3,7 +3,7 @@ use amethyst::{
     shred::{ResourceId, SystemData},
 };
 
-use ha_core::{
+use gv_core::{
     actions::{
         mob::MobAction,
         monster_spawn::{SpawnAction, SpawnActions, SpawnType},

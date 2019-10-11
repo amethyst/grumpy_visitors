@@ -6,8 +6,8 @@ use amethyst::{
 use std::time::Duration;
 
 #[cfg(not(feature = "client"))]
-use ha_core::net::NetUpdateWithPosition;
-use ha_core::{
+use gv_core::net::NetUpdateWithPosition;
+use gv_core::{
     actions::{
         player::{PlayerCastAction, PlayerLookAction, PlayerWalkAction},
         ClientActionUpdate, IdentifiableAction,

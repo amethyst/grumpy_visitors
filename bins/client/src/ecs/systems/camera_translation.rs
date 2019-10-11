@@ -9,7 +9,7 @@ use amethyst::{
 };
 use num;
 
-use ha_core::ecs::resources::GameLevelState;
+use gv_core::ecs::resources::GameLevelState;
 
 use crate::utils::camera;
 

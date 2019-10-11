@@ -11,7 +11,7 @@ use amethyst::{
     },
 };
 
-use ha_core::math::Vector3;
+use gv_core::math::Vector3;
 
 pub fn generate_rectangle_vertices(
     left_bottom: Vector3,

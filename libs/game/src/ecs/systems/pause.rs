@@ -1,6 +1,6 @@
 use amethyst::ecs::{ReadExpect, System, WriteExpect};
 
-use ha_core::ecs::resources::{net::MultiplayerGameState, GameTime};
+use gv_core::ecs::resources::{net::MultiplayerGameState, GameTime};
 
 pub struct PauseSystem;
 

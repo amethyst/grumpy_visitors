@@ -6,7 +6,7 @@ use amethyst::{
     renderer::SpriteRender,
 };
 
-use ha_animation_prefabs::AnimationId;
+use gv_animation_prefabs::AnimationId;
 
 pub fn start_hero_animations(world: &mut World) {
     world.exec(

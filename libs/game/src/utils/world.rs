@@ -6,7 +6,7 @@ use rand::{self, Rng};
 
 use std::ops::Deref;
 
-use ha_core::{
+use gv_core::{
     actions::monster_spawn::Side,
     ecs::{
         components::{Dead, Monster, WorldPosition},
