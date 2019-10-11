@@ -34,7 +34,6 @@ pub struct MonsterSpawnerSystemData<'s> {
     pub game_state_helper: GameStateHelper<'s>,
     pub monster_definitions: ReadExpect<'s, MonsterDefinitions>,
     pub game_level_state: ReadExpect<'s, GameLevelState>,
-    pub spawn_actions: WriteExpect<'s, SpawnActions>,
     pub entity_net_metadata: WriteStorage<'s, EntityNetMetadata>,
     pub entity_net_metadata_storage: WriteExpect<'s, EntityNetMetadataStorage>,
     pub monster_factory: MonsterFactory<'s>,
@@ -44,56 +43,58 @@ pub struct MonsterSpawnerSystem;
 
 impl<'s> System<'s> for MonsterSpawnerSystem {
     type SystemData = (
-        WriteExpect<'s, FramedUpdates<FrameUpdate>>,
         WriteExpect<'s, AggregatedOutcomingUpdates>,
+        ReadExpect<'s, FramedUpdates<FrameUpdate>>,
+        WriteExpect<'s, FramedUpdates<SpawnActions>>,
         MonsterSpawnerSystemData<'s>,
     );
 
     fn run(
         &mut self,
-        (mut framed_updates, mut aggregated_outcoming_updates, mut system_data): Self::SystemData,
+        (mut aggregated_outcoming_updates, framed_updates, mut spawn_actions, mut system_data): Self::SystemData,
     ) {
         if !system_data.game_state_helper.is_running() {
             return;
         }
 
-        framed_updates.reserve_updates(system_data.game_time_service.game_frame_number());
+        // A hackish way to sync oldest_updated_frame on server side.
+        spawn_actions.oldest_updated_frame = spawn_actions
+            .oldest_updated_frame
+            .min(framed_updates.oldest_updated_frame);
 
-        for frame_updates in framed_updates.iter_from_oldest_update() {
-            if frame_updates.frame_number > system_data.game_time_service.game_frame_number() {
+        for spawn_actions in spawn_actions.iter_from_oldest_update() {
+            if spawn_actions.frame_number > system_data.game_time_service.game_frame_number() {
                 break;
             }
 
             system_data.spawn_monsters(
-                frame_updates,
+                spawn_actions,
                 outcoming_net_updates_mut(
                     &mut *aggregated_outcoming_updates,
-                    frame_updates.frame_number,
+                    spawn_actions.frame_number,
                     system_data.game_time_service.game_frame_number(),
                 ),
             );
         }
+        spawn_actions.oldest_updated_frame = system_data.game_time_service.game_frame_number();
     }
 }
 
 impl<'s> MonsterSpawnerSystemData<'s> {
     pub fn spawn_monsters(
         &mut self,
-        frame_updates: &FrameUpdate,
+        spawn_actions: &SpawnActions,
         outcoming_net_updates: &mut OutcomingNetUpdates,
     ) {
         if !self.game_state_helper.is_running() {
             return;
         }
 
-        let frame_number = frame_updates.frame_number;
-        let spawn_actions = self.get_spawn_actions(&frame_updates);
-        if self.game_state_helper.is_multiplayer()
-            && self.game_state_helper.is_authoritative()
-            && self.game_time_service.game_frame_number() == frame_number
-        {
-            Self::add_action_updates(outcoming_net_updates, spawn_actions.clone());
+        let frame_number = spawn_actions.frame_number;
+        if self.game_state_helper.is_multiplayer() && self.game_state_helper.is_authoritative() {
+            Self::add_action_updates(outcoming_net_updates, spawn_actions.spawn_actions.clone());
         }
+        let spawn_actions = self.get_spawn_actions(&spawn_actions);
 
         for spawn_action in spawn_actions {
             let ghoul = self
@@ -152,14 +153,14 @@ impl<'s> MonsterSpawnerSystemData<'s> {
         }
     }
 
-    #[cfg(feature = "client")]
-    fn get_spawn_actions(&mut self, frame_updates: &FrameUpdate) -> Vec<SpawnAction> {
+    fn get_spawn_actions(&mut self, spawn_actions: &SpawnActions) -> Vec<SpawnAction> {
         if self.game_state_helper.is_multiplayer() {
-            frame_updates
+            spawn_actions
                 .spawn_actions
                 .iter()
                 .cloned()
                 .filter(|action| {
+                    // Filter out already spawned entities.
                     let entity_net_id = match &action.spawn_type {
                         SpawnType::Single { entity_net_id, .. } => *entity_net_id,
                         SpawnType::Borderline {
@@ -177,16 +178,7 @@ impl<'s> MonsterSpawnerSystemData<'s> {
                 })
                 .collect()
         } else {
-            self.spawn_actions.0.drain(..).collect()
-        }
-    }
-
-    #[cfg(not(feature = "client"))]
-    fn get_spawn_actions(&mut self, frame_updates: &FrameUpdate) -> Vec<SpawnAction> {
-        if self.game_time_service.game_frame_number() == frame_updates.frame_number {
-            self.spawn_actions.0.drain(..).collect()
-        } else {
-            Vec::new()
+            spawn_actions.spawn_actions.clone()
         }
     }
 

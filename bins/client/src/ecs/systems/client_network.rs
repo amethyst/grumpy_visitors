@@ -4,6 +4,7 @@ use std::cmp::Ordering;
 
 use ha_client_shared::ecs::resources::MultiplayerRoomState;
 use ha_core::{
+    actions::monster_spawn::SpawnActions,
     ecs::{
         components::NetConnectionModel,
         resources::{
@@ -46,6 +47,7 @@ impl<'s> System<'s> for ClientNetworkSystem {
         WriteExpect<'s, LastAcknowledgedUpdate>,
         WriteExpect<'s, FramedUpdates<ReceivedServerWorldUpdate>>,
         WriteExpect<'s, FramedUpdates<PlayerActionUpdates>>,
+        WriteExpect<'s, FramedUpdates<SpawnActions>>,
         WriteStorage<'s, NetConnection>,
         ReadStorage<'s, NetConnectionModel>,
     );
@@ -63,6 +65,7 @@ impl<'s> System<'s> for ClientNetworkSystem {
             mut last_acknowledged_update,
             mut framed_updates,
             mut player_actions_updates,
+            mut spawn_actions,
             mut connections,
             net_connection_models,
         ): Self::SystemData,
@@ -154,10 +157,12 @@ impl<'s> System<'s> for ClientNetworkSystem {
                             .frame_number
                             .max(game_time_service.game_frame_number());
                         framed_updates.reserve_updates(frame_to_reserve);
+                        spawn_actions.reserve_updates(frame_to_reserve);
 
                         apply_world_updates(
                             vec![multiplayer_room_state.player_net_id],
                             &mut framed_updates,
+                            &mut spawn_actions,
                             updates,
                         );
                     }
@@ -250,6 +255,7 @@ impl<'s> System<'s> for ClientNetworkSystem {
 fn apply_world_updates(
     controlled_players: Vec<NetIdentifier>,
     framed_updates: &mut FramedUpdates<ReceivedServerWorldUpdate>,
+    spawn_actions: &mut FramedUpdates<SpawnActions>,
     mut incoming_updates: Vec<ServerWorldUpdate>,
 ) {
     if incoming_updates.is_empty() {
@@ -283,6 +289,14 @@ fn apply_world_updates(
             )
         })
         .unwrap();
+
+    spawn_actions.oldest_updated_frame = others_start_frame_number;
+    for (spawn_actions, server_update) in spawn_actions
+        .updates_iter_mut(others_start_frame_number)
+        .zip(incoming_updates.iter())
+    {
+        spawn_actions.spawn_actions = server_update.spawn_actions.clone()
+    }
 
     framed_updates.oldest_updated_frame = controlled_start_frame_number;
     let mut controlled_player_updates_iter = controlled_player_updates.into_iter();

@@ -11,7 +11,7 @@ use ha_core::net::NetUpdateWithPosition;
 use ha_core::{
     actions::{
         player::{PlayerCastAction, PlayerLookAction, PlayerWalkAction},
-        ClientActionUpdate,
+        ClientActionUpdate, IdentifiableAction,
     },
     ecs::{
         components::{
@@ -29,7 +29,6 @@ use ha_core::{
 };
 
 use super::super::{ClientFrameUpdate, OutcomingNetUpdates, WriteExpectCell, WriteStorageCell};
-use ha_core::actions::IdentifiableAction;
 
 const MISSILE_CAST_COOLDOWN: Duration = Duration::from_millis(500);
 
@@ -338,7 +337,7 @@ impl<'s> PlayerActionSubsystem<'s> {
                                 outcoming_net_updates,
                                 ..
                             } = net_args.expect("Expected ApplyCastActionNetArgs in multiplayer");
-                            log::debug!(
+                            log::trace!(
                                 "Sending a new cast update (for {}) to a server (frame {}): {:?}",
                                 entity_net_id,
                                 frame_number,

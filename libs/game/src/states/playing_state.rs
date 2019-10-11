@@ -15,21 +15,18 @@ use ha_client_shared::{
     ecs::{factories::CameraFactory, resources::MultiplayerRoomState},
     utils::{self, animation},
 };
+use ha_core::ecs::{
+    components::EntityNetMetadata,
+    resources::{
+        net::{EntityNetMetadataStorage, MultiplayerGameState},
+        GameEngineState, GameLevelState,
+    },
+    system_data::time::GameTimeService,
+};
 #[cfg(not(feature = "client"))]
 use ha_core::net::server_message::ServerMessagePayload;
 #[cfg(not(feature = "client"))]
 use ha_core::net::NetConnection;
-use ha_core::{
-    actions::monster_spawn::SpawnActions,
-    ecs::{
-        components::EntityNetMetadata,
-        resources::{
-            net::{EntityNetMetadataStorage, MultiplayerGameState},
-            GameEngineState, GameLevelState,
-        },
-        system_data::time::GameTimeService,
-    },
-};
 
 use crate::ecs::factories::{LandscapeFactory, PlayerFactory};
 #[cfg(not(feature = "client"))]
@@ -44,7 +41,6 @@ impl SimpleState for PlayingState {
         let world = data.world;
         *world.fetch_mut::<GameEngineState>() = GameEngineState::Playing;
 
-        world.insert(SpawnActions(Vec::new()));
         world.insert(GameLevelState::default());
 
         GameTimeService::fetch(&world).set_game_start_time();

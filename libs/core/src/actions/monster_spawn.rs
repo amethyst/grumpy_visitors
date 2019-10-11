@@ -6,10 +6,26 @@ use serde_derive::{Deserialize, Serialize};
 
 use std::ops::Range;
 
-use crate::{math::Vector2, net::NetIdentifier};
+use crate::{ecs::resources::world::FramedUpdate, math::Vector2, net::NetIdentifier};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SpawnActions(pub Vec<SpawnAction>);
+pub struct SpawnActions {
+    pub frame_number: u64,
+    pub spawn_actions: Vec<SpawnAction>,
+}
+
+impl FramedUpdate for SpawnActions {
+    fn new_update(frame_number: u64) -> Self {
+        Self {
+            frame_number,
+            spawn_actions: Vec::new(),
+        }
+    }
+
+    fn frame_number(&self) -> u64 {
+        self.frame_number
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpawnAction {

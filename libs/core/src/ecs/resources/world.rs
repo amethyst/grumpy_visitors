@@ -448,7 +448,6 @@ pub struct ReceivedServerWorldUpdate {
     pub controlled_player_updates: ReceivedPlayerUpdate,
     pub mob_actions_updates: Vec<NetUpdateWithPosition<MobAction<NetIdentifier>>>,
     pub damage_histories_updates: Vec<NetUpdate<DamageHistoryEntries>>,
-    pub spawn_actions: Vec<SpawnAction>,
 }
 
 impl ReceivedServerWorldUpdate {
@@ -459,7 +458,6 @@ impl ReceivedServerWorldUpdate {
         self.player_updates.player_cast_actions_updates = server_update.player_cast_actions_updates;
         self.mob_actions_updates = server_update.mob_actions_updates;
         self.damage_histories_updates = server_update.damage_histories_updates;
-        self.spawn_actions = server_update.spawn_actions;
     }
 }
 
@@ -481,7 +479,6 @@ impl FramedUpdate for ReceivedServerWorldUpdate {
             controlled_player_updates: ReceivedPlayerUpdate::default(),
             mob_actions_updates: Vec::new(),
             damage_histories_updates: Vec::new(),
-            spawn_actions: Vec::new(),
         }
     }
 

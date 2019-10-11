@@ -5,7 +5,7 @@ use std::time::Duration;
 use ha_core::{
     actions::monster_spawn::{SpawnAction, SpawnActions, SpawnType},
     ecs::{
-        resources::{net::EntityNetMetadataStorage, GameLevelState},
+        resources::{net::EntityNetMetadataStorage, world::FramedUpdates, GameLevelState},
         system_data::time::GameTimeService,
     },
     math::Vector2,
@@ -28,7 +28,7 @@ impl<'s> System<'s> for LevelSystem {
         GameStateHelper<'s>,
         GameTimeService<'s>,
         WriteExpect<'s, GameLevelState>,
-        WriteExpect<'s, SpawnActions>,
+        WriteExpect<'s, FramedUpdates<SpawnActions>>,
         WriteExpect<'s, EntityNetMetadataStorage>,
     );
 
@@ -45,6 +45,15 @@ impl<'s> System<'s> for LevelSystem {
         if !game_state_helper.is_running() || !game_state_helper.is_authoritative() {
             return;
         }
+        spawn_actions.reserve_updates(game_time_service.game_frame_number());
+        let spawn_actions = spawn_actions
+            .update_frame(game_time_service.game_frame_number())
+            .unwrap_or_else(|| {
+                panic!(
+                    "Expected SpawnActions for frame {}",
+                    game_time_service.game_frame_number()
+                )
+            });
 
         let now = game_time_service.level_duration();
 
@@ -54,7 +63,7 @@ impl<'s> System<'s> for LevelSystem {
         }
 
         if game_time_service.game_frame_number() == 10 {
-            spawn_actions.0.push(SpawnAction {
+            spawn_actions.spawn_actions.push(SpawnAction {
                 spawn_type: SpawnType::Single {
                     entity_net_id: Some(entity_net_metadata_storage.reserve_ids(1).start),
                     position: Vector2::new(0.0, 300.0),
@@ -88,7 +97,7 @@ impl<'s> System<'s> for LevelSystem {
                 "Spawning {} monster(s) (SpawnType::Borderline)",
                 monsters_to_spawn
             );
-            spawn_actions.0.push(SpawnAction {
+            spawn_actions.spawn_actions.push(SpawnAction {
                 spawn_type: SpawnType::Borderline {
                     count: monsters_to_spawn as u8,
                     entity_net_id_range,
@@ -106,7 +115,7 @@ impl<'s> System<'s> for LevelSystem {
                 monsters_to_spawn
             );
             for _ in 0..monsters_to_spawn {
-                spawn_actions.0.push(SpawnAction {
+                spawn_actions.spawn_actions.push(SpawnAction {
                     spawn_type: SpawnType::Single {
                         entity_net_id: Some(entity_net_metadata_storage.reserve_ids(1).start),
                         position: random_spawn_position(&game_level_state),

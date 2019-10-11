@@ -18,13 +18,10 @@ use ha_client_shared::ecs::{
     components::HealthUiGraphics,
     resources::{AssetHandles, HealthUiMesh, MissileGraphics},
 };
-use ha_core::{
-    actions::monster_spawn::SpawnActions,
-    ecs::{
-        components::{missile::Missile, Player, WorldPosition},
-        resources::{GameEngineState, GameLevelState, GameTime, NewGameEngineState},
-        tags::*,
-    },
+use ha_core::ecs::{
+    components::{missile::Missile, Player, WorldPosition},
+    resources::{GameEngineState, GameLevelState, GameTime, NewGameEngineState},
+    tags::*,
 };
 
 use crate::ecs::resources::MonsterDefinitions;
@@ -45,7 +42,6 @@ impl SimpleState for LoadingState {
         world.register::<Missile>();
         world.register::<Player>();
         world.register::<Tag<Landscape>>();
-        world.insert(SpawnActions(Vec::new()));
         world.insert(GameLevelState::default());
         world.insert(GameTime::default());
         world.insert(GameEngineState::Loading);

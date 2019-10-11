@@ -9,14 +9,17 @@ use amethyst::{
     prelude::{GameDataBuilder, World, WorldExt},
 };
 
-use ha_core::ecs::{
-    components::damage_history::DamageHistory,
-    resources::{
-        net::{
-            ActionUpdateIdProvider, CastActionsToExecute, EntityNetMetadataStorage,
-            MultiplayerGameState,
+use ha_core::{
+    actions::monster_spawn::SpawnActions,
+    ecs::{
+        components::damage_history::DamageHistory,
+        resources::{
+            net::{
+                ActionUpdateIdProvider, CastActionsToExecute, EntityNetMetadataStorage,
+                MultiplayerGameState,
+            },
+            world::{FramedUpdates, PlayerActionUpdates, WorldStates},
         },
-        world::{FramedUpdates, PlayerActionUpdates, WorldStates},
     },
 };
 
@@ -31,6 +34,7 @@ pub fn build_game_logic_systems<'a, 'b>(
     is_server: bool,
 ) -> Result<GameDataBuilder<'a, 'b>, Error> {
     world.insert(FramedUpdates::<PlayerActionUpdates>::default());
+    world.insert(FramedUpdates::<SpawnActions>::default());
     world.insert(WorldStates::default());
     world.insert(ConnectionEvents(Vec::new()));
     world.insert(MultiplayerGameState::new());
