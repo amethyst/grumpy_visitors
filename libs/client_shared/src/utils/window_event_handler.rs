@@ -1,14 +1,13 @@
 use amethyst::{
     ecs::{Join, World},
     input::is_close_requested,
-    prelude::{SimpleTrans, StateEvent, Trans},
+    prelude::{SimpleTrans, StateEvent, Trans, WorldExt},
     renderer::{camera::Projection, Camera},
     window::{MonitorIdent, ScreenDimensions, Window},
     winit::{self, ElementState, VirtualKeyCode},
 };
 
 use crate::settings::Settings;
-use amethyst::prelude::WorldExt;
 
 // TODO: I don't like how this module looks, though I dunno why and how make it look better.
 pub fn handle_window_event(world: &World, event: &StateEvent) -> Option<SimpleTrans> {

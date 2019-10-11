@@ -5,7 +5,6 @@ use amethyst::{
 
 use std::time::Duration;
 
-use crate::ecs::system_data::GameStateHelper;
 #[cfg(not(feature = "client"))]
 use ha_core::net::NetUpdateWithPosition;
 use ha_core::{
@@ -28,7 +27,10 @@ use ha_core::{
     net::{NetIdentifier, NetUpdate},
 };
 
-use super::super::{ClientFrameUpdate, OutcomingNetUpdates, WriteExpectCell, WriteStorageCell};
+use crate::ecs::{
+    system_data::GameStateHelper,
+    systems::{ClientFrameUpdate, OutcomingNetUpdates, WriteExpectCell, WriteStorageCell},
+};
 
 const MISSILE_CAST_COOLDOWN: Duration = Duration::from_millis(500);
 
