@@ -3,7 +3,7 @@ use amethyst::{
     ecs::{Entities, Join, WriteStorage},
 };
 
-use ha_core::{
+use gv_core::{
     ecs::{
         components::{
             damage_history::{DamageHistory, DamageHistoryEntries},

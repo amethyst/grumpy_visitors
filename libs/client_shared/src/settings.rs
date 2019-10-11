@@ -22,7 +22,7 @@ pub struct Settings {
 
 impl Settings {
     pub fn new() -> amethyst::Result<Self> {
-        let project_dirs = ProjectDirs::from("", "Psychedelic Donkey", "hello-amethyst")
+        let project_dirs = ProjectDirs::from("", "Psychedelic Donkey", "Grumpy Visitors")
             .expect("Failed to get the project directory");
         fs::create_dir_all(project_dirs.config_dir())?;
 

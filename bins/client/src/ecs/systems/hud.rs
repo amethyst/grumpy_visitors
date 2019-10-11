@@ -4,8 +4,8 @@ use amethyst::{
     window::ScreenDimensions,
 };
 
-use ha_client_shared::ecs::{components::HealthUiGraphics, resources::HEALTH_UI_SCREEN_PADDING};
-use ha_core::{ecs::components::Player, math::Vector2};
+use gv_client_shared::ecs::{components::HealthUiGraphics, resources::HEALTH_UI_SCREEN_PADDING};
+use gv_core::{ecs::components::Player, math::Vector2};
 
 use crate::ecs::system_data::ui::UiFinderMut;
 

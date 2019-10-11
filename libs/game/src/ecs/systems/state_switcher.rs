@@ -4,7 +4,7 @@ use amethyst::{
     shrev::EventChannel,
 };
 
-use ha_core::ecs::resources::{GameEngineState, NewGameEngineState};
+use gv_core::ecs::resources::{GameEngineState, NewGameEngineState};
 
 use crate::states::*;
 

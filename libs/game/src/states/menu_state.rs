@@ -4,7 +4,7 @@ use amethyst::{
     renderer::Camera,
 };
 
-use ha_core::ecs::{
+use gv_core::ecs::{
     components::{missile::Missile, Monster, Player},
     resources::{GameEngineState, GameLevelState},
 };

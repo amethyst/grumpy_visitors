@@ -1,5 +1,5 @@
 [package]
-name = "ha_core"
+name = "gv_core"
 version = "0.1.0"
 authors = []
 edition = "2018"

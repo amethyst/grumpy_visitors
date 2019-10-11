@@ -5,8 +5,8 @@ use amethyst::{
     renderer::SpriteRender,
 };
 
-use ha_animation_prefabs::AnimationId;
-use ha_core::{
+use gv_animation_prefabs::AnimationId;
+use gv_core::{
     ecs::components::{Monster, Player},
     math::Vector3,
 };

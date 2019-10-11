@@ -2,7 +2,7 @@ use amethyst::ecs::{Join, System, WriteExpect, WriteStorage};
 
 use std::iter::FromIterator;
 
-use ha_core::{
+use gv_core::{
     ecs::{
         resources::world::{
             ClientWorldUpdates, ImmediatePlayerActionsUpdates, PlayerLookActionUpdates,
@@ -11,7 +11,7 @@ use ha_core::{
     },
     net::{client_message::ClientMessagePayload, NetConnection, INTERPOLATION_FRAME_DELAY},
 };
-use ha_game::{ecs::system_data::GameStateHelper, utils::net::send_message_reliable};
+use gv_game::{ecs::system_data::GameStateHelper, utils::net::send_message_reliable};
 
 const BROADCAST_FRAME_INTERVAL: u64 = 5;
 

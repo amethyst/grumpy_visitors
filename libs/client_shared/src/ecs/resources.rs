@@ -7,8 +7,8 @@ use amethyst::{
 
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
-use ha_animation_prefabs::GameSpriteAnimationPrefab;
-use ha_core::{math::Vector3, net::NetIdentifier};
+use gv_animation_prefabs::GameSpriteAnimationPrefab;
+use gv_core::{math::Vector3, net::NetIdentifier};
 
 use crate::utils::graphic_helpers::{
     create_color_material, create_mesh, generate_circle_vertices, generate_rectangle_vertices,

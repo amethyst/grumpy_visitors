@@ -1,6 +1,6 @@
 use amethyst::ecs::{Entities, Entity, Join, ReadExpect, ReadStorage, WriteStorage};
 
-use ha_core::{
+use gv_core::{
     actions::{
         mob::{MobAction, MobAttackAction, MobAttackType},
         Action,

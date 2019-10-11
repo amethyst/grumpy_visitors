@@ -3,10 +3,10 @@ use amethyst::ecs::{Join, WriteStorage};
 use amethyst::network::{NetEvent, NetPacket};
 
 #[cfg(feature = "client")]
-use ha_core::net::client_message::ClientMessagePayload;
+use gv_core::net::client_message::ClientMessagePayload;
 #[cfg(not(feature = "client"))]
-use ha_core::net::server_message::ServerMessagePayload;
-use ha_core::net::NetConnection;
+use gv_core::net::server_message::ServerMessagePayload;
+use gv_core::net::NetConnection;
 
 #[cfg(not(feature = "client"))]
 pub fn broadcast_message_reliable(

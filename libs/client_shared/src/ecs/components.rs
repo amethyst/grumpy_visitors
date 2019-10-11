@@ -1,6 +1,6 @@
 use amethyst::ecs::{Component, DenseVecStorage};
 
-use ha_core::math::Vector2;
+use gv_core::math::Vector2;
 
 pub struct HealthUiGraphics {
     pub screen_position: Vector2,

@@ -8,8 +8,8 @@ use lazy_static::lazy_static;
 
 use std::time::Duration;
 
-use ha_client_shared::ecs::resources::MultiplayerRoomState;
-use ha_core::ecs::{
+use gv_client_shared::ecs::resources::MultiplayerRoomState;
+use gv_core::ecs::{
     resources::{net::MultiplayerGameState, GameEngineState, GameLevelState, NewGameEngineState},
     system_data::time::GameTimeService,
 };

@@ -9,8 +9,8 @@ use amethyst::{
     window::ScreenDimensions,
 };
 
-use ha_animation_prefabs::GameSpriteAnimationPrefab;
-use ha_core::{ecs::components::ClientPlayerActions, math::Vector2};
+use gv_animation_prefabs::GameSpriteAnimationPrefab;
+use gv_core::{ecs::components::ClientPlayerActions, math::Vector2};
 
 use crate::ecs::{
     components::HealthUiGraphics,

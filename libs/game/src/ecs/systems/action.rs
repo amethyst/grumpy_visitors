@@ -16,8 +16,8 @@ use std::marker::PhantomData;
 use std::{cell::RefCell, rc::Rc};
 
 #[cfg(feature = "client")]
-use ha_client_shared::ecs::resources::MissileGraphics;
-use ha_core::{
+use gv_client_shared::ecs::resources::MissileGraphics;
+use gv_core::{
     actions::{
         mob::MobAction,
         player::{PlayerCastAction, PlayerLookAction, PlayerWalkAction},

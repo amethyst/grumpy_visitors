@@ -1,6 +1,6 @@
 use amethyst::ecs::{storage::GenericReadStorage, Entity};
 
-use ha_core::ecs::components::Dead;
+use gv_core::ecs::components::Dead;
 
 pub fn is_dead(
     entity: Entity,

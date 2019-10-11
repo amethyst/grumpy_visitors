@@ -3,7 +3,7 @@ use amethyst::{
     shred::{ResourceId, SystemData},
 };
 
-use ha_core::ecs::resources::{net::MultiplayerGameState, GameEngineState};
+use gv_core::ecs::resources::{net::MultiplayerGameState, GameEngineState};
 
 #[derive(SystemData)]
 pub struct GameStateHelper<'s> {

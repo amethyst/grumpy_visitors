@@ -6,7 +6,7 @@ use log;
 
 use std::time::{Duration, Instant};
 
-use ha_core::{
+use gv_core::{
     ecs::{components::NetConnectionModel, system_data::time::GameTimeService},
     net::{
         client_message::ClientMessagePayload, server_message::ServerMessagePayload,

@@ -31,13 +31,13 @@ use std::marker::PhantomData;
 use std::{cell::RefCell, rc::Rc};
 
 #[cfg(feature = "client")]
-use ha_client_shared::ecs::resources::MissileGraphics;
+use gv_client_shared::ecs::resources::MissileGraphics;
 #[cfg(feature = "client")]
-use ha_core::ecs::resources::world::{
+use gv_core::ecs::resources::world::{
     ClientWorldUpdates, PlayerActionUpdates, ReceivedServerWorldUpdate,
 };
 #[cfg(not(feature = "client"))]
-use ha_core::ecs::resources::world::{
+use gv_core::ecs::resources::world::{
     DummyFramedUpdate, ReceivedClientActionUpdates, ServerWorldUpdate, ServerWorldUpdates,
 };
 

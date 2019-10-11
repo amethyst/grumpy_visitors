@@ -9,7 +9,7 @@ use amethyst::{
     prelude::{GameDataBuilder, World, WorldExt},
 };
 
-use ha_core::{
+use gv_core::{
     actions::monster_spawn::SpawnActions,
     ecs::{
         components::damage_history::DamageHistory,

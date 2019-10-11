@@ -1,5 +1,5 @@
 (
-  title: "hello_amethyst",
+  title: "Grumpy Visitors",
   dimensions: None,
   max_dimensions: None,
   min_dimensions: Some((1024, 768)),

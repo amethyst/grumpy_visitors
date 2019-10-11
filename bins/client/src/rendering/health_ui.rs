@@ -25,8 +25,8 @@ use amethyst::{
 
 use std::path::PathBuf;
 
-use ha_client_shared::ecs::{components::HealthUiGraphics, resources::HealthUiMesh};
-use ha_core::math::Vector2;
+use gv_client_shared::ecs::{components::HealthUiGraphics, resources::HealthUiMesh};
+use gv_core::math::Vector2;
 
 #[derive(Default, Debug)]
 pub struct HealthUiPlugin {

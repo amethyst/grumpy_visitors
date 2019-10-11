@@ -25,13 +25,13 @@ use laminar::Config as LaminarConfig;
 
 use std::time::Duration;
 
-use ha_animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
-use ha_client_shared::{ecs::resources::MultiplayerRoomState, settings::Settings};
-use ha_core::{
+use gv_animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
+use gv_client_shared::{ecs::resources::MultiplayerRoomState, settings::Settings};
+use gv_core::{
     ecs::resources::world::{ClientWorldUpdates, FramedUpdates, ReceivedServerWorldUpdate},
     net::EncodedMessage,
 };
-use ha_game::{
+use gv_game::{
     build_game_logic_systems, ecs::systems::NetConnectionManagerSystem, states::LoadingState,
 };
 
@@ -44,7 +44,7 @@ use crate::{
 };
 
 fn main() -> amethyst::Result<()> {
-    let _cli_matches = clap::App::new("hello_amethyst")
+    let _cli_matches = clap::App::new("grumpy_visitors")
         .version("0.1")
         .author("Vladyslav Batyrenko <mvlabat@gmail.com>")
         .about("A prototype of a top-down EvilInvasion-like 2D arcade/action")
@@ -54,13 +54,13 @@ fn main() -> amethyst::Result<()> {
 
     Logger::from_config(Default::default())
         .level_for("gfx_backend_vulkan", LogLevelFilter::Warn)
-        .level_for("ha_game::ecs::systems", LogLevelFilter::Debug)
+        .level_for("gv_game::ecs::systems", LogLevelFilter::Debug)
         .level_for(
-            "ha_game::ecs::systems::net_connection_manager",
+            "gv_game::ecs::systems::net_connection_manager",
             LogLevelFilter::Info,
         )
-        .level_for("ha_game::utils::net", LogLevelFilter::Info)
-        .level_for("ha_client", LogLevelFilter::Debug)
+        .level_for("gv_game::utils::net", LogLevelFilter::Info)
+        .level_for("gv_client", LogLevelFilter::Debug)
         .start();
 
     let settings = Settings::new()?;

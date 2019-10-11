@@ -12,13 +12,13 @@ use amethyst::{
 };
 
 #[cfg(feature = "client")]
-use ha_animation_prefabs::GameSpriteAnimationPrefab;
+use gv_animation_prefabs::GameSpriteAnimationPrefab;
 #[cfg(feature = "client")]
-use ha_client_shared::ecs::{
+use gv_client_shared::ecs::{
     components::HealthUiGraphics,
     resources::{AssetHandles, HealthUiMesh, MissileGraphics},
 };
-use ha_core::ecs::{
+use gv_core::ecs::{
     components::{missile::Missile, Player, WorldPosition},
     resources::{GameEngineState, GameLevelState, GameTime, NewGameEngineState},
     tags::*,

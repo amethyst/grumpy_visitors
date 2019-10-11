@@ -6,7 +6,7 @@ use amethyst::{
     ecs::{Entities, Join, ReadExpect},
 };
 
-use ha_core::ecs::{
+use gv_core::ecs::{
     components::{
         damage_history::{DamageHistory, DamageHistoryEntry},
         missile::{Missile, MissileTarget},

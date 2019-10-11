@@ -7,12 +7,12 @@ use amethyst::{
     winit::MouseButton,
 };
 
-use ha_core::{
+use gv_core::{
     actions::player::{PlayerCastAction, PlayerLookAction, PlayerWalkAction},
     ecs::components::{ClientPlayerActions, WorldPosition},
     math::Vector2,
 };
-use ha_game::ecs::system_data::GameStateHelper;
+use gv_game::ecs::system_data::GameStateHelper;
 
 #[derive(Default)]
 pub struct InputSystem;

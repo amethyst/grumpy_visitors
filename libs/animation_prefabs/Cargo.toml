@@ -1,5 +1,5 @@
 [package]
-name = "ha_animation_prefabs"
+name = "gv_animation_prefabs"
 version = "0.1.0"
 authors = []
 edition = "2018"

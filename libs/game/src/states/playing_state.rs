@@ -9,13 +9,13 @@ use amethyst::{
 };
 
 #[cfg(feature = "client")]
-use ha_client_shared::ecs::factories::PlayerClientFactory;
+use gv_client_shared::ecs::factories::PlayerClientFactory;
 #[cfg(feature = "client")]
-use ha_client_shared::{
+use gv_client_shared::{
     ecs::{factories::CameraFactory, resources::MultiplayerRoomState},
     utils::{self, animation},
 };
-use ha_core::ecs::{
+use gv_core::ecs::{
     components::EntityNetMetadata,
     resources::{
         net::{EntityNetMetadataStorage, MultiplayerGameState},
@@ -24,9 +24,9 @@ use ha_core::ecs::{
     system_data::time::GameTimeService,
 };
 #[cfg(not(feature = "client"))]
-use ha_core::net::server_message::ServerMessagePayload;
+use gv_core::net::server_message::ServerMessagePayload;
 #[cfg(not(feature = "client"))]
-use ha_core::net::NetConnection;
+use gv_core::net::NetConnection;
 
 use crate::ecs::factories::{LandscapeFactory, PlayerFactory};
 #[cfg(not(feature = "client"))]

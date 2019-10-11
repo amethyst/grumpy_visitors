@@ -3,7 +3,7 @@ use amethyst::{
     ecs::{Entities, Join, ReadStorage, System},
 };
 
-use ha_core::ecs::{
+use gv_core::ecs::{
     components::{missile::Missile, Dead},
     resources::world::SAVED_WORLD_STATES_LIMIT,
     system_data::time::GameTimeService,
