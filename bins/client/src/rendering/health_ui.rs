@@ -53,7 +53,7 @@ impl<B: Backend> RenderPlugin<B> for HealthUiPlugin {
 
 lazy_static::lazy_static! {
     static ref VERTEX_SRC: SpirvShader = PathBufShaderInfo::new(
-        PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../resources/shaders/health_ui.vert")),
+        PathBuf::from("resources/shaders/health_ui.vert"),
         ShaderKind::Vertex,
         SourceLanguage::GLSL,
         "main",
@@ -66,7 +66,7 @@ lazy_static::lazy_static! {
     );
 
     static ref FRAGMENT_SRC: SpirvShader = PathBufShaderInfo::new(
-        PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../resources/shaders/health_ui.frag")),
+        PathBuf::from("resources/shaders/health_ui.frag"),
         ShaderKind::Fragment,
         SourceLanguage::GLSL,
         "main",
