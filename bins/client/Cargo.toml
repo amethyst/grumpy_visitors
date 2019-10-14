@@ -8,7 +8,6 @@ edition = "2018"
 bincode = "1.1.4"
 clap = "2.33.0"
 failure = "0.1.5"
-laminar = "0.2.3"
 lazy_static = "1.3.0"
 log = "0.4.6"
 num = "0.2.0"
@@ -27,15 +26,15 @@ path = "../../libs/game"
 features = ["client"]
 
 [dependencies.amethyst]
-version = "0.13.2"
+git = "https://github.com/amethyst/amethyst"
 features = ["nightly", "shader-compiler"]
 
 # Bad news: https://github.com/rust-lang/cargo/issues/1197
 
 #[target.'cfg(target_os = "macos")'.dependencies.amethyst]
-#version = "0.13.2"
+#git = "https://github.com/amethyst/amethyst"
 #features = ["metal"]
 
 [target.'cfg(not(target_os = "macos"))'.dependencies.amethyst]
-version = "0.13.2"
+git = "https://github.com/amethyst/amethyst"
 features = ["vulkan"]

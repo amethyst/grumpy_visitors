@@ -1,11 +1,14 @@
-use amethyst::ecs::{Join, ReadStorage, System, WriteExpect, WriteStorage};
+use amethyst::{
+    ecs::{Join, ReadStorage, System, Write, WriteExpect, WriteStorage},
+    network::simulation::TransportResource,
+};
 
 use gv_core::{
     ecs::{
         components::NetConnectionModel, resources::world::ServerWorldUpdates,
         system_data::time::GameTimeService,
     },
-    net::{server_message::ServerMessagePayload, NetConnection},
+    net::{server_message::ServerMessagePayload},
 };
 use gv_game::{ecs::system_data::GameStateHelper, utils::net::send_message_unreliable};
 
@@ -23,7 +26,7 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
         WriteExpect<'s, ServerWorldUpdates>,
         WriteExpect<'s, LastBroadcastedFrame>,
         ReadStorage<'s, NetConnectionModel>,
-        WriteStorage<'s, NetConnection>,
+        Write<'s, TransportResource>,
     );
 
     fn run(
@@ -34,7 +37,7 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
             mut server_world_updates,
             mut last_broadcasted_frame,
             net_connection_models,
-            mut net_connections,
+            mut transport,
         ): Self::SystemData,
     ) {
         if !game_state_helper.multiplayer_is_running() {
@@ -64,11 +67,7 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
         let mut oldest_actual_update = latest_update_number + 1;
         let mut oldest_actual_update_index = 0;
 
-        for (i, (net_connection_model, net_connection)) in
-            (&net_connection_models, &mut net_connections)
-                .join()
-                .enumerate()
-        {
+        for (i, net_connection_model) in (&net_connection_models).join().enumerate() {
             let last_acknowledged_is_older = net_connection_model
                 .last_acknowledged_update
                 .map(|last_acknowledged| oldest_actual_update > last_acknowledged)
@@ -99,7 +98,8 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
             let updates = updates.into_iter().rev().collect();
 
             send_message_unreliable(
-                net_connection,
+                &mut transport,
+                &net_connection_model,
                 &ServerMessagePayload::UpdateWorld {
                     id: latest_update_number,
                     updates,

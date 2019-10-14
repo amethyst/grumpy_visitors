@@ -9,7 +9,7 @@ default = []
 client = ["gv_client_shared"]
 
 [dependencies.amethyst]
-version = "0.13.2"
+git = "https://github.com/amethyst/amethyst"
 
 [dependencies]
 bincode = "1.1.4"

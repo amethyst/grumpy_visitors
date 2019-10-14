@@ -3,12 +3,12 @@ pub mod missile;
 
 use amethyst::{
     ecs::{Component, DenseVecStorage, Entity, ReaderId, VecStorage},
-    network::NetEvent,
+    network::simulation::NetworkSimulationEvent,
 };
 use serde_derive::{Deserialize, Serialize};
 use shrinkwraprs::Shrinkwrap;
 
-use std::{collections::VecDeque, time::Instant};
+use std::{collections::VecDeque, net::SocketAddr, time::Instant};
 
 use crate::{
     actions::{
@@ -17,7 +17,7 @@ use crate::{
         Action,
     },
     math::{Vector2, ZeroVector},
-    net::{EncodedMessage, NetIdentifier},
+    net::NetIdentifier,
 };
 
 const PING_PONG_STORAGE_LIMIT: usize = 20;
@@ -137,17 +137,17 @@ impl Dead {
 #[derive(Component)]
 pub struct NetConnectionModel {
     pub id: NetIdentifier,
-    pub reader: ReaderId<NetEvent<EncodedMessage>>,
+    pub addr: SocketAddr,
     pub created_at: Instant,
     pub last_acknowledged_update: Option<u64>,
     pub ping_pong_data: PingPongData,
 }
 
 impl NetConnectionModel {
-    pub fn new(id: NetIdentifier, reader: ReaderId<NetEvent<EncodedMessage>>) -> Self {
+    pub fn new(id: NetIdentifier, addr: SocketAddr) -> Self {
         Self {
             id,
-            reader,
+            addr,
             created_at: Instant::now(),
             last_acknowledged_update: None,
             ping_pong_data: PingPongData::new(),

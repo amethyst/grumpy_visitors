@@ -13,7 +13,7 @@ mod world_state_subsystem;
 
 pub use self::{
     action::ActionSystem, damage_subsystem::DamageSubsystem, level::LevelSystem,
-    net_connection_manager::NetConnectionManagerSystem, pause::PauseSystem,
+    net_connection_manager::{NetConnectionManagerSystem, NetConnectionManagerDesc}, pause::PauseSystem,
     state_switcher::StateSwitcherSystem, world_position_transform::WorldPositionTransformSystem,
     world_state_subsystem::WorldStateSubsystem,
 };

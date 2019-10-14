@@ -4,8 +4,9 @@ use amethyst::{
     prelude::{SimpleTrans, StateEvent, Trans},
 };
 use amethyst::{
-    ecs::{SystemData, World, WriteExpect, WriteStorage},
+    ecs::{Join, SystemData, World, WriteExpect, ReadStorage, WriteStorage, Write},
     prelude::{GameData, SimpleState, StateData},
+    network::simulation::TransportResource
 };
 
 #[cfg(feature = "client")]
@@ -25,12 +26,11 @@ use gv_core::ecs::{
 };
 #[cfg(not(feature = "client"))]
 use gv_core::net::server_message::ServerMessagePayload;
-#[cfg(not(feature = "client"))]
-use gv_core::net::NetConnection;
 
 use crate::ecs::factories::{LandscapeFactory, PlayerFactory};
 #[cfg(not(feature = "client"))]
 use crate::utils::net::broadcast_message_reliable;
+use gv_core::ecs::components::NetConnectionModel;
 
 #[derive(Default)]
 pub struct PlayingState;
@@ -125,13 +125,15 @@ fn initialize_players(world: &mut World) {
             mut entity_net_metadata,
             mut entity_net_metadata_service,
             mut multiplayer_game_state,
-            mut net_connections,
+            net_connections,
+            mut transport,
         ): (
             PlayerFactory,
             WriteStorage<EntityNetMetadata>,
             WriteExpect<EntityNetMetadataStorage>,
             WriteExpect<MultiplayerGameState>,
-            WriteStorage<NetConnection>,
+            ReadStorage<NetConnectionModel>,
+            Write<TransportResource>,
         )| {
             let player_net_identifiers = multiplayer_game_state
                 .players
@@ -154,7 +156,8 @@ fn initialize_players(world: &mut World) {
                 })
                 .collect();
             broadcast_message_reliable(
-                &mut net_connections,
+                &mut transport,
+                (&net_connections).join(),
                 &ServerMessagePayload::StartGame(player_net_identifiers),
             );
         },
