@@ -1,6 +1,6 @@
 # Grumpy Visitors
 
-![GitHub pull requests](https://img.shields.io/github/issues/mvlabat/grumpy_visitors/good%20first%20issue?label=good%20first%20issues&color=7057ff)
+[![GitHub pull requests](https://img.shields.io/github/issues/mvlabat/grumpy_visitors/good%20first%20issue?label=good%20first%20issues&color=7057ff)](https://github.com/mvlabat/grumpy_visitors/issues)
 
 Grumpy Visitors is a top-down 2D action arcade game.
 It's written in [Rust](https://www.rust-lang.org/) and running on [Amethyst](amethyst.rs) game engine.
@@ -88,4 +88,4 @@ decisions to be referentially good, and it's already easy to get lost in the cod
 But nevertheless don't hesitate to take a look at "good first issues", so you can get a grasp of it and bring
 something good to this game: 
 
-![GitHub pull requests](https://img.shields.io/github/issues/mvlabat/grumpy_visitors/good%20first%20issue?label=good%20first%20issues&color=7057ff)
+[![GitHub pull requests](https://img.shields.io/github/issues/mvlabat/grumpy_visitors/good%20first%20issue?label=good%20first%20issues&color=7057ff)](https://github.com/mvlabat/grumpy_visitors/issues)
