@@ -18,7 +18,8 @@ pub const HEALTH_UI_SCREEN_PADDING: f32 = 40.0;
 
 #[derive(Clone)]
 pub struct AssetHandles {
-    pub hero_prefab: Handle<Prefab<GameSpriteAnimationPrefab>>,
+    pub mage_prefab: Handle<Prefab<GameSpriteAnimationPrefab>>,
+    pub beetle_prefab: Handle<Prefab<GameSpriteAnimationPrefab>>,
     pub landscape: Handle<SpriteSheet>,
     pub ui_font: FontHandle,
 }

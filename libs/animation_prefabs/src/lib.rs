@@ -12,6 +12,8 @@ use serde_derive::{Deserialize, Serialize};
 #[derive(Eq, PartialOrd, PartialEq, Hash, Debug, Copy, Clone, Deserialize, Serialize)]
 pub enum AnimationId {
     Walk,
+    Attack,
+    Death,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PrefabData)]

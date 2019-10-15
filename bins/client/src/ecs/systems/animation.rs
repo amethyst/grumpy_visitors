@@ -30,7 +30,7 @@ impl<'s> System<'s> for AnimationSystem {
         (
             entities,
             players,
-            _monsters,
+            monsters,
             parents,
             named_entities,
             animation_sets,
@@ -56,8 +56,9 @@ impl<'s> System<'s> for AnimationSystem {
                 } else {
                     control_set.set_rate(AnimationId::Walk, 0.0);
                 }
+                log::info!("player {}", named.name);
 
-                let direction = if named.name == "hero_legs" {
+                let direction = if named.name == "mage64_legs" {
                     Vector3::new(
                         player.walking_direction.x,
                         player.walking_direction.y,
@@ -72,6 +73,13 @@ impl<'s> System<'s> for AnimationSystem {
                 };
                 // TODO: educate myself about quaternions and rewrite that?
                 transform.face_towards(Vector3::new(0.0, 0.0, 1.0), direction);
+            } else if let Some(monster) = monsters.get(parent.entity) {
+                log::info!("monster {}", named.name);
+                if monster.velocity.norm_squared() > 0.0 {
+                    control_set.set_rate(AnimationId::Walk, 1.0);
+                } else {
+                    control_set.set_rate(AnimationId::Walk, 0.0);
+                }
             }
         }
     }

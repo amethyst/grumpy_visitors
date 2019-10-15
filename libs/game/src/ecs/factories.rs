@@ -2,7 +2,7 @@
 
 #[cfg(feature = "client")]
 use amethyst::{
-    assets::Handle,
+    assets::{Handle, Prefab},
     ecs::ReadExpect,
     renderer::{Material, Mesh, SpriteRender},
 };
@@ -13,6 +13,8 @@ use amethyst::{
     utils::tag::Tag,
 };
 
+#[cfg(feature = "client")]
+use gv_animation_prefabs::GameSpriteAnimationPrefab;
 #[cfg(feature = "client")]
 use gv_client_shared::ecs::resources::{AssetHandles, EntityGraphics};
 use gv_core::{
@@ -114,11 +116,15 @@ impl<'s> LandscapeFactory<'s> {
 #[derive(SystemData)]
 pub struct MonsterFactory<'s> {
     pub entities: Entities<'s>,
+    #[cfg(feature = "client")]
+    pub asset_handles: ReadExpect<'s, AssetHandles>,
     pub transforms: WriteStorage<'s, Transform>,
     #[cfg(feature = "client")]
     pub meshes: WriteStorage<'s, Handle<Mesh>>,
     #[cfg(feature = "client")]
     pub materials: WriteStorage<'s, Handle<Material>>,
+    #[cfg(feature = "client")]
+    pub sprite_animation_handles: WriteStorage<'s, Handle<Prefab<GameSpriteAnimationPrefab>>>,
     pub monsters: WriteStorage<'s, Monster>,
     pub damage_histories: WriteStorage<'s, DamageHistory>,
     pub world_positions: WriteStorage<'s, WorldPosition>,
@@ -149,6 +155,10 @@ impl<'s> MonsterFactory<'s> {
 
         self.entities
             .build_entity()
+            .with(
+                self.asset_handles.beetle_prefab.clone(),
+                &mut self.sprite_animation_handles,
+            )
             .with(mesh, &mut self.meshes)
             .with(material, &mut self.materials)
             .with(transform, &mut self.transforms)

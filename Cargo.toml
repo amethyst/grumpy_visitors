@@ -9,3 +9,6 @@ members = [
 
 [profile.dev.overrides."*"]
 opt-level = 2
+
+#[patch.crates-io]
+#amethyst = { path = "../amethyst" }

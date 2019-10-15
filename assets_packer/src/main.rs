@@ -8,7 +8,9 @@ use amethyst::{
     renderer::{
         formats::texture::ImageFormat,
         sprite::{
-            prefab::{SpriteScenePrefab, SpriteSheetPrefab},
+            prefab::{
+                SpriteRenderPrefab, SpriteScenePrefab, SpriteSheetPrefab, SpriteSheetReference,
+            },
             SpriteList, SpritePosition, Sprites,
         },
         TexturePrefab, Transparent,
@@ -16,17 +18,15 @@ use amethyst::{
 };
 use failure;
 use image;
-use ron::{
-    de::from_str,
-    ser::{to_string_pretty, PrettyConfig},
-};
+use ron::ser::{to_string_pretty, PrettyConfig};
+use serde_derive::{Deserialize, Serialize};
 use texture_packer::{
     exporter::ImageExporter, importer::ImageImporter, texture::Texture, Frame, TexturePacker,
     TexturePackerConfig,
 };
 
 use std::{
-    collections::btree_map::BTreeMap,
+    collections::{BTreeMap, HashMap},
     env,
     fs::{self, File},
     io::Write,
@@ -37,13 +37,39 @@ use gv_animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
 
 struct SpriteSceneData {
     sprite_sheet: SpriteSheetPrefab,
-    torso_indices: Vec<SpriteRenderPrimitive>,
-    legs_indices: Vec<SpriteRenderPrimitive>,
+    indices: HashMap<String, Vec<SpriteRenderPrimitive>>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct SpritePrefab {
+    entities: Vec<SpritePrefabEntity>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct SpritePrefabEntity {
+    name_tag: String,
+    z_translation: Option<f32>,
+    animations: Vec<AnimationDefinition>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct AnimationDefinition {
+    animation_id: AnimationId,
+    name_prefix: String,
+    directory: String,
+    center_x: f32,
+    center_y: f32,
+    #[serde(default)]
+    frames_count: usize,
+    #[serde(default = "default_interpolation_step")]
+    interpolation_step: f32,
+}
+
+fn default_interpolation_step() -> f32 {
+    1.0 / 60.0
 }
 
 struct FramesMap(BTreeMap<String, Frame>);
-
-const FRAMES_COUNT: usize = 20;
 
 fn main() -> Result<(), failure::Error> {
     let config = TexturePackerConfig {
@@ -60,22 +86,25 @@ fn main() -> Result<(), failure::Error> {
     };
     let import_path = Path::new(&import_path);
 
-    let (mage64_center_x, mage64_center_y) = (31.0, 40.0);
-    // Pack torso.
-    for i in 0..FRAMES_COUNT {
-        let name = format!("mage64_{:04}.png", i);
-        let path = import_path.join(&name);
-        let texture = ImageImporter::import_from_file(&path).unwrap();
+    let prefabs_file = File::open(import_path.join("prefabs.ron"))
+        .expect("Expected prefabs.ron file at import path");
+    let prefabs: HashMap<String, SpritePrefab> =
+        ron::de::from_reader(prefabs_file).expect("Failed to parse prefab definition files");
 
-        packer.pack_own(name, texture);
-    }
-    // Pack legs.
-    for i in 0..FRAMES_COUNT {
-        let name = format!("mage64_legs_{:04}.png", i);
-        let path = import_path.join(&name);
-        let texture = ImageImporter::import_from_file(&path).unwrap();
+    for sprite_prefab in prefabs.values() {
+        for prefab_entity in &sprite_prefab.entities {
+            for animation_definition in &prefab_entity.animations {
+                for i in 0..animation_definition.frames_count {
+                    let name = format!("{}_{:04}.png", animation_definition.name_prefix, i);
+                    let path = import_path
+                        .join(&animation_definition.directory)
+                        .join(&name);
+                    let texture = ImageImporter::import_from_file(&path).unwrap();
 
-        packer.pack_own(name, texture);
+                    packer.pack_own(name, texture);
+                }
+            }
+        }
     }
 
     let output_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("output");
@@ -91,77 +120,68 @@ fn main() -> Result<(), failure::Error> {
 
     let SpriteSceneData {
         sprite_sheet,
-        torso_indices,
-        legs_indices,
+        indices,
     } = construct_sprite_scene(
+        &prefabs,
         &frames_map,
         packer.width(),
         packer.height(),
-        mage64_center_x,
-        mage64_center_y,
         &output_file,
     );
 
-    let prefab = {
-        let mut prefab = Prefab::new();
-        prefab.add(
-            Some(0),
-            Some(create_prefab(
-                "hero_torso",
-                Some(sprite_sheet),
-                torso_indices,
-                AnimationId::Walk,
-                None,
-            )),
-        );
-        let mut legs_transform = Transform::default();
-        legs_transform.set_translation_z(-0.1);
-        prefab.add(
-            Some(0),
-            Some(create_prefab(
-                "hero_legs",
-                None,
-                legs_indices,
-                AnimationId::Walk,
-                Some(legs_transform),
-            )),
-        );
-        prefab
-    };
     fs::create_dir_all(&output_dir).unwrap();
 
-    let ron_metadata = to_string_pretty(
-        &prefab,
-        PrettyConfig {
-            new_line: "\n".to_owned(),
-            ..PrettyConfig::default()
-        },
-    )?;
-    let mut file = File::create(output_dir.join("animation_metadata.ron"))?;
-    file.write_all(ron_metadata.as_bytes())?;
-
+    // Creating atlas file.
     let exporter = ImageExporter::export(&packer).unwrap();
-
     let mut file = File::create(output_file)?;
     exporter.write_to(&mut file, image::PNG)?;
+
+    // Creating prefab files.
+    for (prefab_name, output_prefab) in create_prefabs(prefabs, sprite_sheet, indices) {
+        let ron_metadata = to_string_pretty(
+            &output_prefab,
+            PrettyConfig {
+                new_line: "\n".to_owned(),
+                ..PrettyConfig::default()
+            },
+        )?;
+        let mut file = File::create(output_dir.join(format!("{}.ron", prefab_name)))?;
+        file.write_all(ron_metadata.as_bytes())?;
+    }
     Ok(())
 }
 
 fn construct_sprite_scene(
+    prefabs: &HashMap<String, SpritePrefab>,
     frames: &FramesMap,
     atlas_width: u32,
     atlas_height: u32,
-    sprite_center_x: f32,
-    sprite_center_y: f32,
     output_file_path: impl AsRef<Path>,
 ) -> SpriteSceneData {
     let frames = &frames.0;
-    let mut sprites = Vec::with_capacity(frames.len());
-    let mut torso_indices = vec![SpriteRenderPrimitive::SpriteIndex(0); 20];
-    let mut legs_indices = vec![SpriteRenderPrimitive::SpriteIndex(0); 20];
+    let mut indices = HashMap::new();
+    let mut sprites = Vec::new();
+
+    let mut indexed_animation_definitions = HashMap::new();
+    for (prefab_name, sprite_prefab) in prefabs {
+        for prefab_entity in &sprite_prefab.entities {
+            for animation_definition in &prefab_entity.animations {
+                indexed_animation_definitions.insert(
+                    animation_definition.name_prefix.clone(),
+                    (prefab_name.clone(), animation_definition.clone()),
+                );
+            }
+        }
+    }
 
     for (sprite_index, (filename, frame)) in frames.iter().enumerate() {
-        let sprite_center_x = frame.source.w as f32 - sprite_center_x;
+        let name_prefix = &filename[0..filename.len() - 9];
+        let (_prefab_name, animation_definition) = indexed_animation_definitions
+            .get_mut(name_prefix)
+            .expect("Expected an indexed AnimationDefinition");
+
+        let sprite_center_x = frame.source.w as f32 - animation_definition.center_x;
+        let sprite_center_y = animation_definition.center_y;
         let cropped_source_x = (frame.source.w - frame.source.x - frame.frame.w) as f32;
         let cropped_source_y = frame.source.y as f32;
         // Revert amethyst center aligning, apply sprite center taking into account frame cropping.
@@ -181,65 +201,110 @@ fn construct_sprite_scene(
         });
 
         let number = &filename[filename.len() - 8..filename.len() - 4];
-        let sprite_index = SpriteRenderPrimitive::SpriteIndex(sprite_index);
         let i = number
             .parse::<usize>()
             .expect("Expected a PNG file with 4 digit index in the filename");
-        if filename.contains("legs") {
-            legs_indices[i] = sprite_index;
-        } else {
-            torso_indices[i] = sprite_index;
-        }
+        indices.entry(name_prefix.to_owned()).or_insert_with(|| {
+            vec![SpriteRenderPrimitive::SpriteIndex(0); animation_definition.frames_count]
+        })[i] = SpriteRenderPrimitive::SpriteIndex(sprite_index);
     }
 
+    let sprite_sheet = SpriteSheetPrefab::Sheet {
+        texture: TexturePrefab::File(
+            output_file_path.as_ref().to_str().unwrap().to_owned(),
+            Box::new(ImageFormat::default()),
+        ),
+        sprites: vec![Sprites::List(SpriteList {
+            texture_width: atlas_width,
+            texture_height: atlas_height,
+            sprites,
+        })],
+        name: Some("atlas".to_owned()),
+    };
+
     SpriteSceneData {
-        sprite_sheet: SpriteSheetPrefab::Sheet {
-            texture: TexturePrefab::File(
-                output_file_path.as_ref().to_str().unwrap().to_owned(),
-                Box::new(ImageFormat::default()),
-            ),
-            sprites: vec![Sprites::List(SpriteList {
-                texture_width: atlas_width,
-                texture_height: atlas_height,
-                sprites,
-            })],
-            name: None,
-        },
-        torso_indices,
-        legs_indices,
+        sprite_sheet,
+        indices,
     }
 }
 
-fn create_prefab(
-    name: &'static str,
-    sprite_sheet: Option<SpriteSheetPrefab>,
-    frames_indices: Vec<SpriteRenderPrimitive>,
-    animation_id: AnimationId,
-    transform: Option<Transform>,
-) -> GameSpriteAnimationPrefab {
-    GameSpriteAnimationPrefab {
-        name_tag: Named::new(name),
-        sprite_scene: SpriteScenePrefab {
-            sheet: sprite_sheet,
-            // TODO: fix after https://github.com/amethyst/amethyst/issues/1585.
-            render: from_str("Some((sheet: Some(0), sprite_number: 0))").unwrap(),
-            transform: transform.or_else(|| Some(Transform::default())),
-        },
-        animation_set: AnimationSetPrefab {
-            animations: vec![(animation_id, {
-                let mut prefab = AnimationPrefab::default();
-                prefab.samplers = vec![(
-                    0,
-                    SpriteRenderChannel::SpriteIndex,
-                    Sampler {
-                        input: (0..FRAMES_COUNT).map(|i| i as f32 * 0.05).collect(),
-                        output: frames_indices,
-                        function: InterpolationFunction::Step,
-                    },
-                )];
-                prefab
-            })],
-        },
-        transparent: Transparent,
-    }
+fn create_prefabs(
+    prefabs: HashMap<String, SpritePrefab>,
+    sprite_sheet: SpriteSheetPrefab,
+    indices: HashMap<String, Vec<SpriteRenderPrimitive>>,
+) -> HashMap<String, Prefab<GameSpriteAnimationPrefab>> {
+    let mut prefabs: HashMap<String, Prefab<GameSpriteAnimationPrefab>> = prefabs
+        .into_iter()
+        .map(|(prefab_name, sprite_prefab)| {
+            let mut prefab = Prefab::new();
+            for prefab_entity in sprite_prefab.entities {
+                prefab.add(
+                    Some(0),
+                    Some(GameSpriteAnimationPrefab {
+                        name_tag: Named::new(prefab_entity.name_tag),
+                        sprite_scene: SpriteScenePrefab {
+                            sheet: None,
+                            render: Some(SpriteRenderPrefab::new(
+                                Some(SpriteSheetReference::Name("atlas".to_owned())),
+                                0,
+                            )),
+                            transform: Some(prefab_entity.z_translation.map_or_else(
+                                Transform::default,
+                                |z_translation| {
+                                    let mut transform = Transform::default();
+                                    transform.set_translation_z(z_translation);
+                                    transform
+                                },
+                            )),
+                        },
+                        animation_set: AnimationSetPrefab {
+                            animations: prefab_entity
+                                .animations
+                                .into_iter()
+                                .map(|animation| {
+                                    (animation.animation_id, {
+                                        let mut animation_prefab = AnimationPrefab::default();
+                                        let output = indices[&animation.name_prefix].clone();
+                                        animation_prefab.samplers = vec![(
+                                            0,
+                                            SpriteRenderChannel::SpriteIndex,
+                                            Sampler {
+                                                input: (0..animation.frames_count)
+                                                    .map(|i| {
+                                                        i as f32 * animation.interpolation_step
+                                                    })
+                                                    .collect(),
+                                                output,
+                                                function: InterpolationFunction::Step,
+                                            },
+                                        )];
+                                        animation_prefab
+                                    })
+                                })
+                                .collect(),
+                        },
+                        transparent: Transparent,
+                    }),
+                );
+            }
+            (prefab_name, prefab)
+        })
+        .collect();
+
+    prefabs.insert(
+        "dummy".to_owned(),
+        Prefab::new_main(GameSpriteAnimationPrefab {
+            name_tag: Named::new(String::new()),
+            sprite_scene: SpriteScenePrefab {
+                sheet: Some(sprite_sheet),
+                render: None,
+                transform: None,
+            },
+            animation_set: AnimationSetPrefab {
+                animations: Vec::new(),
+            },
+            transparent: Transparent,
+        }),
+    );
+    prefabs
 }

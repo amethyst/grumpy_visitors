@@ -83,13 +83,13 @@ fn register_client_dependencies(world: &mut World, progress_counter: &mut Progre
         &mut *progress_counter,
     );
 
-    let hero_prefab_handle = world.exec(
+    let (mage_prefab, beetle_prefab) = world.exec(
         |prefab_loader: PrefabLoader<'_, GameSpriteAnimationPrefab>| {
-            prefab_loader.load(
-                "resources/animation_metadata.ron",
-                RonFormat,
-                &mut *progress_counter,
-            )
+            let mage_prefab =
+                prefab_loader.load("resources/mage.ron", RonFormat, &mut *progress_counter);
+            let beetle_prefab =
+                prefab_loader.load("resources/beetle.ron", RonFormat, &mut *progress_counter);
+            (mage_prefab, beetle_prefab)
         },
     );
 
@@ -99,7 +99,8 @@ fn register_client_dependencies(world: &mut World, progress_counter: &mut Progre
         world.exec(|mut creator: UiCreator| creator.create("resources/ui/main_menu.ron", ()));
 
     world.insert(AssetHandles {
-        hero_prefab: hero_prefab_handle,
+        mage_prefab,
+        beetle_prefab,
         landscape: landscape_handle,
         ui_font: ui_font_handle,
     });

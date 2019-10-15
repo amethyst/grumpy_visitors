@@ -58,7 +58,7 @@ pub struct PlayerClientFactory<'s> {
 
 impl<'s> PlayerClientFactory<'s> {
     pub fn create(&mut self, player_entity: Entity, is_controllable: bool) {
-        let AssetHandles { hero_prefab, .. } = self.asset_handles.clone();
+        let AssetHandles { mage_prefab, .. } = self.asset_handles.clone();
 
         let mut transform = Transform::default();
         transform.set_translation_z(10.0);
@@ -69,7 +69,7 @@ impl<'s> PlayerClientFactory<'s> {
         );
 
         self.sprite_animation_handles
-            .insert(player_entity, hero_prefab)
+            .insert(player_entity, mage_prefab)
             .expect("Expected to insert a HeroPrefab");
         if is_controllable {
             self.health_ui_graphics
