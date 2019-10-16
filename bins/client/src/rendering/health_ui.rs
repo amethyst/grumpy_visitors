@@ -1,6 +1,6 @@
 use amethyst::{
     assets::AssetStorage,
-    core::ecs::{Join, Read, ReadExpect, ReadStorage, SystemData, World},
+    core::ecs::{Join, Read, ReadStorage, SystemData, World},
     error::Error,
     renderer::{
         bundle::{RenderOrder, RenderPlan, RenderPlugin, Target},
@@ -41,10 +41,7 @@ impl<B: Backend> RenderPlugin<B> for HealthUiPlugin {
         _world: &World,
     ) -> Result<(), Error> {
         plan.extend_target(self.target, |ctx| {
-            ctx.add(
-                RenderOrder::BeforeTransparent,
-                DrawHealthUiDesc::new().builder(),
-            )?;
+            ctx.add(RenderOrder::Overlay, DrawHealthUiDesc::new().builder())?;
             Ok(())
         });
         Ok(())
@@ -167,16 +164,19 @@ impl<B: Backend> RenderGroup<B, World> for DrawHealthUi<B> {
     ) {
         let (mesh_storage, health_ui_mesh_handle, health_ui_graphics) = <(
             Read<'_, AssetStorage<Mesh>>,
-            ReadExpect<'_, HealthUiMesh>,
+            Option<Read<'_, HealthUiMesh>>,
             ReadStorage<'_, HealthUiGraphics>,
         )>::fetch(world);
+        if health_ui_mesh_handle.is_none() {
+            return;
+        }
 
         let layout = &self.pipeline_layout;
 
         encoder.bind_graphics_pipeline(&self.pipeline);
         self.env.bind(index, layout, 0, &mut encoder);
 
-        let mesh_id = health_ui_mesh_handle.0.id();
+        let mesh_id = health_ui_mesh_handle.as_ref().unwrap().0.id();
         if let Some(mesh) = B::unwrap_mesh(unsafe { mesh_storage.get_by_id_unchecked(mesh_id) }) {
             mesh.bind(0, &HealthUiArgs::vertex_formats(), &mut encoder)
                 .expect("Expected to bind a Mesh");
