@@ -1,0 +1,84 @@
+{
+    "mage": SpritePrefab(
+        entities: [
+            SpritePrefabEntity(
+                name_tag: "mage_torso",
+                z_translation: None,
+                animations: [
+                    AnimationDefinition(
+                        animation_id: Walk,
+                        name_prefix: "mage64_walk_torso",
+                        directory: "mage64_walk_torso",
+                        center_x: 32.0,
+                        center_y: 26.0,
+                        frames_count: 48,
+                    ),
+                    AnimationDefinition(
+                        animation_id: Spell1,
+                        name_prefix: "mage64_spell1",
+                        directory: "mage64_spell1",
+                        center_x: 32.0,
+                        center_y: 26.0,
+                        frames_count: 30,
+                    ),
+                    AnimationDefinition(
+                        animation_id: Spell2,
+                        name_prefix: "mage64_spell2",
+                        directory: "mage64_spell2",
+                        center_x: 32.0,
+                        center_y: 26.0,
+                        frames_count: 30,
+                    ),
+                ],
+            ),
+            SpritePrefabEntity(
+                name_tag: "mage_legs",
+                z_translation: Some(-0.1),
+                animations: [
+                    AnimationDefinition(
+                        animation_id: Walk,
+                        name_prefix: "mage64_walk_legs",
+                        directory: "mage64_walk_legs",
+                        center_x: 32.0,
+                        center_y: 26.0,
+                        frames_count: 48,
+                    ),
+                ],
+            ),
+        ],
+    ),
+    "beetle": SpritePrefab(
+        entities: [
+            SpritePrefabEntity(
+                name_tag: "monster_body",
+                z_translation: None,
+                animations: [
+                    AnimationDefinition(
+                        animation_id: Walk,
+                        name_prefix: "beetle64_walk",
+                        directory: "beetle64_walk",
+                        center_x: 32.0,
+                        center_y: 32.0,
+                        frames_count: 24,
+                    ),
+                    AnimationDefinition(
+                        animation_id: Attack,
+                        name_prefix: "beetle64_attack",
+                        directory: "beetle64_attack",
+                        center_x: 32.0,
+                        center_y: 32.0,
+                        frames_count: 30,
+                    ),
+                    AnimationDefinition(
+                        animation_id: Death,
+                        name_prefix: "beetle64_death",
+                        directory: "beetle64_death",
+                        center_x: 32.0,
+                        center_y: 32.0,
+                        frames_count: 30,
+                    ),
+                ],
+            ),
+        ],
+    ),
+}
