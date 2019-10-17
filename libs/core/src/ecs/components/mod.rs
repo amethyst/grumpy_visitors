@@ -138,6 +138,7 @@ pub struct Monster {
     pub health: f32,
     pub attack_damage: f32,
     pub destination: Vector2,
+    pub facing_direction: Vector2,
     pub velocity: Vector2,
     pub action: Action<MobAction<Entity>>,
     pub name: String,

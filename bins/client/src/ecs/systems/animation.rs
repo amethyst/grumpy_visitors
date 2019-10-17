@@ -1,5 +1,5 @@
 use amethyst::{
-    animation::{get_animation_set, AnimationControlSet, AnimationSet},
+    animation::{AnimationCommand, AnimationControlSet, AnimationSet, EndControl},
     core::{Named, Parent, Transform},
     ecs::{Entities, Join, ReadStorage, System, WriteStorage},
     renderer::SpriteRender,
@@ -38,7 +38,7 @@ impl<'s> System<'s> for AnimationSystem {
             mut animation_control_sets,
         ): Self::SystemData,
     ) {
-        for (entity, parent, named, _animation_set, transform) in (
+        for (entity, parent, named, animation_set, transform) in (
             &entities,
             &parents,
             &named_entities,
@@ -47,7 +47,25 @@ impl<'s> System<'s> for AnimationSystem {
         )
             .join()
         {
-            let control_set = get_animation_set(&mut animation_control_sets, entity).unwrap();
+            let control_set = animation_control_sets
+                .entry(entity)
+                .ok()
+                .map(|entry| {
+                    entry.or_insert_with(|| {
+                        let mut control_set = AnimationControlSet::default();
+                        if players.contains(parent.entity) || monsters.contains(parent.entity) {
+                            control_set.add_animation(
+                                AnimationId::Walk,
+                                &animation_set.get(&AnimationId::Walk).unwrap(),
+                                EndControl::Loop(None),
+                                1.0,
+                                AnimationCommand::Start,
+                            );
+                        }
+                        control_set
+                    })
+                })
+                .expect("Expected an initialized AnimationControlSet");
 
             // TODO: set rate depending on base speed.
             if let Some(player) = players.get(parent.entity) {
@@ -56,30 +74,34 @@ impl<'s> System<'s> for AnimationSystem {
                 } else {
                     control_set.set_rate(AnimationId::Walk, 0.0);
                 }
-                log::info!("player {}", named.name);
 
-                let direction = if named.name == "mage64_legs" {
+                let direction = if named.name == "mage_legs" {
                     Vector3::new(
-                        player.walking_direction.x,
-                        player.walking_direction.y,
+                        -player.walking_direction.x,
+                        -player.walking_direction.y,
                         transform.translation().z,
                     )
                 } else {
                     Vector3::new(
-                        player.looking_direction.x,
-                        player.looking_direction.y,
+                        -player.looking_direction.x,
+                        -player.looking_direction.y,
                         transform.translation().z,
                     )
                 };
                 // TODO: educate myself about quaternions and rewrite that?
                 transform.face_towards(Vector3::new(0.0, 0.0, 1.0), direction);
             } else if let Some(monster) = monsters.get(parent.entity) {
-                log::info!("monster {}", named.name);
                 if monster.velocity.norm_squared() > 0.0 {
                     control_set.set_rate(AnimationId::Walk, 1.0);
                 } else {
                     control_set.set_rate(AnimationId::Walk, 0.0);
                 }
+                let direction = Vector3::new(
+                    monster.facing_direction.x,
+                    monster.facing_direction.y,
+                    transform.translation().z,
+                );
+                transform.face_towards(Vector3::new(0.0, 0.0, 1.0), direction);
             }
         }
     }

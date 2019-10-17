@@ -16,6 +16,10 @@ use crate::utils::graphic_helpers::{
 
 pub const HEALTH_UI_SCREEN_PADDING: f32 = 40.0;
 
+pub struct DummyAssetHandles {
+    pub dummy_prefab: Handle<Prefab<GameSpriteAnimationPrefab>>,
+}
+
 #[derive(Clone)]
 pub struct AssetHandles {
     pub mage_prefab: Handle<Prefab<GameSpriteAnimationPrefab>>,

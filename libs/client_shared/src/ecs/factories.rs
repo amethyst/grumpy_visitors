@@ -3,7 +3,7 @@
 use amethyst::{
     assets::{Handle, Prefab},
     core::{Parent, Transform},
-    ecs::{prelude::World, Entities, Entity, ReadExpect, WriteStorage},
+    ecs::{prelude::World, Entities, Entity, Read, ReadExpect, WriteStorage},
     renderer::Camera,
     shred::{ResourceId, SystemData},
     window::ScreenDimensions,
@@ -49,7 +49,7 @@ impl<'s> CameraFactory<'s> {
 
 #[derive(SystemData)]
 pub struct PlayerClientFactory<'s> {
-    asset_handles: ReadExpect<'s, AssetHandles>,
+    asset_handles: Option<Read<'s, AssetHandles>>,
     screen_dimensions: ReadExpect<'s, ScreenDimensions>,
     sprite_animation_handles: WriteStorage<'s, Handle<Prefab<GameSpriteAnimationPrefab>>>,
     health_ui_graphics: WriteStorage<'s, HealthUiGraphics>,
@@ -58,7 +58,10 @@ pub struct PlayerClientFactory<'s> {
 
 impl<'s> PlayerClientFactory<'s> {
     pub fn create(&mut self, player_entity: Entity, is_controllable: bool) {
-        let AssetHandles { mage_prefab, .. } = self.asset_handles.clone();
+        if self.asset_handles.is_none() {
+            return;
+        }
+        let mage_prefab = self.asset_handles.as_ref().unwrap().mage_prefab.clone();
 
         let mut transform = Transform::default();
         transform.set_translation_z(10.0);

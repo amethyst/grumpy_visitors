@@ -9,11 +9,17 @@ use amethyst::{
 };
 use serde_derive::{Deserialize, Serialize};
 
+pub const MAGE_TORSO: &str = "mage_torso";
+pub const MAGE_LEGS: &str = "mage_legs";
+pub const MONSTER_BODY: &str = "monster_body";
+
 #[derive(Eq, PartialOrd, PartialEq, Hash, Debug, Copy, Clone, Deserialize, Serialize)]
 pub enum AnimationId {
     Walk,
     Attack,
     Death,
+    Spell1,
+    Spell2,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PrefabData)]

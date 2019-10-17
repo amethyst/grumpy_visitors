@@ -117,8 +117,13 @@ impl<'a, 's> MissileFactory<'a, 's> {
         let mut transform = Transform::default();
         transform.set_translation_xyz(position.x, position.y, 0.0);
 
-        let EntityGraphics { mesh, material } =
-            self.graphics_resource_bundle.missile_graphics.0.clone();
+        let EntityGraphics { mesh, material } = self
+            .graphics_resource_bundle
+            .missile_graphics
+            .as_ref()
+            .unwrap()
+            .0
+            .clone();
 
         self.entities
             .build_entity()

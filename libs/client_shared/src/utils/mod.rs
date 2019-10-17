@@ -1,4 +1,3 @@
-pub mod animation;
 pub mod graphic_helpers;
 
 mod window_event_handler;

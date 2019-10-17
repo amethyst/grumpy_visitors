@@ -1,5 +1,6 @@
 use amethyst::ecs::{Entities, Entity, Join, ReadExpect, ReadStorage, WriteStorage};
 
+use gv_animation_prefabs::{AnimationId, MONSTER_BODY};
 use gv_core::{
     actions::{
         mob::{MobAction, MobAttackAction, MobAttackType},
@@ -22,14 +23,14 @@ use crate::{
     ecs::{
         resources::MonsterDefinitions,
         system_data::GameStateHelper,
-        systems::{OutcomingNetUpdates, WriteStorageCell},
+        systems::{AnimationsResourceBundle, OutcomingNetUpdates, WriteStorageCell},
     },
     utils::world::random_scene_position,
 };
 
 const MAX_IDLE_TIME_SECS: f32 = 0.5;
 
-pub struct MonsterActionSubsystem<'s> {
+pub struct MonsterActionSubsystem<'a, 's> {
     pub entities: &'s Entities<'s>,
     pub game_time_service: &'s GameTimeService<'s>,
     pub game_state_helper: &'s GameStateHelper<'s>,
@@ -41,6 +42,8 @@ pub struct MonsterActionSubsystem<'s> {
     pub world_positions: WriteStorageCell<'s, WorldPosition>,
     pub net_world_positions: WriteStorageCell<'s, NetWorldPosition>,
     pub damage_histories: WriteStorageCell<'s, DamageHistory>,
+    #[cfg_attr(not(feature = "client"), allow(dead_code))]
+    pub animations_resource_bundle: &'a AnimationsResourceBundle<'s>,
 }
 
 pub struct ApplyMonsterActionNetArgs<'a> {
@@ -50,13 +53,13 @@ pub struct ApplyMonsterActionNetArgs<'a> {
     pub updates: Option<(WorldPosition, MobAction<Entity>)>,
 }
 
-impl<'s> MonsterActionSubsystem<'s> {
-    pub fn decide_monster_action<'a>(
+impl<'a, 's> MonsterActionSubsystem<'a, 's> {
+    pub fn decide_monster_action<'n>(
         &self,
         frame_number: u64,
         entity: Entity,
         monster: &mut Monster,
-        net_args: Option<ApplyMonsterActionNetArgs<'a>>,
+        net_args: Option<ApplyMonsterActionNetArgs<'n>>,
     ) {
         let updated_position = net_args
             .as_ref()
@@ -124,16 +127,26 @@ impl<'s> MonsterActionSubsystem<'s> {
                 MobAction::Attack(MobAttackAction {
                     target,
                     attack_type,
-                }) => match attack_type {
-                    MobAttackType::Melee => Some(target_position(
-                        *target,
-                        &world_positions,
-                        &net_world_positions,
-                        &self.client_player_actions,
-                        is_multiplayer,
-                    )),
-                    _ => Some(monster_position.position),
-                },
+                }) => {
+                    if let MobAttackType::Melee | MobAttackType::SlowMelee { .. } = attack_type {
+                        self.animations_resource_bundle.play_animation(
+                            entity,
+                            MONSTER_BODY,
+                            AnimationId::Attack,
+                        );
+                    }
+
+                    match attack_type {
+                        MobAttackType::Melee => Some(target_position(
+                            *target,
+                            &world_positions,
+                            &net_world_positions,
+                            &self.client_player_actions,
+                            is_multiplayer,
+                        )),
+                        _ => Some(monster_position.position),
+                    }
+                }
                 _ => None,
             }
         } else {
@@ -179,6 +192,11 @@ impl<'s> MonsterActionSubsystem<'s> {
         let travel_distance_squared = monster_speed * monster_speed * time * time;
 
         let displacement = monster.destination - *monster_position;
+
+        if displacement.norm_squared() > 0.0 {
+            monster.facing_direction = displacement.normalize();
+        }
+
         *monster_position = if displacement.norm_squared() - travel_distance_squared < 0.01 {
             monster.velocity = Vector2::zero();
             monster.destination
