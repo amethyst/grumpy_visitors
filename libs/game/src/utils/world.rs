@@ -93,7 +93,7 @@ pub fn random_spawn_position(game_level_state: &GameLevelState) -> Vector2 {
     let mut rng = rand::thread_rng();
 
     let (side_start, side_end, _) = spawning_side(rand::random(), &game_level_state);
-    let d = side_start - side_end;
+    let d = side_end - side_start;
     let random_displacement = Vector2::new(
         if d.x == 0.0 {
             0.0
@@ -106,6 +106,7 @@ pub fn random_spawn_position(game_level_state: &GameLevelState) -> Vector2 {
             rng.gen_range(0.0, d.y.abs()) * d.y.signum()
         },
     );
+
     side_start + random_displacement
 }
 
