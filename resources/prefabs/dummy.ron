@@ -8,7 +8,7 @@
                 ),
                 sprite_scene: (
                     sheet: Some(Sheet(
-                        texture: File("D:\\Programming\\grumpy_visitors\\assets_packer\\output\\atlas.png", ("IMAGE", (
+                        texture: File("resources/assets/atlas.png", ("IMAGE", (
                             format: None,
                             repr: Srgb,
                             kind: D2,

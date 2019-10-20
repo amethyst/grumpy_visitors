@@ -108,7 +108,7 @@ impl LoadingState {
 
                 let landscape_handle = load_sprite_sheet(
                     world,
-                    "resources/levels/desert.png",
+                    "resources/assets/desert_level.png",
                     "resources/levels/desert.ron",
                     &mut self.progress_counter,
                 );
