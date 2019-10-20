@@ -15,6 +15,8 @@ a finished product, and my ambitious personal goal is to start doing Rust gamede
 At the same time I want to keep this project open-source and available for everyone to build it on their local machine
 and play for free.
 
+![Grumpy Visitors screenshot](header_screenshot.png)
+
 **Planned gameplay features:**
 - Campaign and survival modes 
 - Character development system with persistent progress between levels
