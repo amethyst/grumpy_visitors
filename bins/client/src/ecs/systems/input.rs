@@ -1,8 +1,9 @@
 use amethyst::{
     core::{math::Point3, Parent, Transform},
-    ecs::{Entities, Entity, Join, ReadExpect, ReadStorage, System, WriteStorage},
+    ecs::{Entities, Entity, Join, ReadExpect, ReadStorage, System, World, WriteStorage},
     input::{InputHandler, StringBindings},
     renderer::Camera,
+    shred::{ResourceId, SystemData},
     window::ScreenDimensions,
     winit::MouseButton,
 };
@@ -14,6 +15,13 @@ use gv_core::{
 };
 use gv_game::ecs::system_data::GameStateHelper;
 
+#[derive(SystemData)]
+pub struct InputSystemData<'s> {
+    input: ReadExpect<'s, InputHandler<StringBindings>>,
+    screen_dimensions: ReadExpect<'s, ScreenDimensions>,
+    transforms: ReadStorage<'s, Transform>,
+}
+
 #[derive(Default)]
 pub struct InputSystem;
 
@@ -21,13 +29,11 @@ impl<'s> System<'s> for InputSystem {
     type SystemData = (
         GameStateHelper<'s>,
         Entities<'s>,
-        ReadExpect<'s, InputHandler<StringBindings>>,
-        ReadExpect<'s, ScreenDimensions>,
         ReadStorage<'s, Camera>,
         ReadStorage<'s, Parent>,
-        ReadStorage<'s, Transform>,
         ReadStorage<'s, WorldPosition>,
         WriteStorage<'s, ClientPlayerActions>,
+        InputSystemData<'s>,
     );
 
     fn run(
@@ -35,13 +41,11 @@ impl<'s> System<'s> for InputSystem {
         (
             game_state_helper,
             entities,
-            input,
-            screen_dimensions,
             cameras,
             parents,
-            transforms,
             world_positions,
             mut client_player_actions,
+            mut input_system_data,
         ): Self::SystemData,
     ) {
         if !game_state_helper.is_running() {
@@ -59,43 +63,40 @@ impl<'s> System<'s> for InputSystem {
         let player_position = world_positions
             .get(player_entity)
             .expect("Expected a WorldPosition");
-        self.process_mouse_input(
-            &screen_dimensions,
-            &*input,
+        input_system_data.process_mouse_input(
             camera_entity,
             &cameras,
-            &transforms,
             &mut *client_player_actions,
             **player_position,
         );
-        self.process_keyboard_input(&*input, &mut *client_player_actions);
+        input_system_data.process_keyboard_input(&mut *client_player_actions);
     }
 }
 
-impl InputSystem {
-    fn process_mouse_input(
+impl<'s> InputSystemData<'s> {
+    pub fn process_mouse_input(
         &mut self,
-        screen_dimensions: &ScreenDimensions,
-        input: &InputHandler<StringBindings>,
         camera_entity: Entity,
         cameras: &ReadStorage<'_, Camera>,
-        transforms: &ReadStorage<'_, Transform>,
         client_player_actions: &mut ClientPlayerActions,
         player_position: Vector2,
     ) {
         let mouse_world_position = {
-            let mouse_position = input.mouse_position();
+            let mouse_position = self.input.mouse_position();
             if mouse_position.is_none() {
                 return;
             }
             let (mouse_x, mouse_y) = mouse_position.unwrap();
 
             let camera = cameras.get(camera_entity).expect("Expected a Camera");
-            let camera_transform = transforms.get(camera_entity).expect("Expected a Transform");
+            let camera_transform = self
+                .transforms
+                .get(camera_entity)
+                .expect("Expected a Transform");
 
             let position = camera.projection().screen_to_world_point(
                 Point3::new(mouse_x as f32, mouse_y as f32, 0.0),
-                screen_dimensions.diagonal(),
+                self.screen_dimensions.diagonal(),
                 camera_transform,
             );
             Vector2::new(position.x, position.y)
@@ -105,7 +106,7 @@ impl InputSystem {
             direction: mouse_world_position - player_position,
         };
 
-        if input.mouse_button_is_down(MouseButton::Left) {
+        if self.input.mouse_button_is_down(MouseButton::Left) {
             client_player_actions.cast_action = Some(PlayerCastAction {
                 cast_position: player_position,
                 target_position: mouse_world_position,
@@ -115,14 +116,11 @@ impl InputSystem {
         }
     }
 
-    fn process_keyboard_input(
-        &mut self,
-        input: &InputHandler<StringBindings>,
-        client_player_actions: &mut ClientPlayerActions,
-    ) {
-        let direction = if let (Some(x), Some(y)) =
-            (input.axis_value("horizontal"), input.axis_value("vertical"))
-        {
+    pub fn process_keyboard_input(&mut self, client_player_actions: &mut ClientPlayerActions) {
+        let direction = if let (Some(x), Some(y)) = (
+            self.input.axis_value("horizontal"),
+            self.input.axis_value("vertical"),
+        ) {
             if x == 0.0 && y == 0.0 {
                 None
             } else {
