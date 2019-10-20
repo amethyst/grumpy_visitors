@@ -1,8 +1,8 @@
-use amethyst::ecs::prelude::{Component, DenseVecStorage, Entity};
+use amethyst::ecs::{Component, DenseVecStorage, Entity};
 
 use crate::{math::Vector2, net::NetIdentifier};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Component)]
 pub struct Missile {
     pub action_id: NetIdentifier,
     pub radius: f32,
@@ -29,10 +29,6 @@ impl Missile {
             damage: 50.0,
         }
     }
-}
-
-impl Component for Missile {
-    type Storage = DenseVecStorage<Self>;
 }
 
 #[derive(Clone, Debug)]

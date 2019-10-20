@@ -22,8 +22,9 @@ use crate::{
 
 const PING_PONG_STORAGE_LIMIT: usize = 20;
 
-#[derive(Clone, Debug, Serialize, Deserialize, Shrinkwrap)]
+#[derive(Clone, Debug, Serialize, Deserialize, Shrinkwrap, Component)]
 #[shrinkwrap(mutable)]
+#[storage(VecStorage)]
 pub struct WorldPosition {
     #[shrinkwrap(main_field)]
     pub position: Vector2,
@@ -35,14 +36,10 @@ impl WorldPosition {
     }
 }
 
-impl Component for WorldPosition {
-    type Storage = VecStorage<Self>;
-}
-
 /// On client side this component stores a WorldPosition that a player had
 /// `INTERPOLATION_FRAME_DELAY` frames ago.
 /// This component isn't used on server side and in single player.
-#[derive(Clone, Debug, Serialize, Deserialize, Shrinkwrap)]
+#[derive(Clone, Debug, Serialize, Deserialize, Shrinkwrap, Component)]
 #[shrinkwrap(mutable)]
 pub struct NetWorldPosition {
     #[shrinkwrap(main_field)]
@@ -55,10 +52,6 @@ impl NetWorldPosition {
     }
 }
 
-impl Component for NetWorldPosition {
-    type Storage = DenseVecStorage<Self>;
-}
-
 impl From<WorldPosition> for NetWorldPosition {
     fn from(world_position: WorldPosition) -> Self {
         NetWorldPosition {
@@ -67,7 +60,7 @@ impl From<WorldPosition> for NetWorldPosition {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Component)]
 pub struct Player {
     pub health: f32,
     pub velocity: Vector2,
@@ -94,46 +87,30 @@ impl Default for Player {
     }
 }
 
-impl Component for Player {
-    type Storage = DenseVecStorage<Self>;
-}
-
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize, Component)]
 pub struct PlayerActions {
     pub walk_action: PlayerWalkAction,
     pub look_action: PlayerLookAction,
     pub cast_action: Option<PlayerCastAction>,
 }
 
-impl Component for PlayerActions {
-    type Storage = DenseVecStorage<Self>;
-}
-
 /// We write the actions to this component right on input from client, they get processed and
 /// inserted to PlayerActions component (and optionally scheduled to be sent to a server)
 /// in ActionSystem.
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Component)]
 pub struct ClientPlayerActions {
     pub walk_action: PlayerWalkAction,
     pub look_action: PlayerLookAction,
     pub cast_action: Option<PlayerCastAction>,
 }
 
-impl Component for ClientPlayerActions {
-    type Storage = DenseVecStorage<Self>;
-}
-
 /// Stores frame numbers.
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Component)]
 pub struct PlayerLastCastedSpells {
     pub missile: u64,
 }
 
-impl Component for PlayerLastCastedSpells {
-    type Storage = DenseVecStorage<Self>;
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Component)]
 pub struct Monster {
     pub health: f32,
     pub attack_damage: f32,
@@ -145,11 +122,8 @@ pub struct Monster {
     pub radius: f32,
 }
 
-impl Component for Monster {
-    type Storage = DenseVecStorage<Self>;
-}
-
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Component)]
+#[storage(VecStorage)]
 pub struct Dead {
     pub dead_since_frame: u64,
 }
@@ -160,10 +134,7 @@ impl Dead {
     }
 }
 
-impl Component for Dead {
-    type Storage = VecStorage<Self>;
-}
-
+#[derive(Component)]
 pub struct NetConnectionModel {
     pub id: NetIdentifier,
     pub reader: ReaderId<NetEvent<EncodedMessage>>,
@@ -284,16 +255,9 @@ struct Pong {
     estimated_peer_frame_number: u64,
 }
 
-impl Component for NetConnectionModel {
-    type Storage = DenseVecStorage<Self>;
-}
-
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Component)]
+#[storage(VecStorage)]
 pub struct EntityNetMetadata {
     pub id: NetIdentifier,
     pub spawned_frame_number: u64,
-}
-
-impl Component for EntityNetMetadata {
-    type Storage = VecStorage<Self>;
 }
