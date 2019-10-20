@@ -15,6 +15,8 @@ a finished product, and my ambitious personal goal is to start doing Rust gamede
 At the same time I want to keep this project open-source and available for everyone to build it on their local machine
 and play for free.
 
+![Grumpy Visitors screenshot](header_screenshot.png)
+
 **Planned gameplay features:**
 - Campaign and survival modes 
 - Character development system with persistent progress between levels
@@ -77,6 +79,12 @@ ALL MY CPU CORES UTILIZING THEM TO 100%, DID YOU WANT TO KILL MY LAPTOP **BATTER
 Sorry, I didn't ofc. :( Please don't run this game while your laptop is plugged out, currently it's really
 insane in terms of CPU consumption.
 
+## License
+The code is shared under the [MIT license](LICENSE).
+
+All the assets are shared under the **CC BY-NC 4.0** license
+(see [assets/LICENSE](assets/LICENSE) and [resources/assets/LICENSE](resources/assets/LICENSE)). 
+
 ## Contributing
 Every contribution is really welcome! Please feel free to submit pull requests and create your own issues.
 I'll also try to be open to new ideas as much as I can, though I can't make a solid promise about that...
@@ -89,3 +97,9 @@ But nevertheless don't hesitate to take a look at "good first issues", so you ca
 something good to this game: 
 
 [![GitHub pull requests](https://img.shields.io/github/issues/mvlabat/grumpy_visitors/good%20first%20issue?label=good%20first%20issues&color=7057ff)](https://github.com/mvlabat/grumpy_visitors/issues)
+
+## Credits
+Special thanks to
+- [Klaudia Jankowska](https://klaudiajankowskaart.myportfolio.com/) for the awesome assets
+- The great Amethyst community for being extremely welcoming and helpful
+- [Erlend](https://github.com/erlend-sh) for noticing this game, giving me motivation and useful advice

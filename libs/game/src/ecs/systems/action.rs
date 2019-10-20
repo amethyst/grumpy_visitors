@@ -1,7 +1,10 @@
 #[cfg(feature = "client")]
 use amethyst::{
+    animation::{AnimationControlSet, AnimationSet},
     assets::Handle,
-    renderer::{Material, Mesh},
+    core::{Named, ParentHierarchy},
+    ecs::Read,
+    renderer::{sprite::SpriteRender, Material, Mesh},
 };
 use amethyst::{
     core::{HiddenPropagate, Transform},
@@ -15,6 +18,8 @@ use amethyst::{
 use std::marker::PhantomData;
 use std::{cell::RefCell, rc::Rc};
 
+#[cfg(feature = "client")]
+use gv_animation_prefabs::AnimationId;
 #[cfg(feature = "client")]
 use gv_client_shared::ecs::resources::MissileGraphics;
 use gv_core::{
@@ -55,8 +60,8 @@ use crate::{
                 PlayerActionSubsystem,
             },
             world_state_subsystem::WorldStateSubsystem,
-            AggregatedOutcomingUpdates, ClientFrameUpdate, DamageSubsystem, FrameUpdate,
-            GraphicsResourceBundle,
+            AggregatedOutcomingUpdates, AnimationsResourceBundle, ClientFrameUpdate,
+            DamageSubsystem, FrameUpdate, GraphicsResourceBundle,
         },
     },
     utils::{entities::is_dead, world::outcoming_net_updates_mut},
@@ -68,6 +73,7 @@ pub struct ActionSystemData<'s> {
     game_time_service: GameTimeService<'s>,
     game_state_helper: GameStateHelper<'s>,
     graphics_system_data: GraphicsSystemData<'s>,
+    animations_system_data: AnimationsSystemData<'s>,
     game_level_state: ReadExpect<'s, GameLevelState>,
     multiplayer_game_state: ReadExpect<'s, MultiplayerGameState>,
     framed_updates: WriteExpect<'s, FramedUpdates<FrameUpdate>>,
@@ -96,7 +102,7 @@ pub struct ActionSystemData<'s> {
 #[cfg(feature = "client")]
 #[derive(SystemData)]
 pub struct GraphicsSystemData<'s> {
-    missile_graphics: ReadExpect<'s, MissileGraphics>,
+    missile_graphics: Option<Read<'s, MissileGraphics>>,
     meshes: WriteStorage<'s, Handle<Mesh>>,
     materials: WriteStorage<'s, Handle<Material>>,
 }
@@ -104,6 +110,21 @@ pub struct GraphicsSystemData<'s> {
 #[cfg(not(feature = "client"))]
 #[derive(SystemData)]
 pub struct GraphicsSystemData<'s> {
+    _lifetime: PhantomData<&'s ()>,
+}
+
+#[cfg(feature = "client")]
+#[derive(SystemData)]
+pub struct AnimationsSystemData<'s> {
+    parent_hierarchy: ReadExpect<'s, ParentHierarchy>,
+    named: ReadStorage<'s, Named>,
+    pub animation_sets: ReadStorage<'s, AnimationSet<AnimationId, SpriteRender>>,
+    animation_control_sets: WriteStorage<'s, AnimationControlSet<AnimationId, SpriteRender>>,
+}
+
+#[cfg(not(feature = "client"))]
+#[derive(SystemData)]
+pub struct AnimationsSystemData<'s> {
     _lifetime: PhantomData<&'s ()>,
 }
 
@@ -121,6 +142,8 @@ impl<'s> System<'s> for ActionSystem {
 
         let graphics_resource_bundle =
             create_graphics_resource_bundle(system_data.graphics_system_data);
+        let animations_resource_bundle =
+            create_animations_resource_bundle(system_data.animations_system_data);
 
         let transforms = Rc::new(RefCell::new(system_data.transforms));
         let entity_net_metadata_storage =
@@ -164,6 +187,7 @@ impl<'s> System<'s> for ActionSystem {
             player_last_casted_spells: player_last_casted_spells.clone(),
             missiles: missiles.clone(),
             world_positions: world_positions.clone(),
+            animations_resource_bundle: &animations_resource_bundle,
         };
         let monster_action_subsystem = MonsterActionSubsystem {
             entities: &system_data.entities,
@@ -177,6 +201,7 @@ impl<'s> System<'s> for ActionSystem {
             world_positions: world_positions.clone(),
             net_world_positions: net_world_positions.clone(),
             damage_histories: damage_histories.clone(),
+            animations_resource_bundle: &animations_resource_bundle,
         };
         let missile_factory = MissileFactory::new(
             &system_data.entities,
@@ -508,6 +533,27 @@ fn create_graphics_resource_bundle(system_data: GraphicsSystemData) -> GraphicsR
 #[cfg(not(feature = "client"))]
 fn create_graphics_resource_bundle(_system_data: GraphicsSystemData) -> GraphicsResourceBundle {
     GraphicsResourceBundle {
+        _lifetime: PhantomData,
+    }
+}
+
+#[cfg(feature = "client")]
+fn create_animations_resource_bundle(
+    system_data: AnimationsSystemData,
+) -> AnimationsResourceBundle {
+    AnimationsResourceBundle {
+        parent_hierarchy: system_data.parent_hierarchy,
+        named: system_data.named,
+        animation_sets: system_data.animation_sets,
+        animation_control_sets: Rc::new(RefCell::new(system_data.animation_control_sets)),
+    }
+}
+
+#[cfg(not(feature = "client"))]
+fn create_animations_resource_bundle(
+    _system_data: AnimationsSystemData,
+) -> AnimationsResourceBundle {
+    AnimationsResourceBundle {
         _lifetime: PhantomData,
     }
 }

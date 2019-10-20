@@ -2,9 +2,9 @@
 
 #[cfg(feature = "client")]
 use amethyst::{
-    assets::Handle,
-    ecs::ReadExpect,
-    renderer::{Material, Mesh, SpriteRender},
+    assets::{Handle, Prefab},
+    ecs::{Read, ReadExpect},
+    renderer::SpriteRender,
 };
 use amethyst::{
     core::Transform,
@@ -14,7 +14,9 @@ use amethyst::{
 };
 
 #[cfg(feature = "client")]
-use gv_client_shared::ecs::resources::{AssetHandles, EntityGraphics};
+use gv_animation_prefabs::GameSpriteAnimationPrefab;
+#[cfg(feature = "client")]
+use gv_client_shared::ecs::resources::AssetHandles;
 use gv_core::{
     actions::{mob::MobAction, Action},
     ecs::{
@@ -114,11 +116,11 @@ impl<'s> LandscapeFactory<'s> {
 #[derive(SystemData)]
 pub struct MonsterFactory<'s> {
     pub entities: Entities<'s>,
+    #[cfg(feature = "client")]
+    pub asset_handles: Option<Read<'s, AssetHandles>>,
     pub transforms: WriteStorage<'s, Transform>,
     #[cfg(feature = "client")]
-    pub meshes: WriteStorage<'s, Handle<Mesh>>,
-    #[cfg(feature = "client")]
-    pub materials: WriteStorage<'s, Handle<Material>>,
+    pub sprite_animation_handles: WriteStorage<'s, Handle<Prefab<GameSpriteAnimationPrefab>>>,
     pub monsters: WriteStorage<'s, Monster>,
     pub damage_histories: WriteStorage<'s, DamageHistory>,
     pub world_positions: WriteStorage<'s, WorldPosition>,
@@ -142,15 +144,21 @@ impl<'s> MonsterFactory<'s> {
             base_health: health,
             base_speed: _base_speed,
             base_attack_damage: attack_damage,
-            graphics: EntityGraphics { mesh, material },
             radius,
             ..
         } = definition;
+        let beetle_prefab = self.asset_handles.as_ref().unwrap().beetle_prefab.clone();
+
+        let facing_direction = destination - position;
+        let facing_direction = if facing_direction.norm_squared() > 0.0 {
+            facing_direction.normalize()
+        } else {
+            Vector2::new(1.0, 0.0)
+        };
 
         self.entities
             .build_entity()
-            .with(mesh, &mut self.meshes)
-            .with(material, &mut self.materials)
+            .with(beetle_prefab, &mut self.sprite_animation_handles)
             .with(transform, &mut self.transforms)
             .with(WorldPosition::new(position), &mut self.world_positions)
             .with(
@@ -158,6 +166,7 @@ impl<'s> MonsterFactory<'s> {
                     health,
                     attack_damage,
                     destination,
+                    facing_direction,
                     velocity: Vector2::zero(),
                     action,
                     name,
@@ -193,6 +202,13 @@ impl<'s> MonsterFactory<'s> {
             ..
         } = definition;
 
+        let facing_direction = destination - position;
+        let facing_direction = if facing_direction.norm_squared() > 0.0 {
+            facing_direction.normalize()
+        } else {
+            Vector2::new(1.0, 0.0)
+        };
+
         self.entities
             .build_entity()
             .with(transform, &mut self.transforms)
@@ -202,6 +218,7 @@ impl<'s> MonsterFactory<'s> {
                     health,
                     attack_damage,
                     destination,
+                    facing_direction,
                     velocity: Vector2::zero(),
                     action,
                     name,

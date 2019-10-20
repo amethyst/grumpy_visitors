@@ -26,6 +26,3 @@ features = []
 [dependencies.amethyst]
 version = "0.13.2"
 features = ["nightly", "empty"]
-
-#[patch."https://github.com/amethyst/amethyst.git"]
-#amethyst = { path = "../amethyst" }

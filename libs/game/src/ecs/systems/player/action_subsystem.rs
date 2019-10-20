@@ -2,9 +2,11 @@ use amethyst::{
     core::math::clamp,
     ecs::{Entities, Entity, Join, ReadExpect, ReadStorage},
 };
+use rand::seq::SliceRandom;
 
 use std::time::Duration;
 
+use gv_animation_prefabs::{AnimationId, MAGE_TORSO};
 #[cfg(not(feature = "client"))]
 use gv_core::net::NetUpdateWithPosition;
 use gv_core::{
@@ -29,12 +31,15 @@ use gv_core::{
 
 use crate::ecs::{
     system_data::GameStateHelper,
-    systems::{ClientFrameUpdate, OutcomingNetUpdates, WriteExpectCell, WriteStorageCell},
+    systems::{
+        AnimationsResourceBundle, ClientFrameUpdate, OutcomingNetUpdates, WriteExpectCell,
+        WriteStorageCell,
+    },
 };
 
 const MISSILE_CAST_COOLDOWN: Duration = Duration::from_millis(500);
 
-pub struct PlayerActionSubsystem<'s> {
+pub struct PlayerActionSubsystem<'a, 's> {
     pub game_time_service: &'s GameTimeService<'s>,
     pub game_state_helper: &'s GameStateHelper<'s>,
     pub entities: &'s Entities<'s>,
@@ -47,6 +52,8 @@ pub struct PlayerActionSubsystem<'s> {
     pub player_last_casted_spells: WriteStorageCell<'s, PlayerLastCastedSpells>,
     pub missiles: WriteStorageCell<'s, Missile>,
     pub world_positions: WriteStorageCell<'s, WorldPosition>,
+    #[cfg_attr(not(feature = "client"), allow(dead_code))]
+    pub animations_resource_bundle: &'a AnimationsResourceBundle<'s>,
 }
 
 pub struct ApplyWalkActionNetArgs<'a> {
@@ -72,13 +79,13 @@ pub struct ApplyCastActionNetArgs<'a> {
 
 const PLAYER_SPEED: f32 = 200.0;
 
-impl<'s> PlayerActionSubsystem<'s> {
-    pub fn apply_walk_action<'a>(
+impl<'a, 's> PlayerActionSubsystem<'a, 's> {
+    pub fn apply_walk_action<'n>(
         &self,
         frame_number: u64,
         entity: Entity,
         player: &mut Player,
-        net_args: Option<ApplyWalkActionNetArgs<'a>>,
+        net_args: Option<ApplyWalkActionNetArgs<'n>>,
         client_side_actions: &mut ClientFrameUpdate,
     ) {
         let mut world_positions = self.world_positions.borrow_mut();
@@ -169,12 +176,12 @@ impl<'s> PlayerActionSubsystem<'s> {
         }
     }
 
-    pub fn apply_look_action<'a>(
+    pub fn apply_look_action<'n>(
         &self,
         frame_number: u64,
         entity: Entity,
         player: &mut Player,
-        net_args: Option<ApplyLookActionNetArgs<'a>>,
+        net_args: Option<ApplyLookActionNetArgs<'n>>,
         client_side_actions: &mut ClientFrameUpdate,
     ) {
         let mut player_actions = self.player_actions.borrow_mut();
@@ -234,11 +241,11 @@ impl<'s> PlayerActionSubsystem<'s> {
         player.looking_direction = player_actions.look_action.direction;
     }
 
-    pub fn apply_cast_action<'a>(
+    pub fn apply_cast_action<'n>(
         &self,
         frame_number: u64,
         entity: Entity,
-        mut net_args: Option<ApplyCastActionNetArgs<'a>>,
+        mut net_args: Option<ApplyCastActionNetArgs<'n>>,
         _client_side_actions: &mut ClientFrameUpdate,
     ) {
         let mut player_actions = self.player_actions.borrow_mut();
@@ -322,6 +329,15 @@ impl<'s> PlayerActionSubsystem<'s> {
                             action_id,
                             action: cast_action.clone(),
                         });
+
+                        let animation_id = [AnimationId::Spell1, AnimationId::Spell2]
+                            .choose(&mut rand::thread_rng())
+                            .unwrap();
+                        self.animations_resource_bundle.play_animation(
+                            entity,
+                            MAGE_TORSO,
+                            *animation_id,
+                        );
                     }
 
                     return;
@@ -370,6 +386,15 @@ impl<'s> PlayerActionSubsystem<'s> {
                                 action_id: 0,
                                 action: cast_action.clone(),
                             });
+
+                            let animation_id = [AnimationId::Spell1, AnimationId::Spell2]
+                                .choose(&mut rand::thread_rng())
+                                .unwrap();
+                            self.animations_resource_bundle.play_animation(
+                                entity,
+                                MAGE_TORSO,
+                                *animation_id,
+                            );
                         }
 
                         player_actions.cast_action = Some(cast_action);

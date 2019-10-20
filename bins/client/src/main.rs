@@ -53,6 +53,7 @@ fn main() -> amethyst::Result<()> {
     let socket_addr = "0.0.0.0:0";
 
     Logger::from_config(Default::default())
+        .level_for("amethyst_assets", LogLevelFilter::Info)
         .level_for("gfx_backend_vulkan", LogLevelFilter::Warn)
         .level_for("gv_game::ecs::systems", LogLevelFilter::Debug)
         .level_for(

@@ -4,15 +4,17 @@ version = "0.1.0"
 authors = []
 edition = "2018"
 
+[dependencies]
+texture_packer = "0.16.0"
+image = "0.21.1"
+ron = "0.5.1"
+failure = "0.1.5"
+serde = "1.0.101"
+serde_derive = "1.0.101"
+
 [dependencies.gv_animation_prefabs]
 path = "../libs/animation_prefabs"
 
 [dependencies.amethyst]
 version = "0.13.2"
 features = ["nightly", "empty"]
-
-[dependencies]
-texture_packer = "0.16.0"
-image = "0.21.1"
-ron = "0.5.1"
-failure = "0.1.5"

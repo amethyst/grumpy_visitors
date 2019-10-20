@@ -13,7 +13,7 @@ use gv_client_shared::ecs::factories::PlayerClientFactory;
 #[cfg(feature = "client")]
 use gv_client_shared::{
     ecs::{factories::CameraFactory, resources::MultiplayerRoomState},
-    utils::{self, animation},
+    utils,
 };
 use gv_core::ecs::{
     components::EntityNetMetadata,
@@ -58,12 +58,6 @@ impl SimpleState for PlayingState {
     ) -> SimpleTrans {
         let world = data.world;
         utils::handle_window_event(&world, &event);
-        Trans::None
-    }
-
-    #[cfg(feature = "client")]
-    fn update(&mut self, data: &mut StateData<'_, GameData<'_, '_>>) -> SimpleTrans {
-        animation::start_hero_animations(data.world);
         Trans::None
     }
 }
