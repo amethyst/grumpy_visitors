@@ -12,9 +12,13 @@ mod world_position_transform;
 mod world_state_subsystem;
 
 pub use self::{
-    action::ActionSystem, damage_subsystem::DamageSubsystem, level::LevelSystem,
-    net_connection_manager::{NetConnectionManagerSystem, NetConnectionManagerDesc}, pause::PauseSystem,
-    state_switcher::StateSwitcherSystem, world_position_transform::WorldPositionTransformSystem,
+    action::ActionSystem,
+    damage_subsystem::DamageSubsystem,
+    level::LevelSystem,
+    net_connection_manager::{NetConnectionManagerDesc, NetConnectionManagerSystem},
+    pause::PauseSystem,
+    state_switcher::StateSwitcherSystem,
+    world_position_transform::WorldPositionTransformSystem,
     world_state_subsystem::WorldStateSubsystem,
 };
 

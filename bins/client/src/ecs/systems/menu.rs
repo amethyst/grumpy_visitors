@@ -1,12 +1,16 @@
 use amethyst::{
     core::{Hidden, HiddenPropagate, ParentHierarchy},
     ecs::{Entity, ReadExpect, System, Write, WriteExpect, WriteStorage},
+    network::simulation::laminar::LaminarSocketResource,
     shrev::{EventChannel, ReaderId},
     ui::{Interactable, UiEvent, UiEventType, UiImage, UiText},
 };
 use lazy_static::lazy_static;
 
-use std::time::Duration;
+use std::{
+    net::{Ipv4Addr, Ipv6Addr, SocketAddr},
+    time::Duration,
+};
 
 use gv_client_shared::ecs::resources::MultiplayerRoomState;
 use gv_core::ecs::{
@@ -204,6 +208,7 @@ impl<'s> System<'s> for MenuSystem {
         WriteExpect<'s, ServerCommand>,
         WriteExpect<'s, MultiplayerRoomState>,
         WriteExpect<'s, MultiplayerGameState>,
+        WriteExpect<'s, LaminarSocketResource>,
         Write<'s, EventChannel<UiEvent>>,
         WriteStorage<'s, UiText>,
         WriteStorage<'s, UiImage>,
@@ -224,6 +229,7 @@ impl<'s> System<'s> for MenuSystem {
             mut server_command,
             mut multiplayer_room_state,
             mut multiplayer_game_state,
+            mut laminar_socket,
             mut ui_events,
             mut ui_texts,
             mut ui_images,
@@ -328,8 +334,19 @@ impl<'s> System<'s> for MenuSystem {
                         // TODO: error validations.
                         let server_addr = addr.parse().expect("Expected a valid address");
                         if is_host {
+                            let mut host_client_addr = laminar_socket
+                                .get_mut()
+                                .expect("Expected a LaminarSocket")
+                                .local_addr()
+                                .expect("Expected a local address for a Laminar socket");
+                            match &mut host_client_addr {
+                                SocketAddr::V4(addr) => addr.set_ip(Ipv4Addr::new(127, 0, 0, 1)),
+                                SocketAddr::V6(addr) => {
+                                    addr.set_ip(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1))
+                                }
+                            };
                             server_command
-                                .start(server_addr)
+                                .start(server_addr, host_client_addr)
                                 .expect("Expected to start a server");
                         }
                         **menu_state = GameMenuState::MultiplayerRoomMenu;

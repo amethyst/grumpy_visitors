@@ -76,10 +76,11 @@ pub struct MultiplayerRoomState {
     pub nickname: String,
     pub is_active: bool,
     pub has_started: bool,
-    pub has_sent_start_package: bool,
+    pub has_sent_join_message: bool,
+    pub has_sent_start_message: bool,
     pub server_addr: SocketAddr,
     pub is_host: bool,
-    pub connection_id: NetIdentifier,
+    pub connection_id: Option<NetIdentifier>,
     pub player_net_id: NetIdentifier,
 }
 
@@ -89,10 +90,11 @@ impl MultiplayerRoomState {
             nickname: "Player".to_owned(),
             is_active: false,
             has_started: false,
-            has_sent_start_package: false,
+            has_sent_join_message: false,
+            has_sent_start_message: false,
             server_addr: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 0), 3455)),
             is_host: false,
-            connection_id: 0,
+            connection_id: None,
             player_net_id: 0,
         }
     }

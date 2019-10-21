@@ -3,10 +3,14 @@ use amethyst::{
     ecs::ReadExpect,
     prelude::{SimpleTrans, StateEvent, Trans},
 };
+#[cfg(not(feature = "client"))]
 use amethyst::{
-    ecs::{Join, SystemData, World, WriteExpect, ReadStorage, WriteStorage, Write},
+    ecs::{Join, ReadStorage, Write},
+    network::simulation::TransportResource,
+};
+use amethyst::{
+    ecs::{SystemData, World, WriteExpect, WriteStorage},
     prelude::{GameData, SimpleState, StateData},
-    network::simulation::TransportResource
 };
 
 #[cfg(feature = "client")]
@@ -25,12 +29,11 @@ use gv_core::ecs::{
     system_data::time::GameTimeService,
 };
 #[cfg(not(feature = "client"))]
-use gv_core::net::server_message::ServerMessagePayload;
+use gv_core::{ecs::components::NetConnectionModel, net::server_message::ServerMessagePayload};
 
 use crate::ecs::factories::{LandscapeFactory, PlayerFactory};
 #[cfg(not(feature = "client"))]
 use crate::utils::net::broadcast_message_reliable;
-use gv_core::ecs::components::NetConnectionModel;
 
 #[derive(Default)]
 pub struct PlayingState;

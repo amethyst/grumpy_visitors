@@ -1,5 +1,5 @@
 use amethyst::{
-    ecs::{Join, ReadStorage, System, Write, WriteExpect, WriteStorage},
+    ecs::{Join, ReadStorage, System, Write, WriteExpect},
     network::simulation::TransportResource,
 };
 
@@ -8,7 +8,7 @@ use gv_core::{
         components::NetConnectionModel, resources::world::ServerWorldUpdates,
         system_data::time::GameTimeService,
     },
-    net::{server_message::ServerMessagePayload},
+    net::server_message::ServerMessagePayload,
 };
 use gv_game::{ecs::system_data::GameStateHelper, utils::net::send_message_unreliable};
 

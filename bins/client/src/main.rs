@@ -11,8 +11,8 @@ use amethyst::{
         frame_limiter::FrameRateLimitStrategy, transform::TransformBundle, HideHierarchySystemDesc,
     },
     input::{InputBundle, StringBindings},
-    network::{NetworkBundle, ServerConfig},
-    prelude::{Application, GameDataBuilder},
+    network::simulation::laminar::{LaminarConfig, LaminarNetworkBundle, LaminarSocket},
+    prelude::{Application, GameDataBuilder, SystemDesc},
     renderer::{
         plugins::{RenderFlat2D, RenderFlat3D, RenderToWindow},
         types::DefaultBackend,
@@ -21,18 +21,16 @@ use amethyst::{
     ui::{RenderUi, UiBundle},
     LogLevelFilter, Logger,
 };
-use laminar::Config as LaminarConfig;
 
 use std::time::Duration;
 
 use gv_animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
 use gv_client_shared::{ecs::resources::MultiplayerRoomState, settings::Settings};
-use gv_core::{
-    ecs::resources::world::{ClientWorldUpdates, FramedUpdates, ReceivedServerWorldUpdate},
-    net::EncodedMessage,
+use gv_core::ecs::resources::world::{
+    ClientWorldUpdates, FramedUpdates, ReceivedServerWorldUpdate,
 };
 use gv_game::{
-    build_game_logic_systems, ecs::systems::NetConnectionManagerSystem, states::LoadingState,
+    build_game_logic_systems, ecs::systems::NetConnectionManagerDesc, states::LoadingState,
 };
 
 use crate::{
@@ -83,20 +81,19 @@ fn main() -> amethyst::Result<()> {
         .world
         .insert(FramedUpdates::<ReceivedServerWorldUpdate>::default());
 
-    let server_config = ServerConfig {
-        udp_socket_addr: socket_addr.parse()?,
-        laminar_config: LaminarConfig {
-            receive_buffer_max_size: 14_500,
-            ..LaminarConfig::default()
-        },
-        ..ServerConfig::default()
+    let laminar_config = LaminarConfig {
+        receive_buffer_max_size: 14_500,
+        ..LaminarConfig::default()
     };
+
+    let socket = LaminarSocket::bind_with_config(socket_addr, laminar_config)?;
+
     let mut game_data_builder = GameDataBuilder::default()
-        .with_bundle(NetworkBundle::<EncodedMessage>::from_config(server_config))?
+        .with_bundle(LaminarNetworkBundle::new(Some(socket)))?
         .with(
-            NetConnectionManagerSystem::default(),
+            NetConnectionManagerDesc::default().build(&mut builder.world),
             "net_connection_manager_system",
-            &["net_socket"],
+            &[],
         )
         .with(
             ClientNetworkSystem,
@@ -105,8 +102,7 @@ fn main() -> amethyst::Result<()> {
         )
         .with_bundle(input_bundle)?
         .with(InputSystem::default(), "mouse_system", &["input_system"])
-        .with(MenuSystem::new(), "menu_system", &[])
-        .with(LocalServerSystem, "local_server_system", &["menu_system"]);
+        .with(MenuSystem::new(), "menu_system", &[]);
 
     game_data_builder = build_game_logic_systems(game_data_builder, &mut builder.world, false)?
         .with(

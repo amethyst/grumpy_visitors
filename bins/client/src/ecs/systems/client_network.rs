@@ -1,4 +1,7 @@
-use amethyst::ecs::{Entities, Join, ReadExpect, ReadStorage, System, WriteExpect, WriteStorage};
+use amethyst::{
+    ecs::{Entities, Join, ReadExpect, System, Write, WriteExpect, WriteStorage},
+    network::simulation::TransportResource,
+};
 
 use std::cmp::Ordering;
 
@@ -18,8 +21,8 @@ use gv_core::{
         system_data::time::GameTimeService,
     },
     net::{
-        client_message::ClientMessagePayload, server_message::ServerMessagePayload, NetConnection,
-        NetEvent, NetIdentifier, INTERPOLATION_FRAME_DELAY,
+        client_message::ClientMessagePayload, server_message::ServerMessagePayload, NetEvent,
+        NetIdentifier, INTERPOLATION_FRAME_DELAY,
     },
 };
 use gv_game::{
@@ -48,8 +51,8 @@ impl<'s> System<'s> for ClientNetworkSystem {
         WriteExpect<'s, FramedUpdates<ReceivedServerWorldUpdate>>,
         WriteExpect<'s, FramedUpdates<PlayerActionUpdates>>,
         WriteExpect<'s, FramedUpdates<SpawnActions>>,
-        WriteStorage<'s, NetConnection>,
-        ReadStorage<'s, NetConnectionModel>,
+        WriteStorage<'s, NetConnectionModel>,
+        Write<'s, TransportResource>,
     );
 
     fn run(
@@ -66,52 +69,76 @@ impl<'s> System<'s> for ClientNetworkSystem {
             mut framed_updates,
             mut player_actions_updates,
             mut spawn_actions,
-            mut connections,
-            net_connection_models,
+            mut net_connection_models,
+            mut transport,
         ): Self::SystemData,
     ) {
-        if connections.count() == 0
+        // A joining (not hosting) client has to initiate a connection.
+        if net_connection_models.count() == 0
             && multiplayer_room_state.is_active
             && !multiplayer_room_state.is_host
+            && !multiplayer_room_state.has_sent_join_message
         {
+            multiplayer_room_state.has_sent_join_message = true;
+            let net_connection_model =
+                NetConnectionModel::new(0, multiplayer_room_state.server_addr);
+            send_message_reliable(
+                &mut transport,
+                &net_connection_model,
+                &ClientMessagePayload::JoinRoom {
+                    nickname: multiplayer_room_state.nickname.clone(),
+                },
+            );
             entities
                 .build_entity()
-                .with(
-                    NetConnection::new(multiplayer_room_state.server_addr),
-                    &mut connections,
-                )
+                .with(net_connection_model, &mut net_connection_models)
                 .build();
             return;
         }
 
         if multiplayer_room_state.is_host
             && multiplayer_room_state.has_started
-            && !multiplayer_room_state.has_sent_start_package
+            && !multiplayer_room_state.has_sent_start_message
         {
-            multiplayer_room_state.has_sent_start_package = true;
-            let connection = (&mut connections)
+            multiplayer_room_state.has_sent_start_message = true;
+            let connection = (&mut net_connection_models)
                 .join()
                 .next()
                 .expect("Expected a server connection");
-            send_message_reliable(connection, &ClientMessagePayload::StartHostedGame);
+            send_message_reliable(
+                &mut transport,
+                connection,
+                &ClientMessagePayload::StartHostedGame,
+            );
         }
 
         for connection_event in connection_events.0.drain(..) {
             match connection_event.event {
-                NetEvent::Message(ServerMessagePayload::Handshake(connection_id)) => {
+                NetEvent::Message(ServerMessagePayload::Handshake {
+                    net_id: connection_id,
+                    is_host,
+                }) => {
                     log::info!("Received Handshake from a server ({})", connection_id);
-                    let connection = (&mut connections)
+                    let connection = (&mut net_connection_models)
                         .join()
                         .next()
                         .expect("Expected a server connection");
-                    multiplayer_room_state.connection_id = connection_id;
 
-                    send_message_reliable(
-                        connection,
-                        &ClientMessagePayload::JoinRoom {
-                            nickname: multiplayer_room_state.nickname.clone(),
-                        },
-                    );
+                    // A hosting client won't send a join packet first, as a server initiates
+                    // a connection.
+                    if !multiplayer_room_state.has_sent_join_message {
+                        multiplayer_room_state.has_sent_join_message = true;
+                        send_message_reliable(
+                            &mut transport,
+                            connection,
+                            &ClientMessagePayload::JoinRoom {
+                                nickname: multiplayer_room_state.nickname.clone(),
+                            },
+                        );
+                    }
+
+                    multiplayer_room_state.connection_id = Some(connection_id);
+                    multiplayer_room_state.is_host = is_host;
                 }
                 NetEvent::Message(ServerMessagePayload::UpdateRoomPlayers(players)) => {
                     log::info!("Updated room players");
@@ -124,7 +151,10 @@ impl<'s> System<'s> for ClientNetworkSystem {
                         .enumerate()
                     {
                         player.entity_net_id = entity_net_ids[i];
-                        if player.connection_id == multiplayer_room_state.connection_id {
+                        if multiplayer_room_state
+                            .connection_id
+                            .map_or(false, |connection_id| connection_id == player.connection_id)
+                        {
                             multiplayer_room_state.player_net_id = player.entity_net_id;
                         }
                     }
@@ -132,11 +162,12 @@ impl<'s> System<'s> for ClientNetworkSystem {
                     new_game_engine_sate.0 = GameEngineState::Playing;
                 }
                 NetEvent::Message(ServerMessagePayload::UpdateWorld { id, mut updates }) => {
-                    let connection = (&mut connections)
+                    let connection = (&mut net_connection_models)
                         .join()
                         .next()
                         .expect("Expected a server connection");
                     send_message_unreliable(
+                        &mut transport,
                         connection,
                         &ClientMessagePayload::AcknowledgeWorldUpdate(id),
                     );

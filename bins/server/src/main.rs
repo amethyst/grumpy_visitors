@@ -11,17 +11,17 @@ use amethyst::{
 
 use std::time::Duration;
 
-use gv_core::{
-    ecs::resources::world::{
-        DummyFramedUpdate, FramedUpdates, ReceivedClientActionUpdates, ServerWorldUpdates,
-    },
-    net::EncodedMessage,
+use gv_core::ecs::resources::world::{
+    DummyFramedUpdate, FramedUpdates, ReceivedClientActionUpdates, ServerWorldUpdates,
 };
 use gv_game::{
     build_game_logic_systems, ecs::systems::NetConnectionManagerDesc, states::LoadingState,
 };
 
-use crate::ecs::{resources::LastBroadcastedFrame, systems::*};
+use crate::ecs::{
+    resources::{HostClientAddress, LastBroadcastedFrame},
+    systems::*,
+};
 
 fn main() -> amethyst::Result<()> {
     let cli_matches = clap::App::new("grumpy_visitors")
@@ -37,11 +37,25 @@ fn main() -> amethyst::Result<()> {
                 .default_value("127.0.0.1:3455")
                 .takes_value(true),
         )
+        .arg(
+            clap::Arg::with_name("host-client-addr")
+                .short("c")
+                .long("client-addr")
+                .value_name("CLIENT_ADDR")
+                .help("Specifies the address of the client hosting the game")
+                .takes_value(true),
+        )
         .get_matches();
 
     let socket_addr = cli_matches
         .value_of("addr")
-        .expect("Expected a default value");
+        .expect("Expected a default value if not passed via CLI");
+    let client_addr = cli_matches.value_of("host-client-addr");
+    let client_addr = if let Some(client_addr) = client_addr {
+        HostClientAddress(Some(client_addr.parse()?))
+    } else {
+        HostClientAddress(None)
+    };
 
     Logger::from_config_formatter(Default::default(), |out, message, record| {
         out.finish(format_args!(
@@ -68,6 +82,7 @@ fn main() -> amethyst::Result<()> {
     builder
         .world
         .insert(FramedUpdates::<ReceivedClientActionUpdates>::default());
+    builder.world.insert(client_addr);
     builder.world.insert(ServerWorldUpdates::default());
     builder.world.insert(LastBroadcastedFrame(0));
 

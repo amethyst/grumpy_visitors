@@ -27,7 +27,7 @@ impl Settings {
         fs::create_dir_all(project_dirs.config_dir())?;
 
         let bindings_config_path = bindings_config_path(&project_dirs);
-        let bindings = Bindings::load_no_fallback(bindings_config_path.as_path()).or_else(
+        let bindings = Bindings::load(bindings_config_path.as_path()).or_else(
             move |_| -> amethyst::Result<Bindings<StringBindings>> {
                 let bindings = Bindings::load_bytes(DEFAULT_BINDINGS_CONFIG_BYTES)?;
                 fs::write(
@@ -39,7 +39,7 @@ impl Settings {
         )?;
 
         let display_config_path = display_config_path(&project_dirs);
-        let display = DisplayConfig::load_no_fallback(display_config_path.as_path()).or_else(
+        let display = DisplayConfig::load(display_config_path.as_path()).or_else(
             move |_| -> amethyst::Result<DisplayConfig> {
                 let display = DisplayConfig::load_bytes(DEFAULT_DISPLAY_CONFIG_BYTES)?;
                 fs::write(

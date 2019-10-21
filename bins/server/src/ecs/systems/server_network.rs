@@ -1,6 +1,6 @@
 use amethyst::{
-    ecs::{Join, ReadExpect, System, Write, WriteExpect, WriteStorage},
-    network::simulation::TransportResource
+    ecs::{Entities, Join, ReadExpect, System, Write, WriteExpect, WriteStorage},
+    network::simulation::TransportResource,
 };
 
 use gv_core::{
@@ -21,8 +21,8 @@ use gv_core::{
         system_data::time::GameTimeService,
     },
     net::{
-        client_message::ClientMessagePayload, server_message::ServerMessagePayload,
-        NetEvent, NetIdentifier, NetUpdate, INTERPOLATION_FRAME_DELAY,
+        client_message::ClientMessagePayload, server_message::ServerMessagePayload, NetEvent,
+        NetIdentifier, NetUpdate, INTERPOLATION_FRAME_DELAY,
     },
 };
 use gv_game::{
@@ -30,7 +30,7 @@ use gv_game::{
     utils::net::{broadcast_message_reliable, send_message_reliable},
 };
 
-use crate::ecs::resources::LastBroadcastedFrame;
+use crate::ecs::resources::{HostClientAddress, LastBroadcastedFrame};
 
 // Pause the game if we have a client that hasn't responded for the last 180 frames (3 secs).
 const PAUSE_FRAME_THRESHOLD: u64 =
@@ -55,9 +55,11 @@ impl ServerNetworkSystem {
 impl<'s> System<'s> for ServerNetworkSystem {
     type SystemData = (
         GameTimeService<'s>,
+        Entities<'s>,
         ReadExpect<'s, GameEngineState>,
         ReadExpect<'s, LastBroadcastedFrame>,
         WriteExpect<'s, ConnectionEvents>,
+        WriteExpect<'s, HostClientAddress>,
         WriteExpect<'s, MultiplayerGameState>,
         WriteExpect<'s, NewGameEngineState>,
         WriteExpect<'s, FramedUpdates<ReceivedClientActionUpdates>>,
@@ -71,9 +73,11 @@ impl<'s> System<'s> for ServerNetworkSystem {
         &mut self,
         (
             game_time_service,
+            entities,
             game_engine_state,
             last_broadcasted_frame,
             mut connection_events,
+            mut host_client_address,
             mut multiplayer_game_state,
             mut new_game_engine_state,
             mut framed_updates,
@@ -83,6 +87,24 @@ impl<'s> System<'s> for ServerNetworkSystem {
             mut transport,
         ): Self::SystemData,
     ) {
+        if let Some(host_client_address) = host_client_address.0.take() {
+            let net_connection_model = NetConnectionModel::new(0, host_client_address);
+            self.host_connection_id = 0;
+            log::info!("Sending a Handshake message to a hosting client");
+            send_message_reliable(
+                &mut transport,
+                &net_connection_model,
+                &ServerMessagePayload::Handshake {
+                    net_id: 0,
+                    is_host: true,
+                },
+            );
+            entities
+                .build_entity()
+                .with(net_connection_model, &mut net_connection_models)
+                .build();
+        }
+
         for connection_event in connection_events.0.drain(..) {
             let connection_id = connection_event.connection_id;
             match connection_event.event {
@@ -100,18 +122,36 @@ impl<'s> System<'s> for ServerNetworkSystem {
                     send_message_reliable(
                         &mut transport,
                         net_connection,
-                        &ServerMessagePayload::Handshake(connection_id),
+                        &ServerMessagePayload::Handshake {
+                            net_id: connection_id,
+                            is_host: multiplayer_game_state.players.is_empty(),
+                        },
                     );
                 }
                 NetEvent::Message(ClientMessagePayload::JoinRoom { nickname }) => {
-                    multiplayer_game_state
-                        .update_players()
-                        .push(MultiplayerRoomPlayer {
-                            connection_id,
-                            entity_net_id: 0,
-                            nickname,
-                            is_host: self.host_connection_id == connection_id,
-                        });
+                    log::info!(
+                        "A client ({}) has joined the room: {}",
+                        connection_id,
+                        nickname
+                    );
+                    if multiplayer_game_state
+                        .players
+                        .iter()
+                        .any(|player| player.connection_id == connection_id)
+                    {
+                        log::warn!(
+                            "A client has sent a JoinRoom message more than once, discarding"
+                        );
+                    } else {
+                        multiplayer_game_state
+                            .update_players()
+                            .push(MultiplayerRoomPlayer {
+                                connection_id,
+                                entity_net_id: 0,
+                                nickname,
+                                is_host: self.host_connection_id == connection_id,
+                            });
+                    }
                 }
                 NetEvent::Message(ClientMessagePayload::StartHostedGame)
                     if connection_id == self.host_connection_id =>
@@ -200,7 +240,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
             broadcast_message_reliable(
                 &mut transport,
                 (&net_connection_models).join(),
-                &ServerMessagePayload::Heartbeat
+                &ServerMessagePayload::Heartbeat,
             );
         }
 

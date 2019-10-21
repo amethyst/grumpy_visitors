@@ -4,7 +4,6 @@ use std::{
     env::current_exe,
     net::SocketAddr,
     process::{Child, Command},
-    time::Instant,
 };
 
 pub struct LastAcknowledgedUpdate {
@@ -21,8 +20,8 @@ impl ServerCommand {
         Self { process: None }
     }
 
-    pub fn start(&mut self, addr: SocketAddr) -> Result<(), Error> {
-        self.process = Some(ServerProcess::new(addr)?);
+    pub fn start(&mut self, addr: SocketAddr, host_client_addr: SocketAddr) -> Result<(), Error> {
+        self.process = Some(ServerProcess::new(addr, Some(host_client_addr))?);
         Ok(())
     }
 
@@ -30,44 +29,32 @@ impl ServerCommand {
     pub fn kill(&mut self) {
         self.process = None;
     }
-
-    pub fn process(&self) -> Option<&ServerProcess> {
-        self.process.as_ref()
-    }
 }
 
 pub struct ServerProcess {
     cmd: Child,
-    addr: SocketAddr,
-    created_at: Instant,
 }
 
 impl ServerProcess {
-    pub fn new(addr: SocketAddr) -> Result<Self, Error> {
+    pub fn new(addr: SocketAddr, host_client_addr: Option<SocketAddr>) -> Result<Self, Error> {
         let executable_path = {
             let mut path = current_exe()?;
             path.pop();
             path.join("gv_server")
         };
 
-        let cmd = Command::new(executable_path)
-            .arg("--addr")
-            .arg(addr.to_string())
-            .spawn()?;
+        let mut command_builder = Command::new(executable_path);
+        command_builder.arg("--addr").arg(addr.to_string());
 
-        Ok(ServerProcess {
-            cmd,
-            addr,
-            created_at: Instant::now(),
-        })
-    }
+        if let Some(host_client_addr) = host_client_addr {
+            command_builder
+                .arg("--client-addr")
+                .arg(host_client_addr.to_string());
+        }
 
-    pub fn socket_addr(&self) -> SocketAddr {
-        self.addr
-    }
+        let cmd = command_builder.spawn()?;
 
-    pub fn created_at(&self) -> Instant {
-        self.created_at
+        Ok(ServerProcess { cmd })
     }
 }
 

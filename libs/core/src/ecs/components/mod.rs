@@ -1,10 +1,7 @@
 pub mod damage_history;
 pub mod missile;
 
-use amethyst::{
-    ecs::{Component, DenseVecStorage, Entity, ReaderId, VecStorage},
-    network::simulation::NetworkSimulationEvent,
-};
+use amethyst::ecs::{Component, DenseVecStorage, Entity, VecStorage};
 use serde_derive::{Deserialize, Serialize};
 use shrinkwraprs::Shrinkwrap;
 
