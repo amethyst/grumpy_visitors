@@ -12,7 +12,10 @@ pub enum ServerMessagePayload {
     /// Must have the same length as a last sent UpdateRoomPlayers,
     /// contains server ids for corresponding players.
     StartGame(Vec<NetIdentifier>),
-    Handshake(NetIdentifier),
+    Handshake {
+        net_id: NetIdentifier,
+        is_host: bool,
+    },
     UpdateWorld {
         id: u64,
         updates: Vec<ServerWorldUpdate>,

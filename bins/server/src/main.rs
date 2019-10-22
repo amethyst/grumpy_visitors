@@ -4,25 +4,24 @@ mod ecs;
 
 use amethyst::{
     core::{frame_limiter::FrameRateLimitStrategy, transform::TransformBundle},
-    network::{NetworkBundle, ServerConfig},
-    prelude::{Application, GameDataBuilder},
+    network::simulation::laminar::{LaminarConfig, LaminarNetworkBundle, LaminarSocket},
+    prelude::{Application, GameDataBuilder, SystemDesc},
     LogLevelFilter, Logger,
 };
-use laminar::Config as LaminarConfig;
 
 use std::time::Duration;
 
-use gv_core::{
-    ecs::resources::world::{
-        DummyFramedUpdate, FramedUpdates, ReceivedClientActionUpdates, ServerWorldUpdates,
-    },
-    net::EncodedMessage,
+use gv_core::ecs::resources::world::{
+    DummyFramedUpdate, FramedUpdates, ReceivedClientActionUpdates, ServerWorldUpdates,
 };
 use gv_game::{
-    build_game_logic_systems, ecs::systems::NetConnectionManagerSystem, states::LoadingState,
+    build_game_logic_systems, ecs::systems::NetConnectionManagerDesc, states::LoadingState,
 };
 
-use crate::ecs::{resources::LastBroadcastedFrame, systems::*};
+use crate::ecs::{
+    resources::{HostClientAddress, LastBroadcastedFrame},
+    systems::*,
+};
 
 fn main() -> amethyst::Result<()> {
     let cli_matches = clap::App::new("grumpy_visitors")
@@ -38,11 +37,25 @@ fn main() -> amethyst::Result<()> {
                 .default_value("127.0.0.1:3455")
                 .takes_value(true),
         )
+        .arg(
+            clap::Arg::with_name("host-client-addr")
+                .short("c")
+                .long("client-addr")
+                .value_name("CLIENT_ADDR")
+                .help("Specifies the address of the client hosting the game")
+                .takes_value(true),
+        )
         .get_matches();
 
     let socket_addr = cli_matches
         .value_of("addr")
-        .expect("Expected a default value");
+        .expect("Expected a default value if not passed via CLI");
+    let client_addr = cli_matches.value_of("host-client-addr");
+    let client_addr = if let Some(client_addr) = client_addr {
+        HostClientAddress(Some(client_addr.parse()?))
+    } else {
+        HostClientAddress(None)
+    };
 
     Logger::from_config_formatter(Default::default(), |out, message, record| {
         out.finish(format_args!(
@@ -69,29 +82,25 @@ fn main() -> amethyst::Result<()> {
     builder
         .world
         .insert(FramedUpdates::<ReceivedClientActionUpdates>::default());
+    builder.world.insert(client_addr);
     builder.world.insert(ServerWorldUpdates::default());
     builder.world.insert(LastBroadcastedFrame(0));
 
-    let server_config = ServerConfig {
-        udp_socket_addr: socket_addr.parse()?,
-        laminar_config: LaminarConfig {
-            receive_buffer_max_size: 14_500,
-            ..LaminarConfig::default()
-        },
-        ..ServerConfig::default()
+    let laminar_config = LaminarConfig {
+        receive_buffer_max_size: 14_500,
+        ..LaminarConfig::default()
     };
+
+    let socket = LaminarSocket::bind_with_config(socket_addr, laminar_config)?;
+
     let mut game_data_builder = GameDataBuilder::default()
-        .with_bundle(NetworkBundle::<EncodedMessage>::from_config(server_config))?
+        .with_bundle(LaminarNetworkBundle::new(Some(socket)))?
         .with(
-            NetConnectionManagerSystem::default(),
+            NetConnectionManagerDesc::default().build(&mut builder.world),
             "net_connection_manager_system",
-            &["net_socket"],
+            &[],
         )
-        .with(
-            ServerNetworkSystem::new(),
-            "game_network_system",
-            &["net_socket"],
-        );
+        .with(ServerNetworkSystem::new(), "game_network_system", &[]);
     game_data_builder = build_game_logic_systems(game_data_builder, &mut builder.world, true)?
         .with(
             GameUpdatesBroadcastingSystem::default(),

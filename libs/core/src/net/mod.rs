@@ -3,12 +3,11 @@ use serde_derive::{Deserialize, Serialize};
 pub mod client_message;
 pub mod server_message;
 
-use amethyst::network;
+use amethyst::network::Bytes;
 
 use crate::ecs::components::WorldPosition;
 
-pub type EncodedMessage = Vec<u8>;
-pub type NetConnection = network::NetConnection<EncodedMessage>;
+pub type EncodedMessage = Bytes;
 pub type NetIdentifier = u64;
 
 pub const INTERPOLATION_FRAME_DELAY: u64 = 10;

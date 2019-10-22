@@ -1,4 +1,7 @@
-use amethyst::ecs::{Join, ReadExpect, System, WriteExpect, WriteStorage};
+use amethyst::{
+    ecs::{Entities, Join, ReadExpect, System, Write, WriteExpect, WriteStorage},
+    network::simulation::TransportResource,
+};
 
 use gv_core::{
     actions::{
@@ -18,8 +21,8 @@ use gv_core::{
         system_data::time::GameTimeService,
     },
     net::{
-        client_message::ClientMessagePayload, server_message::ServerMessagePayload, NetConnection,
-        NetEvent, NetIdentifier, NetUpdate, INTERPOLATION_FRAME_DELAY,
+        client_message::ClientMessagePayload, server_message::ServerMessagePayload, NetEvent,
+        NetIdentifier, NetUpdate, INTERPOLATION_FRAME_DELAY,
     },
 };
 use gv_game::{
@@ -27,7 +30,7 @@ use gv_game::{
     utils::net::{broadcast_message_reliable, send_message_reliable},
 };
 
-use crate::ecs::resources::LastBroadcastedFrame;
+use crate::ecs::resources::{HostClientAddress, LastBroadcastedFrame};
 
 // Pause the game if we have a client that hasn't responded for the last 180 frames (3 secs).
 const PAUSE_FRAME_THRESHOLD: u64 =
@@ -52,34 +55,56 @@ impl ServerNetworkSystem {
 impl<'s> System<'s> for ServerNetworkSystem {
     type SystemData = (
         GameTimeService<'s>,
+        Entities<'s>,
         ReadExpect<'s, GameEngineState>,
         ReadExpect<'s, LastBroadcastedFrame>,
         WriteExpect<'s, ConnectionEvents>,
+        WriteExpect<'s, HostClientAddress>,
         WriteExpect<'s, MultiplayerGameState>,
         WriteExpect<'s, NewGameEngineState>,
         WriteExpect<'s, FramedUpdates<ReceivedClientActionUpdates>>,
         WriteExpect<'s, ServerWorldUpdates>,
         WriteExpect<'s, ActionUpdateIdProvider>,
-        WriteStorage<'s, NetConnection>,
         WriteStorage<'s, NetConnectionModel>,
+        Write<'s, TransportResource>,
     );
 
     fn run(
         &mut self,
         (
             game_time_service,
+            entities,
             game_engine_state,
             last_broadcasted_frame,
             mut connection_events,
+            mut host_client_address,
             mut multiplayer_game_state,
             mut new_game_engine_state,
             mut framed_updates,
             mut server_world_updates,
             mut action_update_id_provider,
-            mut net_connections,
             mut net_connection_models,
+            mut transport,
         ): Self::SystemData,
     ) {
+        if let Some(host_client_address) = host_client_address.0.take() {
+            let net_connection_model = NetConnectionModel::new(0, host_client_address);
+            self.host_connection_id = 0;
+            log::info!("Sending a Handshake message to a hosting client");
+            send_message_reliable(
+                &mut transport,
+                &net_connection_model,
+                &ServerMessagePayload::Handshake {
+                    net_id: 0,
+                    is_host: true,
+                },
+            );
+            entities
+                .build_entity()
+                .with(net_connection_model, &mut net_connection_models)
+                .build();
+        }
+
         for connection_event in connection_events.0.drain(..) {
             let connection_id = connection_event.connection_id;
             match connection_event.event {
@@ -90,24 +115,43 @@ impl<'s> System<'s> for ServerNetworkSystem {
                     }
 
                     log::info!("Sending a Handshake message: {}", connection_id);
-                    let (net_connection, _) = (&mut net_connections, &net_connection_models)
+                    let net_connection = (&mut net_connection_models)
                         .join()
-                        .find(|(_, net_connection_model)| net_connection_model.id == connection_id)
+                        .find(|net_connection_model| net_connection_model.id == connection_id)
                         .expect("Expected to find a NetConnection");
                     send_message_reliable(
+                        &mut transport,
                         net_connection,
-                        &ServerMessagePayload::Handshake(connection_id),
+                        &ServerMessagePayload::Handshake {
+                            net_id: connection_id,
+                            is_host: multiplayer_game_state.players.is_empty(),
+                        },
                     );
                 }
                 NetEvent::Message(ClientMessagePayload::JoinRoom { nickname }) => {
-                    multiplayer_game_state
-                        .update_players()
-                        .push(MultiplayerRoomPlayer {
-                            connection_id,
-                            entity_net_id: 0,
-                            nickname,
-                            is_host: self.host_connection_id == connection_id,
-                        });
+                    log::info!(
+                        "A client ({}) has joined the room: {}",
+                        connection_id,
+                        nickname
+                    );
+                    if multiplayer_game_state
+                        .players
+                        .iter()
+                        .any(|player| player.connection_id == connection_id)
+                    {
+                        log::warn!(
+                            "A client has sent a JoinRoom message more than once, discarding"
+                        );
+                    } else {
+                        multiplayer_game_state
+                            .update_players()
+                            .push(MultiplayerRoomPlayer {
+                                connection_id,
+                                entity_net_id: 0,
+                                nickname,
+                                is_host: self.host_connection_id == connection_id,
+                            });
+                    }
                 }
                 NetEvent::Message(ClientMessagePayload::StartHostedGame)
                     if connection_id == self.host_connection_id =>
@@ -132,13 +176,13 @@ impl<'s> System<'s> for ServerNetworkSystem {
                             "{} walk actions have been discarded",
                             discarded_actions.len()
                         );
-                        let (net_connection, _) = (&mut net_connections, &net_connection_models)
+
+                        let net_connection = (&mut net_connection_models)
                             .join()
-                            .find(|(_, net_connection_model)| {
-                                net_connection_model.id == connection_id
-                            })
+                            .find(|net_connection_model| net_connection_model.id == connection_id)
                             .expect("Expected to find a NetConnection");
                         send_message_reliable(
+                            &mut transport,
                             net_connection,
                             &ServerMessagePayload::DiscardWalkActions(discarded_actions),
                         );
@@ -183,7 +227,8 @@ impl<'s> System<'s> for ServerNetworkSystem {
 
         if let Some(players) = multiplayer_game_state.read_updated_players() {
             broadcast_message_reliable(
-                &mut net_connections,
+                &mut transport,
+                (&net_connection_models).join(),
                 &ServerMessagePayload::UpdateRoomPlayers(players.to_owned()),
             );
         }
@@ -192,7 +237,11 @@ impl<'s> System<'s> for ServerNetworkSystem {
             > HEARTBEAT_FRAME_INTERVAL
         {
             self.last_heartbeat_frame = game_time_service.engine_time().frame_number();
-            broadcast_message_reliable(&mut net_connections, &ServerMessagePayload::Heartbeat);
+            broadcast_message_reliable(
+                &mut transport,
+                (&net_connection_models).join(),
+                &ServerMessagePayload::Heartbeat,
+            );
         }
 
         // Pause server if one of clients is lagging behind.
@@ -248,7 +297,8 @@ impl<'s> System<'s> for ServerNetworkSystem {
             if !multiplayer_game_state.waiting_for_players && !lagging_players.is_empty() {
                 multiplayer_game_state.waiting_for_players_pause_id += 1;
                 broadcast_message_reliable(
-                    &mut net_connections,
+                    &mut transport,
+                    (&net_connection_models).join(),
                     &ServerMessagePayload::PauseWaitingForPlayers {
                         id: multiplayer_game_state.waiting_for_players_pause_id,
                         players: lagging_players,
@@ -257,7 +307,8 @@ impl<'s> System<'s> for ServerNetworkSystem {
                 multiplayer_game_state.waiting_for_players = true;
             } else if multiplayer_game_state.waiting_for_players && lagging_players.is_empty() {
                 broadcast_message_reliable(
-                    &mut net_connections,
+                    &mut transport,
+                    (&net_connection_models).join(),
                     &ServerMessagePayload::UnpauseWaitingForPlayers(
                         multiplayer_game_state.waiting_for_players_pause_id,
                     ),

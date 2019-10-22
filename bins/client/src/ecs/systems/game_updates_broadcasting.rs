@@ -1,15 +1,19 @@
-use amethyst::ecs::{Join, System, WriteExpect, WriteStorage};
+use amethyst::{
+    ecs::{Join, System, Write, WriteExpect, WriteStorage},
+    network::simulation::TransportResource,
+};
 
 use std::iter::FromIterator;
 
 use gv_core::{
     ecs::{
+        components::NetConnectionModel,
         resources::world::{
             ClientWorldUpdates, ImmediatePlayerActionsUpdates, PlayerLookActionUpdates,
         },
         system_data::time::GameTimeService,
     },
-    net::{client_message::ClientMessagePayload, NetConnection, INTERPOLATION_FRAME_DELAY},
+    net::{client_message::ClientMessagePayload, INTERPOLATION_FRAME_DELAY},
 };
 use gv_game::{ecs::system_data::GameStateHelper, utils::net::send_message_reliable};
 
@@ -24,8 +28,9 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
     type SystemData = (
         GameTimeService<'s>,
         GameStateHelper<'s>,
+        Write<'s, TransportResource>,
         WriteExpect<'s, ClientWorldUpdates>,
-        WriteStorage<'s, NetConnection>,
+        WriteStorage<'s, NetConnectionModel>,
     );
 
     fn run(
@@ -33,21 +38,23 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
         (
             game_time_service,
             game_state_helper,
+            mut transport,
             mut client_world_updates,
-            mut net_connections,
+            mut net_connection_models,
         ): Self::SystemData,
     ) {
         if !game_state_helper.multiplayer_is_running() {
             return;
         }
 
-        let net_connection = (&mut net_connections)
+        let net_connection = (&mut net_connection_models)
             .join()
             .next()
             .expect("Expected a server connection");
 
         if !client_world_updates.walk_action_updates.is_empty() {
             send_message_reliable(
+                &mut transport,
                 net_connection,
                 &ClientMessagePayload::WalkActions(ImmediatePlayerActionsUpdates {
                     frame_number: game_time_service.game_frame_number() + INTERPOLATION_FRAME_DELAY,
@@ -59,6 +66,7 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
 
         if !client_world_updates.cast_action_updates.is_empty() {
             send_message_reliable(
+                &mut transport,
                 net_connection,
                 &ClientMessagePayload::CastActions(ImmediatePlayerActionsUpdates {
                     frame_number: game_time_service.game_frame_number() + INTERPOLATION_FRAME_DELAY,
@@ -78,6 +86,7 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
         self.last_broadcasted_frame = game_time_service.game_frame_number();
 
         send_message_reliable(
+            &mut transport,
             net_connection,
             &ClientMessagePayload::LookActions(PlayerLookActionUpdates {
                 updates: Vec::from_iter(client_world_updates.look_actions_updates.drain(..).map(
