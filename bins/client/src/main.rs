@@ -96,7 +96,7 @@ fn main() -> amethyst::Result<()> {
             &[],
         )
         .with(
-            ClientNetworkSystem,
+            ClientNetworkSystem::default(),
             "game_network_system",
             &["net_connection_manager_system"],
         )
