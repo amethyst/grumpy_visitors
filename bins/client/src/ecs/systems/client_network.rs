@@ -35,8 +35,12 @@ use crate::ecs::resources::LastAcknowledgedUpdate;
 // Pause the game if we haven't received any message from server for the last 180 frames (3 secs).
 const PAUSE_FRAME_THRESHOLD: u64 =
     (LAG_COMPENSATION_FRAMES_LIMIT + LAG_COMPENSATION_FRAMES_LIMIT / 2) as u64;
+const HEARTBEAT_FRAME_INTERVAL: u64 = 10;
 
-pub struct ClientNetworkSystem;
+#[derive(Default)]
+pub struct ClientNetworkSystem {
+    last_heartbeat_frame: u64,
+}
 
 impl<'s> System<'s> for ClientNetworkSystem {
     type SystemData = (
@@ -221,14 +225,28 @@ impl<'s> System<'s> for ClientNetworkSystem {
             }
         }
 
+        if game_time_service.engine_time().frame_number() - self.last_heartbeat_frame
+            > HEARTBEAT_FRAME_INTERVAL
+        {
+            let net_connection_model = (&net_connection_models).join().next();
+
+            if let Some(net_connection_model) = net_connection_model {
+                self.last_heartbeat_frame = game_time_service.engine_time().frame_number();
+                send_message_reliable(
+                    &mut transport,
+                    net_connection_model,
+                    &ClientMessagePayload::Heartbeat,
+                );
+            }
+        }
+
         // Until the server authorizes to unpause we need to use a chance to catch up with it,
         // even if it's not us lagging.
         if !multiplayer_game_state.lagging_players.is_empty() {
             let server_frame = framed_updates
                 .updates
                 .back()
-                .expect("Expected at least one framed update if we're lagging")
-                .frame_number;
+                .map_or(0, |update| update.frame_number);
 
             multiplayer_game_state.waiting_for_players =
                 game_time_service.game_frame_number() + INTERPOLATION_FRAME_DELAY >= server_frame;

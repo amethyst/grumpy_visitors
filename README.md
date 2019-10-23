@@ -10,8 +10,7 @@ as it's quite old and not really popular, but here is some recorded demo gamepla
 https://youtu.be/bWpWJzb9JdE.
 
 This is my first gamedev project (not the first attempt to make one though). My ultimate goal is to make
-a finished product, and my ambitious personal goal is to start doing Rust gamedev for a living
-(with either finding a job in this field or even starting selling this game, who knows).
+a finished product (and maybe start selling this game if I ever accomplish it, who knows).
 At the same time I want to keep this project open-source and available for everyone to build it on their local machine
 and play for free.
 
@@ -47,7 +46,7 @@ Supported platforms:
 
 ## Current state
 This project is in its early stage of development. There are only some very basic features implemented:
-- Multiplayer (but connecting to remote peers doesn't work, lol)
+- Multiplayer
 - Casting a spell (homing ~~missile~~ red dot)
 - Spawning monsters
 - Monster AI (actually just randomly walking around the map and starting to chase a player if they're close enough)
@@ -57,7 +56,7 @@ This project is in its early stage of development. There are only some very basi
 - Menu states and transitions
 
 ### Roadmap to 0.2
-- [ ] Rewrite networking with the upcoming version of `amethyst_net`
+- [x] Rewrite networking with the upcoming version of `amethyst_net`
 - [ ] Try to rework `ActionSystem` (current approach to run systems several times in 1 frame sucks)
 - [ ] Profile and optimize the game
 - [ ] Add visual indicators for better debugging (mobs health, network state, fps, latency etc)
@@ -67,8 +66,8 @@ This project is in its early stage of development. There are only some very basi
 - [ ] Unit tests
 
 ### Known issues
+- Performance is really bad (the game can barely handle 100 spawned entities without loosing FPS on high spec PC)
 - Starting a multiplayer game before the connected peers pop up in the players list will cause a crash
-- Even if you wait for the connected peers to pop up, the game may still crash :P
 - The multiplayer game will eventually crash because of `ExceededMaxPacketSize` error
 - You have only one chance to join or host a game. Anything went wrong? Just restart it.
 (A lot of menu transitions polishing still needs to be done.)

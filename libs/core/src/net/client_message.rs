@@ -11,6 +11,7 @@ use crate::{
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ClientMessagePayload {
+    Heartbeat,
     JoinRoom {
         nickname: String,
     },
@@ -28,6 +29,10 @@ pub enum ClientMessagePayload {
 
 impl ClientMessagePayload {
     pub fn is_heartbeat(&self) -> bool {
-        false
+        if let Self::Heartbeat = *self {
+            true
+        } else {
+            false
+        }
     }
 }
