@@ -227,8 +227,7 @@ impl<'s> System<'s> for ClientNetworkSystem {
             let server_frame = framed_updates
                 .updates
                 .back()
-                .expect("Expected at least one framed update if we're lagging")
-                .frame_number;
+                .map_or(0, |update| update.frame_number);
 
             multiplayer_game_state.waiting_for_players =
                 game_time_service.game_frame_number() + INTERPOLATION_FRAME_DELAY >= server_frame;

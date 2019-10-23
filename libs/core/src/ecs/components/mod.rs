@@ -239,6 +239,10 @@ impl PingPongData {
             .map(|ping_pong| ping_pong.pong.as_ref().unwrap().estimated_peer_frame_number)
             .unwrap_or(0)
     }
+
+    pub fn reset(&mut self) {
+        self.data.clear();
+    }
 }
 
 struct PingPong {

@@ -154,7 +154,8 @@ impl<'s> System<'s> for ServerNetworkSystem {
                     }
                 }
                 NetEvent::Message(ClientMessagePayload::StartHostedGame)
-                    if connection_id == self.host_connection_id =>
+                    if connection_id == self.host_connection_id
+                        && !multiplayer_game_state.is_playing =>
                 {
                     multiplayer_game_state.is_playing = true;
                     new_game_engine_state.0 = GameEngineState::Playing;

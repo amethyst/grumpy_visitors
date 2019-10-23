@@ -56,7 +56,7 @@ fn main() -> amethyst::Result<()> {
         .level_for("gv_game::ecs::systems", LogLevelFilter::Debug)
         .level_for(
             "gv_game::ecs::systems::net_connection_manager",
-            LogLevelFilter::Info,
+            LogLevelFilter::Trace,
         )
         .level_for("gv_game::utils::net", LogLevelFilter::Info)
         .level_for("gv_client", LogLevelFilter::Debug)
