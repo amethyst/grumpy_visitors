@@ -10,3 +10,6 @@ assets_packer/input
 
 # MacOS
 .DS_Store
+
+# thread_profiler artifacts
+thread_profile.json

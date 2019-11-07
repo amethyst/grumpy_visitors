@@ -283,11 +283,11 @@ fn build_pipeline<B: Backend>(
                     scissor: None,
                     ..Default::default()
                 })
-                .with_blend_targets(vec![pso::ColorBlendDesc(
-                    pso::ColorMask::ALL,
-                    pso::BlendState::ALPHA,
-                )])
-                .with_depth_test(pso::DepthTest::On {
+                .with_blend_targets(vec![pso::ColorBlendDesc {
+                    mask: pso::ColorMask::ALL,
+                    blend: Some(pso::BlendState::ALPHA),
+                }])
+                .with_depth_test(pso::DepthTest {
                     fun: pso::Comparison::Less,
                     write: false,
                 }),

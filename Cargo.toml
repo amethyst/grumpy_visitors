@@ -8,7 +8,7 @@ members = [
 ]
 
 [profile.dev.overrides."*"]
-opt-level = 2
+opt-level = 3
 
-#[patch.crates-io]
+[patch.crates-io]
 #amethyst = { path = "../amethyst" }

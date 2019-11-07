@@ -58,7 +58,9 @@ This project is in its early stage of development. There are only some very basi
 ### Roadmap to 0.2
 - [x] Rewrite networking with the upcoming version of `amethyst_net`
 - [ ] Try to rework `ActionSystem` (current approach to run systems several times in 1 frame sucks)
-- [ ] Profile and optimize the game
+- [x] Add profiling
+- [ ] Implement possibility to pause/unpause writing profiler traces
+- [ ] Look for weak spots in performance and optimize them if found and possible
 - [ ] Add visual indicators for better debugging (mobs health, network state, fps, latency etc)
 - [ ] Refactor UI code (current definition files and the system are huge)
 - [ ] Better visuals (polishing animations, adding some nice shaders for spells)
@@ -66,17 +68,14 @@ This project is in its early stage of development. There are only some very basi
 - [ ] Unit tests
 
 ### Known issues
-- Performance is really bad (the game can barely handle 100 spawned entities without loosing FPS on high spec PC)
 - Starting a multiplayer game before the connected peers pop up in the players list will cause a crash
+- Starting a multiplayer game with two or more players will start a paused (with no way to unpause) game
+([amethyst#2024](https://github.com/amethyst/amethyst/issues/2024))
 - The multiplayer game will eventually crash because of `ExceededMaxPacketSize` error
 - You have only one chance to join or host a game. Anything went wrong? Just restart it.
 (A lot of menu transitions polishing still needs to be done.)
 - Leaving a multiplayer room will cause redundant players to spawn in single player
 - In multiplayer missiles are a little bit clunky when launching and sometimes desync
-- "I decided to test the multiplayer locally in two separate windows, and I got 3 processes spin-locking
-ALL MY CPU CORES UTILIZING THEM TO 100%, DID YOU WANT TO KILL MY LAPTOP **BATTERY** OR WHAT???"
-Sorry, I didn't ofc. :( Please don't run this game while your laptop is plugged out, currently it's really
-insane in terms of CPU consumption.
 
 ## License
 The code is shared under the [MIT license](LICENSE).

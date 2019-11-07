@@ -5,6 +5,7 @@ use amethyst::{
     },
     ecs::{Entities, Join, ReadExpect},
 };
+use gv_core::profile_scope;
 
 use gv_core::ecs::{
     components::{
@@ -51,6 +52,7 @@ pub struct MissilePhysicsSubsystem<'s> {
 
 impl<'s> MissilePhysicsSubsystem<'s> {
     pub fn process_physics(&self, frame_number: u64) {
+        profile_scope!("MissilePhysicsSubsystem::process_physics");
         let monsters = self.monsters.borrow();
         let mut missiles = self.missiles.borrow_mut();
         let mut dead = self.dead.borrow_mut();
