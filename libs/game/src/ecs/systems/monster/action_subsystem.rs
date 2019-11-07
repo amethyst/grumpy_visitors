@@ -1,4 +1,5 @@
 use amethyst::ecs::{Entities, Entity, Join, ReadExpect, ReadStorage, WriteStorage};
+use gv_core::profile_scope;
 
 use gv_animation_prefabs::{AnimationId, MONSTER_BODY};
 use gv_core::{
@@ -61,6 +62,7 @@ impl<'a, 's> MonsterActionSubsystem<'a, 's> {
         monster: &mut Monster,
         net_args: Option<ApplyMonsterActionNetArgs<'n>>,
     ) {
+        profile_scope!("MonsterActionSubsystem::decide_monster_action");
         let updated_position = net_args
             .as_ref()
             .and_then(|net_args| net_args.updates.as_ref().map(|update| update.0.clone()));
@@ -175,6 +177,7 @@ impl<'a, 's> MonsterActionSubsystem<'a, 's> {
     }
 
     pub fn process_monster_movement(&self, entity: Entity, monster: &mut Monster) {
+        profile_scope!("MonsterActionSubsystem::process_monster_movement");
         let mut world_positions = self.world_positions.borrow_mut();
         let monster_position = world_positions
             .get_mut(entity)
@@ -212,6 +215,7 @@ impl<'a, 's> MonsterActionSubsystem<'a, 's> {
         monster: &Monster,
         monster_position: WorldPosition,
     ) -> Option<MobAction<Entity>> {
+        profile_scope!("MonsterActionSubsystem::new_action");
         let players = self.players.borrow();
         let world_positions = self.world_positions.borrow();
         let mut damage_histories = self.damage_histories.borrow_mut();

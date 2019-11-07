@@ -22,7 +22,7 @@ use amethyst::{
     LogLevelFilter, Logger,
 };
 
-use std::time::Duration;
+use std::{env, time::Duration};
 
 use gv_animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
 use gv_client_shared::{ecs::resources::MultiplayerRoomState, settings::Settings};
@@ -42,6 +42,17 @@ use crate::{
 };
 
 fn main() -> amethyst::Result<()> {
+    let is_package_folder = env::current_dir()
+        .ok()
+        .map_or(false, |dir| dir.ends_with("bins/client"));
+    if is_package_folder {
+        log::info!("Detected running in bins/client package directory, changing working directory to crate's root");
+        let mut new_dir = env::current_dir().unwrap();
+        new_dir.pop();
+        new_dir.pop();
+        env::set_current_dir(new_dir)?;
+    }
+
     let _cli_matches = clap::App::new("grumpy_visitors")
         .version("0.1")
         .author("Vladyslav Batyrenko <mvlabat@gmail.com>")
@@ -56,7 +67,7 @@ fn main() -> amethyst::Result<()> {
         .level_for("gv_game::ecs::systems", LogLevelFilter::Debug)
         .level_for(
             "gv_game::ecs::systems::net_connection_manager",
-            LogLevelFilter::Trace,
+            LogLevelFilter::Info,
         )
         .level_for("gv_game::utils::net", LogLevelFilter::Info)
         .level_for("gv_client", LogLevelFilter::Debug)

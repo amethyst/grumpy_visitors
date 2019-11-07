@@ -2,6 +2,7 @@ use amethyst::{
     core::Transform,
     ecs::{Entities, Entity, WriteStorage},
 };
+use gv_core::profile_scope;
 
 #[cfg(feature = "client")]
 use gv_client_shared::ecs::resources::EntityGraphics;
@@ -39,6 +40,7 @@ pub struct MissileSpawnerSubsystem<'a, 's> {
 
 impl<'a, 's> MissileSpawnerSubsystem<'a, 's> {
     pub fn spawn_missiles(&self, frame_number: u64) {
+        profile_scope!("MissileSpawnerSubsystem::spawn_missiles");
         let mut world_positions = self.world_positions.borrow_mut();
         let mut cast_actions_to_execute = self.cast_actions_to_execute.borrow_mut();
         let dead = self.dead.borrow();

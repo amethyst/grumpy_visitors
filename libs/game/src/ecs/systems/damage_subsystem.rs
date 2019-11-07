@@ -2,6 +2,7 @@ use amethyst::{
     core::HiddenPropagate,
     ecs::{Entities, Join, WriteStorage},
 };
+use gv_core::profile_scope;
 
 use gv_core::{
     ecs::{
@@ -36,6 +37,7 @@ pub struct DamageSubsystem<'s> {
 
 impl<'s> DamageSubsystem<'s> {
     pub fn reset_damage_entries(&self, frame_number: u64) {
+        profile_scope!("DamageSubsystem::reset_damage_entries");
         let entity_net_metadata = self.entity_net_metadata.borrow();
         let mut damage_histories = self.damage_histories.borrow_mut();
         for (damage_history, entity) in (&mut *damage_histories, self.entities).join() {
@@ -56,6 +58,7 @@ impl<'s> DamageSubsystem<'s> {
         damage_histories_updates: Option<&Vec<NetUpdate<DamageHistoryEntries>>>,
         outcoming_net_updates: &mut OutcomingNetUpdates,
     ) {
+        profile_scope!("DamageSubsystem::process_damage_history");
         let mut damage_histories = self.damage_histories.borrow_mut();
 
         self.fetch_incoming_net_updates(

@@ -13,6 +13,7 @@ use amethyst::{
     },
     shred::{ResourceId, SystemData},
 };
+use gv_core::profile_scope;
 
 #[cfg(not(feature = "client"))]
 use std::marker::PhantomData;
@@ -134,6 +135,7 @@ impl<'s> System<'s> for ActionSystem {
     type SystemData = ActionSystemData<'s>;
 
     fn run(&mut self, mut system_data: Self::SystemData) {
+        profile_scope!("ActionSystem::run");
         if !system_data.game_state_helper.is_running() {
             return;
         }

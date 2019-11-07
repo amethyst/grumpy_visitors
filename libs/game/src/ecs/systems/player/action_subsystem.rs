@@ -3,6 +3,7 @@ use amethyst::{
     ecs::{Entities, Entity, Join, ReadExpect, ReadStorage},
 };
 use rand::seq::SliceRandom;
+use gv_core::profile_scope;
 
 use std::time::Duration;
 
@@ -88,6 +89,7 @@ impl<'a, 's> PlayerActionSubsystem<'a, 's> {
         net_args: Option<ApplyWalkActionNetArgs<'n>>,
         client_side_actions: &mut ClientFrameUpdate,
     ) {
+        profile_scope!("PlayerActionSubsystem::apply_walk_action");
         let mut world_positions = self.world_positions.borrow_mut();
         let player_position = world_positions
             .get_mut(entity)
@@ -184,6 +186,7 @@ impl<'a, 's> PlayerActionSubsystem<'a, 's> {
         net_args: Option<ApplyLookActionNetArgs<'n>>,
         client_side_actions: &mut ClientFrameUpdate,
     ) {
+        profile_scope!("PlayerActionSubsystem::apply_look_action");
         let mut player_actions = self.player_actions.borrow_mut();
         let player_actions = player_actions
             .get_mut(entity)
@@ -248,6 +251,7 @@ impl<'a, 's> PlayerActionSubsystem<'a, 's> {
         mut net_args: Option<ApplyCastActionNetArgs<'n>>,
         _client_side_actions: &mut ClientFrameUpdate,
     ) {
+        profile_scope!("PlayerActionSubsystem::apply_cast_action");
         let mut player_actions = self.player_actions.borrow_mut();
         let player_actions = player_actions
             .get_mut(entity)
