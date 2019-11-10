@@ -1325,6 +1325,7 @@ dependencies = [
  "amethyst 0.13.2 (git+https://github.com/amethyst/amethyst)",
  "bincode 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "derivative 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "gv_animation_prefabs 0.1.0",
  "gv_client_shared 0.1.0",

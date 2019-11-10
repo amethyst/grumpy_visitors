@@ -1,8 +1,6 @@
-#![allow(clippy::type_repetition_in_bounds)]
-
 use amethyst::{
     assets::{Handle, Prefab},
-    core::{Parent, Transform},
+    core::{Parent, Transform, HiddenPropagate},
     ecs::{prelude::World, Entities, Entity, Read, ReadExpect, WriteStorage},
     renderer::Camera,
     shred::{ResourceId, SystemData},
@@ -54,6 +52,7 @@ pub struct PlayerClientFactory<'s> {
     sprite_animation_handles: WriteStorage<'s, Handle<Prefab<GameSpriteAnimationPrefab>>>,
     health_ui_graphics: WriteStorage<'s, HealthUiGraphics>,
     client_player_actions: WriteStorage<'s, ClientPlayerActions>,
+    hidden_propagates: WriteStorage<'s, HiddenPropagate>,
 }
 
 impl<'s> PlayerClientFactory<'s> {
@@ -74,6 +73,9 @@ impl<'s> PlayerClientFactory<'s> {
         self.sprite_animation_handles
             .insert(player_entity, mage_prefab)
             .expect("Expected to insert a HeroPrefab");
+        self.hidden_propagates
+            .insert(player_entity, HiddenPropagate)
+            .expect("Expected to insert a HiddenPropagate");
         if is_controllable {
             self.health_ui_graphics
                 .insert(

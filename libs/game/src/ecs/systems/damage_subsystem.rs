@@ -205,7 +205,7 @@ fn put_outcoming_net_updates(
             .damage_histories_updates
             .push(NetUpdate {
                 entity_net_id: entity_net_metadata.id,
-                data: damage_history_entries.clone(),
+                data: damage_history_entries,
             })
     }
 }

@@ -71,7 +71,7 @@ impl<'a, 's> MonsterActionSubsystem<'a, 's> {
             let monster_position = world_positions
                 .get_mut(entity)
                 .expect("Expected a WorldPosition");
-            *monster_position = updated_position.clone();
+            *monster_position = updated_position;
             monster_position.clone()
         } else {
             self.world_positions
