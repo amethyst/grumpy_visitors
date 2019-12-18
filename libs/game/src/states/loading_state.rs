@@ -131,8 +131,13 @@ impl LoadingState {
 
                 let _ui_handle =
                     world.exec(|mut creator: UiCreator| creator.create("resources/ui/hud.ron", ()));
-                let _ui_handle = world.exec(|mut creator: UiCreator| {
-                    creator.create("resources/ui/main_menu.ron", ())
+                let _ui_handles = world.exec(|mut creator: UiCreator| {
+                    (
+                        creator.create("resources/ui/main_menu.ron", ()),
+                        creator.create("resources/ui/lobby_menu.ron", ()),
+                        creator.create("resources/ui/multiplayer_menu.ron", ()),
+                        creator.create("resources/ui/restart_menu.ron", ()),
+                    )
                 });
 
                 world.insert(AssetHandles {

@@ -1,0 +1,370 @@
+#![enable(implicit_some)]
+Container(
+    transform: (
+        id: "ui_multiplayer_container",
+        x: 0.0,
+        y: 0.0,
+        z: 100.0,
+        stretch: XY(x_margin: 0.0, y_margin: 0.0, keep_aspect_ratio: false),
+    ),
+    background: SolidColor(0.0, 0.0, 0.0, 0.0),
+    children: [
+        Button(
+            transform: (
+                id: "ui_start_multiplayer_button",
+                anchor: BottomMiddle,
+                pivot: Middle,
+                x: 0.0,
+                y: 200.0,
+                z: 0.5,
+                width: 300.0,
+                height: 75.0,
+                hidden: true,
+            ),
+            button: (
+                text: "Start",
+                font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                font_size: 36.,
+                normal_text_color: (0.972, 0.917, 0.827, 0.0),
+                hover_text_color: (0.841, 0.670, 0.556, 1.0),
+            )
+        ),
+        Button(
+            transform: (
+                id: "ui_back_to_lobby_button",
+                anchor: BottomMiddle,
+                pivot: Middle,
+                x: 0.0,
+                y: 100.0,
+                z: 0.5,
+                width: 300.0,
+                height: 75.0,
+                hidden: true,
+            ),
+            button: (
+                text: "Back to lobby",
+                font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                font_size: 36.,
+                normal_text_color: (0.972, 0.917, 0.827, 0.0),
+                hover_text_color: (0.841, 0.670, 0.556, 1.0),
+            )
+        ),
+
+        Container(
+            transform: (
+                id: "ui_mp_room_player1_container",
+                anchor: Middle,
+                pivot: Middle,
+                x: 0.0,
+                y: 300.0,
+                z: 0.1,
+                width: 800.0,
+                height: 72.0,
+                hidden: true,
+            ),
+            children: [
+                Image(
+                    transform: (
+                        id: "ui_mp_room_player1_bg",
+                        z: 0.0,
+                        stretch: XY(x_margin: 0.0, y_margin: 0.0, keep_aspect_ratio: false),
+                        hidden: true,
+                    ),
+                    image: SolidColor(0.055, 0.055, 0.055, 1.0),
+                ),
+                Label(
+                    transform: (
+                        id: "ui_mp_room_player1_number",
+                        x: 50.0,
+                        y: 0.0,
+                        z: 0.5,
+                        width: 58.0,
+                        height: 58.0,
+                        anchor: Middle,
+                        stretch: XY(x_margin: 0.0, y_margin: 7.0, keep_aspect_ratio: false),
+                        hidden: true,
+                    ),
+                    text: (
+                        text: "1",
+                        font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                        font_size: 58.0,
+                        color: (0.9, 0.9, 0.9, 1.0),
+                        align: MiddleLeft,
+                    )
+                ),
+                Label(
+                    transform: (
+                        id: "ui_mp_room_player1_nickname",
+                        x: 150.0,
+                        y: 0.0,
+                        z: 0.5,
+                        width: 480.0,
+                        height: 58.0,
+                        anchor: Middle,
+                        stretch: XY(x_margin: 0.0, y_margin: 9.0, keep_aspect_ratio: false),
+                        hidden: true,
+                    ),
+                    text: (
+                        text: "Player",
+                        font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                        font_size: 58.0,
+                        color: (0.9, 0.9, 0.9, 1.0),
+                        align: MiddleLeft,
+                    )
+                ),
+            ]
+        ),
+        Container(
+            transform: (
+                id: "ui_mp_room_player2_container",
+                anchor: Middle,
+                pivot: Middle,
+                x: 0.0,
+                y: 200.0,
+                z: 0.1,
+                width: 800.0,
+                height: 72.0,
+                hidden: true,
+            ),
+            children: [
+                Image(
+                    transform: (
+                        id: "ui_mp_room_player2_bg",
+                        z: 0.0,
+                        stretch: XY(x_margin: 0.0, y_margin: 0.0, keep_aspect_ratio: false),
+                        hidden: true,
+                    ),
+                    image: SolidColor(0.055, 0.055, 0.055, 1.0),
+                ),
+                Label(
+                    transform: (
+                        id: "ui_mp_room_player2_number",
+                        x: 50.0,
+                        y: 0.0,
+                        z: 0.5,
+                        width: 58.0,
+                        height: 58.0,
+                        anchor: Middle,
+                        stretch: XY(x_margin: 0.0, y_margin: 7.0, keep_aspect_ratio: false),
+                        hidden: true,
+                    ),
+                    text: (
+                        text: "2",
+                        font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                        font_size: 58.0,
+                        color: (0.9, 0.9, 0.9, 1.0),
+                        align: MiddleLeft,
+                    )
+                ),
+                Label(
+                    transform: (
+                        id: "ui_mp_room_player2_nickname",
+                        x: 150.0,
+                        y: 0.0,
+                        z: 0.5,
+                        width: 480.0,
+                        height: 58.0,
+                        anchor: Middle,
+                        stretch: XY(x_margin: 0.0, y_margin: 9.0, keep_aspect_ratio: false),
+                        hidden: true,
+                    ),
+                    text: (
+                        text: "Player",
+                        font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                        font_size: 58.0,
+                        color: (0.9, 0.9, 0.9, 1.0),
+                        align: MiddleLeft,
+                    )
+                ),
+                Button(
+                    transform: (
+                        id: "ui_mp_room_player2_kick",
+                        anchor: MiddleRight,
+                        pivot: MiddleRight,
+                        x: 0.0,
+                        y: 0.0,
+                        z: 0.5,
+                        width: 100.0,
+                        height: 36.0,
+                        hidden: true,
+                    ),
+                    button: (
+                        text: "Kick",
+                        font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                        font_size: 36.,
+                        normal_text_color: (0.972, 0.917, 0.827, 0.0),
+                        hover_text_color: (0.841, 0.670, 0.556, 1.0),
+                    )
+                ),
+            ]
+        ),
+        Container(
+            transform: (
+                id: "ui_mp_room_player3_container",
+                anchor: Middle,
+                pivot: Middle,
+                x: 0.0,
+                y: 100.0,
+                z: 0.1,
+                width: 800.0,
+                height: 72.0,
+                hidden: true,
+            ),
+            children: [
+                Image(
+                    transform: (
+                        id: "ui_mp_room_player3_bg",
+                        z: 0.0,
+                        stretch: XY(x_margin: 0.0, y_margin: 0.0, keep_aspect_ratio: false),
+                        hidden: true,
+                    ),
+                    image: SolidColor(0.055, 0.055, 0.055, 1.0),
+                ),
+                Label(
+                    transform: (
+                        id: "ui_mp_room_player3_number",
+                        x: 50.0,
+                        y: 0.0,
+                        z: 0.5,
+                        width: 58.0,
+                        height: 58.0,
+                        anchor: Middle,
+                        stretch: XY(x_margin: 0.0, y_margin: 7.0, keep_aspect_ratio: false),
+                        hidden: true,
+                    ),
+                    text: (
+                        text: "3",
+                        font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                        font_size: 58.0,
+                        color: (0.9, 0.9, 0.9, 1.0),
+                        align: MiddleLeft,
+                    )
+                ),
+                Label(
+                    transform: (
+                        id: "ui_mp_room_player3_nickname",
+                        x: 150.0,
+                        y: 0.0,
+                        z: 0.5,
+                        width: 480.0,
+                        height: 58.0,
+                        anchor: Middle,
+                        stretch: XY(x_margin: 0.0, y_margin: 9.0, keep_aspect_ratio: false),
+                        hidden: true,
+                    ),
+                    text: (
+                        text: "Player",
+                        font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                        font_size: 58.0,
+                        color: (0.9, 0.9, 0.9, 1.0),
+                        align: MiddleLeft,
+                    )
+                ),
+                Button(
+                    transform: (
+                        id: "ui_mp_room_player3_kick",
+                        anchor: MiddleRight,
+                        pivot: MiddleRight,
+                        x: 0.0,
+                        y: 0.0,
+                        z: 0.5,
+                        width: 100.0,
+                        height: 36.0,
+                        hidden: true,
+                    ),
+                    button: (
+                        text: "Kick",
+                        font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                        font_size: 36.,
+                        normal_text_color: (0.972, 0.917, 0.827, 0.0),
+                        hover_text_color: (0.841, 0.670, 0.556, 1.0),
+                    )
+                ),
+            ]
+        ),
+        Container(
+            transform: (
+                id: "ui_mp_room_player4_container",
+                anchor: Middle,
+                pivot: Middle,
+                x: 0.0,
+                y: 0.0,
+                z: 0.1,
+                width: 800.0,
+                height: 72.0,
+                hidden: true,
+            ),
+            children: [
+                Image(
+                    transform: (
+                        id: "ui_mp_room_player4_bg",
+                        z: 0.0,
+                        stretch: XY(x_margin: 0.0, y_margin: 0.0, keep_aspect_ratio: false),
+                        hidden: true,
+                    ),
+                    image: SolidColor(0.055, 0.055, 0.055, 1.0),
+                ),
+                Label(
+                    transform: (
+                        id: "ui_mp_room_player4_number",
+                        x: 50.0,
+                        y: 0.0,
+                        z: 0.5,
+                        width: 58.0,
+                        height: 58.0,
+                        anchor: Middle,
+                        stretch: XY(x_margin: 0.0, y_margin: 7.0, keep_aspect_ratio: false),
+                        hidden: true,
+                    ),
+                    text: (
+                        text: "4",
+                        font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                        font_size: 58.0,
+                        color: (0.9, 0.9, 0.9, 1.0),
+                        align: MiddleLeft,
+                    )
+                ),
+                Label(
+                    transform: (
+                        id: "ui_mp_room_player4_nickname",
+                        x: 150.0,
+                        y: 0.0,
+                        z: 0.5,
+                        width: 480.0,
+                        height: 58.0,
+                        anchor: Middle,
+                        stretch: XY(x_margin: 0.0, y_margin: 9.0, keep_aspect_ratio: false),
+                        hidden: true,
+                    ),
+                    text: (
+                        text: "Player",
+                        font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                        font_size: 58.0,
+                        color: (0.9, 0.9, 0.9, 1.0),
+                        align: MiddleLeft,
+                    )
+                ),
+                Button(
+                    transform: (
+                        id: "ui_mp_room_player4_kick",
+                        anchor: MiddleRight,
+                        pivot: MiddleRight,
+                        x: 0.0,
+                        y: 0.0,
+                        z: 0.5,
+                        width: 100.0,
+                        height: 36.0,
+                        hidden: true,
+                    ),
+                    button: (
+                        text: "Kick",
+                        font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                        font_size: 36.,
+                        normal_text_color: (0.972, 0.917, 0.827, 0.0),
+                        hover_text_color: (0.841, 0.670, 0.556, 1.0),
+                    )
+                ),
+            ]
+        ),
+    ],
+)
