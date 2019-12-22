@@ -30,6 +30,18 @@ cargo build -p gv_server # if you want to host a server for multiplayer
 cargo build -p gb_client
 ```
 
+## Fetching Game Assets
+
+Grumpy Visitors relies on `git-lfs` to fetch game assets (images, etc.) See [git-lfs](https://github.com/git-lfs/git-lfs) for installation instructions if you don't already have it on your system. Then:
+
+```bash
+git lfs install
+git lfs fetch
+git lfs pull
+```
+
+You can use `git lfs ls-files` to see that the assets have been fetched.
+
 **Please note** that specifying just a binary without a package (`cargo build --bin gv_server`) won't work.
 Cargo tries to merge all the features of common dependencies among all the members of workspace,
 which leads the build process to fail.
