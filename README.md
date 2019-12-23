@@ -24,23 +24,20 @@ and play for free.
 These are more like high-level goals for me, as I don't have a clearly formulated vision or design for this game.
 Everything's still just in my head and therefore almost anything is a subject to change.
 
-## Building
-```bash
-cargo build -p gv_server # if you want to host a server for multiplayer
-cargo build -p gb_client
-```
-
 ## Fetching Game Assets
 
 Grumpy Visitors relies on `git-lfs` to fetch game assets (images, etc.) See [git-lfs](https://github.com/git-lfs/git-lfs) for installation instructions if you don't already have it on your system. Then:
 
 ```bash
-git lfs install
-git lfs fetch
+git lfs install # (if this is your first time running git lfs)
 git lfs pull
 ```
 
-You can use `git lfs ls-files` to see that the assets have been fetched.
+## Building
+```bash
+cargo build -p gv_server # if you want to host a server for multiplayer
+cargo build -p gb_client
+```
 
 **Please note** that specifying just a binary without a package (`cargo build --bin gv_server`) won't work.
 Cargo tries to merge all the features of common dependencies among all the members of workspace,
