@@ -94,7 +94,7 @@ fn main() -> Result<(), failure::Error> {
     for sprite_prefab in prefabs.values() {
         for prefab_entity in &sprite_prefab.entities {
             for animation_definition in &prefab_entity.animations {
-                for i in 0..animation_definition.frames_count {
+                for i in 1..=animation_definition.frames_count {
                     let name = format!("{}_{:04}.png", animation_definition.name_prefix, i);
                     let path = import_path
                         .join(&animation_definition.directory)
@@ -203,7 +203,8 @@ fn construct_sprite_scene(
         let number = &filename[filename.len() - 8..filename.len() - 4];
         let i = number
             .parse::<usize>()
-            .expect("Expected a PNG file with 4 digit index in the filename");
+            .expect("Expected a PNG file with 4 digit index in the filename")
+            - 1;
         indices.entry(name_prefix.to_owned()).or_insert_with(|| {
             vec![SpriteRenderPrimitive::SpriteIndex(0); animation_definition.frames_count]
         })[i] = SpriteRenderPrimitive::SpriteIndex(sprite_index);
