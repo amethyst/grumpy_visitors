@@ -1,6 +1,6 @@
 use amethyst::{
     assets::{Handle, Prefab},
-    core::{Parent, Transform, HiddenPropagate},
+    core::{HiddenPropagate, Parent, Transform},
     ecs::{prelude::World, Entities, Entity, Read, ReadExpect, WriteStorage},
     renderer::Camera,
     shred::{ResourceId, SystemData},

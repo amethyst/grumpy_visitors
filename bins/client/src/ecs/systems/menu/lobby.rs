@@ -35,12 +35,14 @@ impl MenuScreen for LobbyMenuScreen {
                 } else {
                     UI_LOBBY_JOIN_IP_EDITABLE
                 };
-                let addr = system_data.ui_finder
+                let addr = system_data
+                    .ui_finder
                     .find(address_field)
                     .and_then(|entity| system_data.ui_texts.get(entity))
                     .map(|ui_text| ui_text.text.clone())
                     .unwrap();
-                let nickname = system_data.ui_finder
+                let nickname = system_data
+                    .ui_finder
                     .find(UI_LOBBY_NICKNAME_EDITABLE)
                     .and_then(|entity| system_data.ui_texts.get(entity))
                     .map(|ui_text| ui_text.text.clone())
@@ -49,7 +51,8 @@ impl MenuScreen for LobbyMenuScreen {
                 // TODO: error validations.
                 let server_addr = addr.parse().expect("Expected a valid address");
                 if is_host {
-                    let mut host_client_addr = system_data.laminar_socket
+                    let mut host_client_addr = system_data
+                        .laminar_socket
                         .get_mut()
                         .expect("Expected a LaminarSocket")
                         .local_addr()
@@ -58,7 +61,8 @@ impl MenuScreen for LobbyMenuScreen {
                         SocketAddr::V4(addr) => addr.set_ip(Ipv4Addr::new(127, 0, 0, 1)),
                         SocketAddr::V6(addr) => addr.set_ip(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)),
                     };
-                    system_data.server_command
+                    system_data
+                        .server_command
                         .start(server_addr, host_client_addr)
                         .expect("Expected to start a server");
                 }

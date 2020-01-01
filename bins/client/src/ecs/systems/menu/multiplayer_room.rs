@@ -69,7 +69,9 @@ impl MenuScreen for MultiplayerRoomMenuScreen {
         button_pressed: Option<&str>,
     ) -> StateUpdate {
         match button_pressed {
-            Some(UI_MP_ROOM_LOBBY_BUTTON) => StateUpdate::new_menu_screen(GameMenuScreen::LobbyMenu),
+            Some(UI_MP_ROOM_LOBBY_BUTTON) => {
+                StateUpdate::new_menu_screen(GameMenuScreen::LobbyMenu)
+            }
             Some(UI_MP_ROOM_START_BUTTON) => {
                 system_data.multiplayer_room_state.has_started = true;
                 StateUpdate::none()
@@ -93,11 +95,14 @@ impl MultiplayerRoomMenuScreen {
             ];
             for (i, row) in rows.iter().enumerate() {
                 {
-                    let (ui_number_entity, ui_number_transform) =
-                        system_data.ui_finder.find_with_mut_transform(row.0).unwrap_or_else(|| {
+                    let (ui_number_entity, ui_number_transform) = system_data
+                        .ui_finder
+                        .find_with_mut_transform(row.0)
+                        .unwrap_or_else(|| {
                             panic!("Expected a player number UiTransform for row {}", i)
                         });
-                    let ui_number_text = system_data.ui_texts
+                    let ui_number_text = system_data
+                        .ui_texts
                         .get_mut(ui_number_entity)
                         .unwrap_or_else(|| panic!("Expected a player number UiText for row {}", i));
                     if players.get(i).is_some() {
@@ -105,7 +110,8 @@ impl MultiplayerRoomMenuScreen {
                         ui_number_transform.local_z = 1.0;
                         ui_number_text.color[3] = 1.0;
                     } else {
-                        system_data.hidden_propagates
+                        system_data
+                            .hidden_propagates
                             .insert(ui_number_entity, HiddenPropagate)
                             .expect("Expected to insert Hidden component");
                         ui_number_transform.local_z = 0.5;
@@ -114,11 +120,14 @@ impl MultiplayerRoomMenuScreen {
                 }
 
                 {
-                    let (ui_text_entity, ui_text_transform) =
-                        system_data.ui_finder.find_with_mut_transform(row.1).unwrap_or_else(|| {
+                    let (ui_text_entity, ui_text_transform) = system_data
+                        .ui_finder
+                        .find_with_mut_transform(row.1)
+                        .unwrap_or_else(|| {
                             panic!("Expected a player nickname UiTransform for row {}", i)
                         });
-                    let ui_nickname_text = system_data.ui_texts
+                    let ui_nickname_text = system_data
+                        .ui_texts
                         .get_mut(ui_text_entity)
                         .unwrap_or_else(|| panic!("Expected a player number UiText for row {}", i));
 
@@ -128,7 +137,8 @@ impl MultiplayerRoomMenuScreen {
                         ui_nickname_text.color[3] = 1.0;
                         ui_nickname_text.text = player.nickname.clone();
                     } else {
-                        system_data.hidden_propagates
+                        system_data
+                            .hidden_propagates
                             .insert(ui_text_entity, HiddenPropagate)
                             .expect("Expected to insert Hidden component");
                         ui_text_transform.local_z = 0.5;
