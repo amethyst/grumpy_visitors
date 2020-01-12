@@ -119,7 +119,8 @@ impl<'s> System<'s> for NetConnectionManagerSystem {
                 incoming_messages.0.push(event);
             }
             if let Some(response) = response {
-                let addr = event_peer_addr(&net_event);
+                let addr = event_peer_addr(&net_event)
+                    .expect("Expected to respond to an event with SocketAddr");
                 transport.send_with_requirements(
                     addr,
                     &response,
@@ -175,6 +176,10 @@ impl NetConnectionManagerSystem {
         Option<EncodedMessage>,
     ) {
         let peer_addr = event_peer_addr(event);
+        if peer_addr.is_none() {
+            return (None, None);
+        }
+        let peer_addr = peer_addr.unwrap();
 
         if let NetworkSimulationEvent::Connect(_) = event {
             let connection_id = self.next_connection_id();
@@ -263,10 +268,12 @@ impl NetConnectionManagerSystem {
     }
 }
 
-fn event_peer_addr(event: &NetworkSimulationEvent) -> SocketAddr {
+fn event_peer_addr(event: &NetworkSimulationEvent) -> Option<SocketAddr> {
     match event {
         NetworkSimulationEvent::Connect(addr)
         | NetworkSimulationEvent::Disconnect(addr)
-        | NetworkSimulationEvent::Message(addr, _) => *addr,
+        | NetworkSimulationEvent::Message(addr, _) => Some(*addr),
+        NetworkSimulationEvent::ConnectionError(_, addr) => *addr,
+        _ => None,
     }
 }
