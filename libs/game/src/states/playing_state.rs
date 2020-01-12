@@ -116,7 +116,8 @@ fn initialize_players(world: &mut World) {
 
     let main_player = main_player.expect("Expected an initialized main player");
     world.exec(move |mut camera_factory: CameraFactory| {
-        camera_factory.create(main_player);
+        camera_factory.create_attached_to_player(main_player);
+        camera_factory.create_mage_preview_camera();
     });
 }
 

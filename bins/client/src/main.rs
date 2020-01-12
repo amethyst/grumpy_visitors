@@ -35,7 +35,7 @@ use gv_game::{
 
 use crate::{
     ecs::{
-        resources::{LastAcknowledgedUpdate, ServerCommand},
+        resources::{DrawMagePreviewTargetImage, LastAcknowledgedUpdate, ServerCommand},
         systems::*,
     },
     rendering::*,
@@ -91,6 +91,9 @@ fn main() -> amethyst::Result<()> {
     builder
         .world
         .insert(FramedUpdates::<ReceivedServerWorldUpdate>::default());
+    builder
+        .world
+        .insert(DrawMagePreviewTargetImage::<DefaultBackend>(None));
 
     let laminar_config = LaminarConfig {
         receive_buffer_max_size: 14_500,

@@ -1,8 +1,8 @@
 use amethyst::{
-    ecs::{Join, World},
+    ecs::{Entities, Join, World},
     input::is_close_requested,
     prelude::{SimpleTrans, StateEvent, Trans, WorldExt},
-    renderer::{camera::Projection, Camera},
+    renderer::{camera::Projection, ActiveCamera, Camera},
     window::{MonitorIdent, ScreenDimensions, Window},
     winit::{self, ElementState, VirtualKeyCode},
 };
@@ -57,19 +57,35 @@ pub fn handle_window_event(world: &World, event: &StateEvent) -> Option<SimpleTr
                 ..
             } => {
                 let hidpi = world.fetch::<ScreenDimensions>().hidpi_factor();
+                let active_camera = world.fetch::<ActiveCamera>().entity;
                 let mut cameras = world.write_component::<Camera>();
-                let camera = (&mut cameras).join().next().unwrap();
+                let entities = world.fetch::<Entities>();
                 let (screen_width, screen_height) =
                     ((size.width * hidpi) as f32, (size.height * hidpi) as f32);
 
-                camera.set_projection(Projection::orthographic(
-                    -screen_width / 2.0,
-                    screen_width / 2.0,
-                    -screen_height / 2.0,
-                    screen_height / 2.0,
-                    0.1,
-                    2000.0,
-                ));
+                for (camera, camera_entity) in (&mut cameras, &entities).join() {
+                    let is_active =
+                        active_camera.map_or(true, |active_camera| active_camera == camera_entity);
+                    if is_active {
+                        camera.set_projection(Projection::orthographic(
+                            -screen_width / 2.0,
+                            screen_width / 2.0,
+                            -screen_height / 2.0,
+                            screen_height / 2.0,
+                            0.1,
+                            2000.0,
+                        ));
+                    } else {
+                        camera.set_projection(Projection::orthographic(
+                            0.0,
+                            screen_width,
+                            0.0,
+                            screen_height,
+                            0.1,
+                            2000.0,
+                        ));
+                    }
+                }
             }
 
             _ => {}

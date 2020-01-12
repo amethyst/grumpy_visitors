@@ -1,7 +1,8 @@
 #[cfg(feature = "client")]
 use amethyst::{
-    assets::ProgressCounter,
-    assets::{AssetStorage, Handle, Loader, PrefabLoader, RonFormat},
+    assets::{AssetStorage, Handle, Loader, PrefabLoader, ProgressCounter, RonFormat},
+    core::HiddenPropagate,
+    ecs::Builder,
     renderer::{ImageFormat, SpriteSheet, SpriteSheetFormat, Texture},
     ui::{FontAsset, TtfFormat, UiCreator},
 };
@@ -15,7 +16,7 @@ use amethyst::{
 use gv_animation_prefabs::GameSpriteAnimationPrefab;
 #[cfg(feature = "client")]
 use gv_client_shared::ecs::{
-    components::HealthUiGraphics,
+    components::{HealthUiGraphics, MagePreview},
     resources::{AssetHandles, DummyAssetHandles, HealthUiMesh, MissileGraphics},
 };
 use gv_core::ecs::{
@@ -91,6 +92,7 @@ impl LoadingState {
             (true, true, false, _) => {
                 self.rest_is_loaded = true;
                 world.register::<HealthUiGraphics>();
+                world.register::<MagePreview>();
                 MissileGraphics::register(world);
                 HealthUiMesh::register(world);
 
@@ -149,7 +151,20 @@ impl LoadingState {
 
                 false
             }
-            (true, true, true, is_complete) => is_complete,
+            (true, true, true, is_complete) => {
+                if is_complete {
+                    let mage_prefab = world.fetch::<AssetHandles>().mage_prefab.clone();
+                    world
+                        .create_entity()
+                        .with(MagePreview {
+                            color: [0.8, 0.025, 0.027, 1.0],
+                        })
+                        .with(HiddenPropagate)
+                        .with(mage_prefab)
+                        .build();
+                }
+                is_complete
+            }
             _ => false,
         }
     }

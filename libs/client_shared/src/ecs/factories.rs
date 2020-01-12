@@ -1,8 +1,11 @@
 use amethyst::{
     assets::{Handle, Prefab},
     core::{HiddenPropagate, Parent, Transform},
-    ecs::{prelude::World, Entities, Entity, Read, ReadExpect, WriteStorage},
-    renderer::Camera,
+    ecs::{prelude::World, Entities, Entity, Read, ReadExpect, WriteExpect, WriteStorage},
+    renderer::{
+        camera::{Orthographic, Projection},
+        ActiveCamera, Camera,
+    },
     shred::{ResourceId, SystemData},
     window::ScreenDimensions,
 };
@@ -11,7 +14,7 @@ use gv_animation_prefabs::GameSpriteAnimationPrefab;
 use gv_core::{ecs::components::ClientPlayerActions, math::Vector2};
 
 use crate::ecs::{
-    components::HealthUiGraphics,
+    components::{HealthUiGraphics, MagePreviewCamera},
     resources::{AssetHandles, HEALTH_UI_SCREEN_PADDING},
 };
 
@@ -19,13 +22,37 @@ use crate::ecs::{
 pub struct CameraFactory<'s> {
     entities: Entities<'s>,
     screen_dimensions: ReadExpect<'s, ScreenDimensions>,
+    active_camera: WriteExpect<'s, ActiveCamera>,
     cameras: WriteStorage<'s, Camera>,
+    mage_preview_cameras: WriteStorage<'s, MagePreviewCamera>,
     transforms: WriteStorage<'s, Transform>,
     parents: WriteStorage<'s, Parent>,
 }
 
 impl<'s> CameraFactory<'s> {
-    pub fn create(&mut self, player: Entity) {
+    pub fn create_attached_to_player(&mut self, player: Entity) {
+        let (width, height) = (
+            self.screen_dimensions.width(),
+            self.screen_dimensions.height(),
+        );
+        let transform = {
+            let mut transform = Transform::default();
+            transform.set_translation_z(100.0);
+            transform
+        };
+
+        let camera_entity = self
+            .entities
+            .build_entity()
+            .with(Camera::standard_2d(width, height), &mut self.cameras)
+            .with(transform, &mut self.transforms)
+            .with(Parent::new(player), &mut self.parents)
+            .build();
+
+        self.active_camera.entity = Some(camera_entity);
+    }
+
+    pub fn create_mage_preview_camera(&mut self) {
         let (width, height) = (
             self.screen_dimensions.width(),
             self.screen_dimensions.height(),
@@ -38,9 +65,14 @@ impl<'s> CameraFactory<'s> {
 
         self.entities
             .build_entity()
-            .with(Camera::standard_2d(width, height), &mut self.cameras)
+            .with(
+                Camera::from(Projection::Orthographic(Orthographic::new(
+                    0.0, width, 0.0, height, 0.1, 2000.0,
+                ))),
+                &mut self.cameras,
+            )
             .with(transform, &mut self.transforms)
-            .with(Parent::new(player), &mut self.parents)
+            .with(MagePreviewCamera, &mut self.mage_preview_cameras)
             .build();
     }
 }

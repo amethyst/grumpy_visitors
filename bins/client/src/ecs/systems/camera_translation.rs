@@ -36,6 +36,8 @@ impl<'s> System<'s> for CameraTranslationSystem {
             mut transforms,
         ): Self::SystemData,
     ) {
+        // Update the camera attached to a player.
+        // TODO: use ActiveCamera resource.
         let components = (&cameras, &parents, &entities).join().next();
         if components.is_none() {
             return;

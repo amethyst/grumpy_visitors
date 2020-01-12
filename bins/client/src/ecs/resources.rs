@@ -1,4 +1,10 @@
-use amethyst::Error;
+use amethyst::{
+    renderer::{
+        rendy::resource::{Handle, Image},
+        Backend,
+    },
+    Error,
+};
 
 use std::{
     env::current_exe,
@@ -68,3 +74,5 @@ impl Drop for ServerProcess {
         }
     }
 }
+
+pub struct DrawMagePreviewTargetImage<B: Backend>(pub Option<Handle<Image<B>>>);
