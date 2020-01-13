@@ -8,21 +8,16 @@ use amethyst::{
 use amethyst::{
     ecs::{prelude::WorldExt, World},
     prelude::{GameData, SimpleState, SimpleTrans, StateData, Trans},
-    utils::tag::Tag,
 };
 
 #[cfg(feature = "client")]
 use gv_animation_prefabs::GameSpriteAnimationPrefab;
 #[cfg(feature = "client")]
 use gv_client_shared::ecs::{
-    components::HealthUiGraphics,
+    components::PlayerColor,
     resources::{AssetHandles, DummyAssetHandles, HealthUiMesh, MissileGraphics},
 };
-use gv_core::ecs::{
-    components::{missile::Missile, Player, WorldPosition},
-    resources::{GameEngineState, GameLevelState, GameTime, NewGameEngineState},
-    tags::*,
-};
+use gv_core::ecs::resources::{GameEngineState, GameLevelState, GameTime, NewGameEngineState};
 
 use crate::ecs::resources::MonsterDefinitions;
 
@@ -46,10 +41,6 @@ impl SimpleState for LoadingState {
 
         self.register_client_dependencies(world);
         MonsterDefinitions::register(world);
-        world.register::<WorldPosition>();
-        world.register::<Missile>();
-        world.register::<Player>();
-        world.register::<Tag<Landscape>>();
         world.insert(GameLevelState::default());
         world.insert(GameTime::default());
         world.insert(GameEngineState::Loading);
@@ -75,6 +66,7 @@ impl LoadingState {
             self.progress_counter.is_complete(),
         ) {
             (false, _, _, _) => {
+                world.register::<PlayerColor>();
                 self.atlas_is_loaded = true;
                 let dummy_prefab = world.exec(
                     |prefab_loader: PrefabLoader<'_, GameSpriteAnimationPrefab>| {
@@ -90,7 +82,6 @@ impl LoadingState {
             }
             (true, true, false, _) => {
                 self.rest_is_loaded = true;
-                world.register::<HealthUiGraphics>();
                 MissileGraphics::register(world);
                 HealthUiMesh::register(world);
 
@@ -131,8 +122,13 @@ impl LoadingState {
 
                 let _ui_handle =
                     world.exec(|mut creator: UiCreator| creator.create("resources/ui/hud.ron", ()));
-                let _ui_handle = world.exec(|mut creator: UiCreator| {
-                    creator.create("resources/ui/main_menu.ron", ())
+                let _ui_handles = world.exec(|mut creator: UiCreator| {
+                    (
+                        creator.create("resources/ui/main_menu.ron", ()),
+                        creator.create("resources/ui/lobby_menu.ron", ()),
+                        creator.create("resources/ui/multiplayer_menu.ron", ()),
+                        creator.create("resources/ui/restart_menu.ron", ()),
+                    )
                 });
 
                 world.insert(AssetHandles {

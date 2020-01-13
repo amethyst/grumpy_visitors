@@ -6,20 +6,17 @@ pub mod utils;
 
 use amethyst::{
     error::Error,
-    prelude::{GameDataBuilder, World, WorldExt},
+    prelude::{GameDataBuilder, World},
 };
 
 use gv_core::{
     actions::monster_spawn::SpawnActions,
-    ecs::{
-        components::damage_history::DamageHistory,
-        resources::{
-            net::{
-                ActionUpdateIdProvider, CastActionsToExecute, EntityNetMetadataStorage,
-                MultiplayerGameState,
-            },
-            world::{FramedUpdates, PlayerActionUpdates, WorldStates},
+    ecs::resources::{
+        net::{
+            ActionUpdateIdProvider, CastActionsToExecute, EntityNetMetadataStorage,
+            MultiplayerGameState,
         },
+        world::{FramedUpdates, PlayerActionUpdates, WorldStates},
     },
 };
 
@@ -27,6 +24,14 @@ use crate::ecs::{
     resources::ConnectionEvents,
     systems::{missile::MissileDyingSystem, monster::*, *},
 };
+
+pub static PLAYER_COLORS: [[f32; 3]; 5] = [
+    [0.64, 0.12, 0.11],
+    [0.04, 0.45, 0.69],
+    [0.0, 0.49, 0.26],
+    [0.40, 0.3, 0.55],
+    [0.57, 0.57, 0.57],
+];
 
 pub fn build_game_logic_systems<'a, 'b>(
     game_data_builder: GameDataBuilder<'a, 'b>,
@@ -41,8 +46,6 @@ pub fn build_game_logic_systems<'a, 'b>(
     world.insert(EntityNetMetadataStorage::new());
     world.insert(ActionUpdateIdProvider::default());
     world.insert(CastActionsToExecute::default());
-
-    world.register::<DamageHistory>();
 
     let game_data_builder = game_data_builder
         .with(PauseSystem, "pause_system", &["game_network_system"])

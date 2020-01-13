@@ -1,8 +1,6 @@
-#![allow(clippy::type_repetition_in_bounds)]
-
 use amethyst::{
     assets::{Handle, Prefab},
-    core::{Parent, Transform},
+    core::{HiddenPropagate, Parent, Transform},
     ecs::{prelude::World, Entities, Entity, Read, ReadExpect, WriteStorage},
     renderer::Camera,
     shred::{ResourceId, SystemData},
@@ -13,7 +11,7 @@ use gv_animation_prefabs::GameSpriteAnimationPrefab;
 use gv_core::{ecs::components::ClientPlayerActions, math::Vector2};
 
 use crate::ecs::{
-    components::HealthUiGraphics,
+    components::{HealthUiGraphics, PlayerColor},
     resources::{AssetHandles, HEALTH_UI_SCREEN_PADDING},
 };
 
@@ -52,12 +50,14 @@ pub struct PlayerClientFactory<'s> {
     asset_handles: Option<Read<'s, AssetHandles>>,
     screen_dimensions: ReadExpect<'s, ScreenDimensions>,
     sprite_animation_handles: WriteStorage<'s, Handle<Prefab<GameSpriteAnimationPrefab>>>,
+    player_colors: WriteStorage<'s, PlayerColor>,
     health_ui_graphics: WriteStorage<'s, HealthUiGraphics>,
     client_player_actions: WriteStorage<'s, ClientPlayerActions>,
+    hidden_propagates: WriteStorage<'s, HiddenPropagate>,
 }
 
 impl<'s> PlayerClientFactory<'s> {
-    pub fn create(&mut self, player_entity: Entity, is_controllable: bool) {
+    pub fn create(&mut self, player_entity: Entity, color: [f32; 3], is_controllable: bool) {
         if self.asset_handles.is_none() {
             return;
         }
@@ -74,6 +74,12 @@ impl<'s> PlayerClientFactory<'s> {
         self.sprite_animation_handles
             .insert(player_entity, mage_prefab)
             .expect("Expected to insert a HeroPrefab");
+        self.player_colors
+            .insert(player_entity, PlayerColor(color))
+            .expect("Expected to insert a PlayerColor");
+        self.hidden_propagates
+            .insert(player_entity, HiddenPropagate)
+            .expect("Expected to insert a HiddenPropagate");
         if is_controllable {
             self.health_ui_graphics
                 .insert(

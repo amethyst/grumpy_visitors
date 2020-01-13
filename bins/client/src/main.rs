@@ -38,7 +38,7 @@ use crate::{
         resources::{LastAcknowledgedUpdate, ServerCommand},
         systems::*,
     },
-    rendering::HealthUiPlugin,
+    rendering::*,
 };
 
 fn main() -> amethyst::Result<()> {
@@ -159,6 +159,7 @@ fn main() -> amethyst::Result<()> {
                 .with_plugin(RenderToWindow::from_config(display_config))
                 .with_plugin(RenderFlat3D::default())
                 .with_plugin(RenderFlat2D::default())
+                .with_plugin(PaintMagePlugin::default())
                 .with_plugin(HealthUiPlugin::default())
                 .with_plugin(RenderUi::default()),
         )?;

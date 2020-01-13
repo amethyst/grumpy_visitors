@@ -1,0 +1,53 @@
+#![enable(implicit_some)]
+Container(
+    transform: (
+        id: "ui_restart_container",
+        x: 0.0,
+        y: 0.0,
+        z: 100.0,
+        stretch: XY(x_margin: 0.0, y_margin: 0.0, keep_aspect_ratio: false),
+    ),
+    background: SolidColor(0.0, 0.0, 0.0, 0.0),
+    children: [
+        Button(
+            transform: (
+                id: "ui_restart_button",
+                anchor: BottomMiddle,
+                pivot: Middle,
+                x: 0.0,
+                y: 375.0,
+                z: 0.5,
+                width: 300.0,
+                height: 75.0,
+                hidden: true,
+            ),
+            button: (
+                text: "Restart",
+                font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                font_size: 36.,
+                normal_text_color: (0.972, 0.917, 0.827, 0.0),
+                hover_text_color: (0.841, 0.670, 0.556, 1.0),
+            )
+        ),
+        Button(
+            transform: (
+                id: "ui_main_menu_button",
+                anchor: BottomMiddle,
+                pivot: Middle,
+                x: 0.0,
+                y: 300.0,
+                z: 0.5,
+                width: 300.0,
+                height: 75.0,
+                hidden: true,
+            ),
+            button: (
+                text: "Back to main menu",
+                font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                font_size: 36.,
+                normal_text_color: (0.972, 0.917, 0.827, 0.0),
+                hover_text_color: (0.841, 0.670, 0.556, 1.0),
+            )
+        ),
+    ],
+)

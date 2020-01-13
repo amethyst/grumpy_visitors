@@ -3,7 +3,6 @@ use amethyst::{
     ecs::{Entities, Entity, Join, ReadExpect, ReadStorage},
 };
 use rand::seq::SliceRandom;
-use gv_core::profile_scope;
 
 use std::time::Duration;
 
@@ -28,6 +27,7 @@ use gv_core::{
     },
     math::{Vector2, ZeroVector},
     net::{NetIdentifier, NetUpdate},
+    profile_scope,
 };
 
 use crate::ecs::{

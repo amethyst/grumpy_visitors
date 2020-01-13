@@ -129,12 +129,9 @@ impl<'a, 's> MissileFactory<'a, 's> {
 
         self.entities
             .build_entity()
+            .with(mesh, &mut self.graphics_resource_bundle.meshes.borrow_mut())
             .with(
-                mesh.clone(),
-                &mut self.graphics_resource_bundle.meshes.borrow_mut(),
-            )
-            .with(
-                material.clone(),
+                material,
                 &mut self.graphics_resource_bundle.materials.borrow_mut(),
             )
             .with(transform, &mut self.transforms.borrow_mut())

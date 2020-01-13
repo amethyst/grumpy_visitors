@@ -34,6 +34,8 @@ use gv_core::{ecs::components::NetConnectionModel, net::server_message::ServerMe
 use crate::ecs::factories::{LandscapeFactory, PlayerFactory};
 #[cfg(not(feature = "client"))]
 use crate::utils::net::broadcast_message_reliable;
+#[cfg(feature = "client")]
+use crate::PLAYER_COLORS;
 
 #[derive(Default)]
 pub struct PlayingState;
@@ -87,7 +89,7 @@ fn initialize_players(world: &mut World) {
         )| {
             if !multiplayer_game_state.is_playing {
                 let player_entity = player_factory.create();
-                player_client_factory.create(player_entity, true);
+                player_client_factory.create(player_entity, PLAYER_COLORS[4], true);
                 main_player = Some(player_entity);
             }
 
@@ -105,10 +107,10 @@ fn initialize_players(world: &mut World) {
                     .expect("Expected to insert EntityNetMetadata component");
 
                 if player.entity_net_id == multiplayer_room_state.player_net_id {
-                    player_client_factory.create(player_entity, true);
+                    player_client_factory.create(player_entity, player.color, true);
                     main_player = Some(player_entity);
                 } else {
-                    player_client_factory.create(player_entity, false);
+                    player_client_factory.create(player_entity, player.color, false);
                 }
             }
         },

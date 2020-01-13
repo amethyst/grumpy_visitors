@@ -28,6 +28,7 @@ use gv_core::{
 use gv_game::{
     ecs::resources::ConnectionEvents,
     utils::net::{broadcast_message_reliable, send_message_reliable},
+    PLAYER_COLORS,
 };
 
 use crate::ecs::resources::{HostClientAddress, LastBroadcastedFrame};
@@ -143,6 +144,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
                             "A client has sent a JoinRoom message more than once, discarding"
                         );
                     } else {
+                        let color_index = multiplayer_game_state.players.len();
                         multiplayer_game_state
                             .update_players()
                             .push(MultiplayerRoomPlayer {
@@ -150,6 +152,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
                                 entity_net_id: 0,
                                 nickname,
                                 is_host: self.host_connection_id == connection_id,
+                                color: PLAYER_COLORS[color_index],
                             });
                     }
                 }

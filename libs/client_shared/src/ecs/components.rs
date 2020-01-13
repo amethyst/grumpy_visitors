@@ -8,3 +8,6 @@ pub struct HealthUiGraphics {
     pub scale_ratio: f32,
     pub health: f32,
 }
+
+#[derive(Component)]
+pub struct PlayerColor(pub [f32; 3]);
