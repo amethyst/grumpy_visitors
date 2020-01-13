@@ -14,6 +14,7 @@ pub struct MultiplayerRoomPlayer {
     pub entity_net_id: NetIdentifier,
     pub nickname: String,
     pub is_host: bool,
+    pub color: [f32; 3],
 }
 
 #[derive(Clone, Serialize, Deserialize, Default)]

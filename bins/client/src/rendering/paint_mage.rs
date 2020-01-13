@@ -9,6 +9,7 @@ use amethyst::{
     renderer::{
         batch::{GroupIterator, OrderedOneLevelBatch},
         bundle::{RenderOrder, RenderPlan, RenderPlugin, Target},
+        palette::Srgba,
         pipeline::{PipelineDescBuilder, PipelinesBuilder},
         pod::SpriteArgs,
         rendy::{
@@ -22,6 +23,7 @@ use amethyst::{
             mesh::AsVertex,
             shader::{PathBufShaderInfo, Shader, ShaderKind, SourceLanguage, SpirvShader},
         },
+        resources::Tint,
         sprite::{SpriteRender, SpriteSheet},
         submodules::{DynamicVertexBuffer, FlatEnvironmentSub, TextureId, TextureSub},
         types::{Backend, Texture},
@@ -32,7 +34,7 @@ use derivative::Derivative;
 
 use std::path::PathBuf;
 
-use gv_core::ecs::components::Player;
+use gv_client_shared::ecs::components::PlayerColor;
 
 use crate::ecs::systems::{CustomSpriteSortingSystem, SpriteOrdering};
 
@@ -179,7 +181,7 @@ impl<B: Backend> RenderGroup<B, World> for DrawFlat2DTransparent<B> {
             sprite_ordering,
             sprite_renders,
             transforms,
-            players,
+            player_colors,
             parents,
         ) = <(
             Read<'_, AssetStorage<SpriteSheet>>,
@@ -187,7 +189,7 @@ impl<B: Backend> RenderGroup<B, World> for DrawFlat2DTransparent<B> {
             ReadExpect<'_, SpriteOrdering>,
             ReadStorage<'_, SpriteRender>,
             ReadStorage<'_, Transform>,
-            ReadStorage<'_, Player>,
+            ReadStorage<'_, PlayerColor>,
             ReadStorage<'_, Parent>,
         )>::fetch(world);
 
@@ -206,16 +208,19 @@ impl<B: Backend> RenderGroup<B, World> for DrawFlat2DTransparent<B> {
                 .iter()
                 .filter_map(|e| joined.get_unchecked(e.id()))
                 .filter_map(|(sprite_render, global, parent)| {
-                    if !players.contains(parent.entity) {
-                        return None;
-                    }
+                    let player_color = player_colors.get(parent.entity)?.0;
 
                     let (batch_data, texture) = SpriteArgs::from_data(
                         &tex_storage,
                         &sprite_sheet_storage,
                         &sprite_render,
                         &global,
-                        None,
+                        Some(&Tint(Srgba::new(
+                            player_color[0],
+                            player_color[1],
+                            player_color[2],
+                            1.0,
+                        ))),
                     )?;
                     let (tex_id, this_changed) = textures_ref.insert(
                         factory,
