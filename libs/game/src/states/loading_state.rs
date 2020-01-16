@@ -14,7 +14,7 @@ use amethyst::{
 use gv_animation_prefabs::GameSpriteAnimationPrefab;
 #[cfg(feature = "client")]
 use gv_client_shared::ecs::{
-    components::PlayerColor,
+    components::{PlayerColor, SpellParticle},
     resources::{AssetHandles, DummyAssetHandles, HealthUiMesh, MissileGraphics},
 };
 use gv_core::ecs::resources::{GameEngineState, GameLevelState, GameTime, NewGameEngineState};
@@ -67,6 +67,7 @@ impl LoadingState {
         ) {
             (false, _, _, _) => {
                 world.register::<PlayerColor>();
+                world.register::<SpellParticle>();
                 self.atlas_is_loaded = true;
                 let dummy_prefab = world.exec(
                     |prefab_loader: PrefabLoader<'_, GameSpriteAnimationPrefab>| {

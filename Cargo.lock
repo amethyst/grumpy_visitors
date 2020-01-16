@@ -1380,6 +1380,7 @@ dependencies = [
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "derivative 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "glsl-layout 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "gv_animation_prefabs 0.1.0",
  "gv_client_shared 0.1.0",
  "gv_core 0.1.0",

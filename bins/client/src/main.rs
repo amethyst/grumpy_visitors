@@ -121,6 +121,7 @@ fn main() -> amethyst::Result<()> {
             "game_updates_broadcasting_system",
             &["action_system"],
         )
+        .with(ParticleSystem, "particle_system", &["action_system"])
         .with(
             CameraTranslationSystem,
             "camera_translation_system",
@@ -160,6 +161,7 @@ fn main() -> amethyst::Result<()> {
                 .with_plugin(RenderFlat3D::default())
                 .with_plugin(RenderFlat2D::default())
                 .with_plugin(PaintMagePlugin::default())
+                .with_plugin(SpellParticlePlugin::default())
                 .with_plugin(HealthUiPlugin::default())
                 .with_plugin(RenderUi::default()),
         )?;

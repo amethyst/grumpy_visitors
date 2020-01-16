@@ -11,3 +11,8 @@ pub struct HealthUiGraphics {
 
 #[derive(Component)]
 pub struct PlayerColor(pub [f32; 3]);
+
+#[derive(Component)]
+pub struct SpellParticle {
+    pub frame_spawned: u64,
+}

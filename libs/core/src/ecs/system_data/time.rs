@@ -44,15 +44,15 @@ impl<'a> GameTimeService<'a> {
         self.engine_time.frame_number() - self.game_time.started_at_frame_number
     }
 
-    pub fn seconds_to_frame(&self, frame_number: u64) -> f32 {
-        self.seconds_between_frames(
-            self.game_time.started_at_frame_number + self.game_time.frames_skipped,
-            frame_number,
-        )
+    pub fn seconds_to_frame(&self, game_frame_number: u64) -> f32 {
+        self.seconds_between_frames(self.game_frame_number(), game_frame_number)
     }
 
-    pub fn seconds_to_frame_absolute(&self, frame_number: u64) -> f32 {
-        self.seconds_between_frames(self.game_time.started_at_frame_number, frame_number)
+    pub fn seconds_to_frame_absolute(&self, game_frame_number_absolute: u64) -> f32 {
+        self.seconds_between_frames(
+            self.game_frame_number_absolute(),
+            game_frame_number_absolute,
+        )
     }
 
     pub fn seconds_between_frames(&self, lhs: u64, rhs: u64) -> f32 {

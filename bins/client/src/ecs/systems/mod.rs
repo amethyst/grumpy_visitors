@@ -6,6 +6,7 @@ mod game_updates_broadcasting;
 mod hud;
 mod input;
 mod menu;
+mod particle;
 
 pub use self::{
     animation::AnimationSystem,
@@ -16,4 +17,5 @@ pub use self::{
     hud::HealthUiSystem,
     input::InputSystem,
     menu::MenuSystem,
+    particle::ParticleSystem,
 };
