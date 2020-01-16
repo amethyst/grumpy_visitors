@@ -22,7 +22,7 @@ const vec2 positions[4] = vec2[](
     vec2(-0.5, 0.5) // Left top
 );
 
-const vec2 size = vec2(2.0);
+const vec2 size = vec2(3);
 const float z = 50.0;
 
 void main() {

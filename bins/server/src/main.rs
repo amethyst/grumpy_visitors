@@ -15,7 +15,9 @@ use gv_core::ecs::resources::world::{
     DummyFramedUpdate, FramedUpdates, ReceivedClientActionUpdates, ServerWorldUpdates,
 };
 use gv_game::{
-    build_game_logic_systems, ecs::systems::NetConnectionManagerDesc, states::LoadingState,
+    build_game_logic_systems,
+    ecs::systems::{NetConnectionManagerDesc, WorldPositionTransformSystem},
+    states::LoadingState,
 };
 
 use crate::ecs::{
@@ -102,6 +104,11 @@ fn main() -> amethyst::Result<()> {
         )
         .with(ServerNetworkSystem::new(), "game_network_system", &[]);
     game_data_builder = build_game_logic_systems(game_data_builder, &mut builder.world, true)?
+        .with(
+            WorldPositionTransformSystem,
+            "world_position_transform_system",
+            &["particle_system"],
+        )
         .with(
             GameUpdatesBroadcastingSystem::default(),
             "game_updates_broadcasting_system",

@@ -14,5 +14,7 @@ pub struct PlayerColor(pub [f32; 3]);
 
 #[derive(Component)]
 pub struct SpellParticle {
+    pub inertia: Vector2,
+    pub velocity: Vector2,
     pub frame_spawned: u64,
 }

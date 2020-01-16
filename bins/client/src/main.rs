@@ -30,7 +30,9 @@ use gv_core::ecs::resources::world::{
     ClientWorldUpdates, FramedUpdates, ReceivedServerWorldUpdate,
 };
 use gv_game::{
-    build_game_logic_systems, ecs::systems::NetConnectionManagerDesc, states::LoadingState,
+    build_game_logic_systems,
+    ecs::systems::{NetConnectionManagerDesc, WorldPositionTransformSystem},
+    states::LoadingState,
 };
 
 use crate::{
@@ -121,7 +123,12 @@ fn main() -> amethyst::Result<()> {
             "game_updates_broadcasting_system",
             &["action_system"],
         )
-        .with(ParticleSystem, "particle_system", &["action_system"])
+        .with(ParticleSystem, "particle_system", &["missile_dying_system"])
+        .with(
+            WorldPositionTransformSystem,
+            "world_position_transform_system",
+            &["particle_system"],
+        )
         .with(
             CameraTranslationSystem,
             "camera_translation_system",

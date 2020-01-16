@@ -8,7 +8,7 @@ layout(location = 0) in VertexData {
 } vertex;
 layout(location = 0) out vec4 out_color;
 
-const float partcile_ttl = 0.15;
+const float partcile_ttl = 0.25;
 const vec3 particle_color = vec3(1.0, 0.0, 0.0);
 
 void main() {

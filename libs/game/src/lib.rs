@@ -67,11 +67,6 @@ pub fn build_game_logic_systems<'a, 'b>(
             &["action_system"],
         )
         .with(
-            WorldPositionTransformSystem,
-            "world_position_transform_system",
-            &["action_system"],
-        )
-        .with(
             StateSwitcherSystem,
             "state_switcher_system",
             &dependencies_with_optional(
