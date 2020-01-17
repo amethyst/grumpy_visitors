@@ -4,8 +4,6 @@ use amethyst::{
 };
 use gv_core::profile_scope;
 
-#[cfg(feature = "client")]
-use gv_client_shared::ecs::resources::EntityGraphics;
 use gv_core::{
     actions::IdentifiableAction,
     ecs::{
@@ -86,7 +84,8 @@ pub struct MissileFactory<'a, 's> {
     entities: &'s Entities<'s>,
     transforms: WriteStorageCell<'s, Transform>,
     missiles: WriteStorageCell<'s, Missile>,
-    #[cfg_attr(not(feature = "client"), allow(dead_code))]
+    //#[cfg_attr(not(feature = "client"), allow(dead_code))]
+    #[allow(dead_code)]
     graphics_resource_bundle: &'a GraphicsResourceBundle<'s>,
 }
 
@@ -117,23 +116,10 @@ impl<'a, 's> MissileFactory<'a, 's> {
         position: Vector2,
     ) -> Entity {
         let mut transform = Transform::default();
-        transform.set_translation_xyz(position.x, position.y, 0.0);
-
-        let EntityGraphics { mesh, material } = self
-            .graphics_resource_bundle
-            .missile_graphics
-            .as_ref()
-            .unwrap()
-            .0
-            .clone();
+        transform.set_translation_xyz(position.x, position.y, 50.0);
 
         self.entities
             .build_entity()
-            .with(mesh, &mut self.graphics_resource_bundle.meshes.borrow_mut())
-            .with(
-                material,
-                &mut self.graphics_resource_bundle.materials.borrow_mut(),
-            )
             .with(transform, &mut self.transforms.borrow_mut())
             .with(WorldPosition::new(position), world_positions)
             .with(

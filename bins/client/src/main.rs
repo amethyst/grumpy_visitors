@@ -168,6 +168,7 @@ fn main() -> amethyst::Result<()> {
                 .with_plugin(RenderFlat3D::default())
                 .with_plugin(RenderFlat2D::default())
                 .with_plugin(PaintMagePlugin::default())
+                .with_plugin(MissilePlugin::default())
                 .with_plugin(SpellParticlePlugin::default())
                 .with_plugin(HealthUiPlugin::default())
                 .with_plugin(RenderUi::default()),

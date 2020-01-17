@@ -1,7 +1,7 @@
 use amethyst::{
     assets::{Handle, Loader, Prefab},
     prelude::World,
-    renderer::{palette::LinSrgba, rendy::mesh::MeshBuilder, Material, Mesh, SpriteSheet},
+    renderer::{rendy::mesh::MeshBuilder, Material, Mesh, SpriteSheet},
     ui::FontHandle,
 };
 
@@ -10,9 +10,7 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use gv_animation_prefabs::GameSpriteAnimationPrefab;
 use gv_core::{math::Vector3, net::NetIdentifier};
 
-use crate::utils::graphic_helpers::{
-    create_color_material, create_mesh, generate_circle_vertices, generate_rectangle_vertices,
-};
+use crate::utils::graphic_helpers::generate_rectangle_vertices;
 
 pub const HEALTH_UI_SCREEN_PADDING: f32 = 40.0;
 
@@ -26,18 +24,6 @@ pub struct AssetHandles {
     pub beetle_prefab: Handle<Prefab<GameSpriteAnimationPrefab>>,
     pub landscape: Handle<SpriteSheet>,
     pub ui_font: FontHandle,
-}
-
-#[derive(Clone)]
-pub struct MissileGraphics(pub EntityGraphics);
-
-impl MissileGraphics {
-    pub fn register(world: &mut World) {
-        let (positions, tex_coords) = generate_circle_vertices(5.0, 64);
-        let mesh = create_mesh(world, positions, tex_coords);
-        let material = create_color_material(world, LinSrgba::new(1.0, 0.0, 0.0, 1.0));
-        world.insert(MissileGraphics(EntityGraphics { mesh, material }));
-    }
 }
 
 #[derive(Clone)]

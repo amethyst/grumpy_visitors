@@ -3,7 +3,6 @@ use amethyst::{
     animation::{AnimationControlSet, AnimationSet},
     assets::Handle,
     core::{Named, ParentHierarchy},
-    ecs::Read,
     renderer::{sprite::SpriteRender, Material, Mesh},
 };
 use amethyst::{
@@ -21,8 +20,6 @@ use std::{cell::RefCell, rc::Rc};
 
 #[cfg(feature = "client")]
 use gv_animation_prefabs::AnimationId;
-#[cfg(feature = "client")]
-use gv_client_shared::ecs::resources::MissileGraphics;
 use gv_core::{
     actions::{
         mob::MobAction,
@@ -103,7 +100,6 @@ pub struct ActionSystemData<'s> {
 #[cfg(feature = "client")]
 #[derive(SystemData)]
 pub struct GraphicsSystemData<'s> {
-    missile_graphics: Option<Read<'s, MissileGraphics>>,
     meshes: WriteStorage<'s, Handle<Mesh>>,
     materials: WriteStorage<'s, Handle<Material>>,
 }
@@ -526,7 +522,6 @@ impl<'s> System<'s> for ActionSystem {
 #[cfg(feature = "client")]
 fn create_graphics_resource_bundle(system_data: GraphicsSystemData) -> GraphicsResourceBundle {
     GraphicsResourceBundle {
-        missile_graphics: system_data.missile_graphics,
         meshes: Rc::new(RefCell::new(system_data.meshes)),
         materials: Rc::new(RefCell::new(system_data.materials)),
     }

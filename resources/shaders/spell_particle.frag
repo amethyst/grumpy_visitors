@@ -9,7 +9,7 @@ layout(location = 0) in VertexData {
 layout(location = 0) out vec4 out_color;
 
 const float partcile_ttl = 0.25;
-const vec3 particle_color = vec3(1.0, 0.0, 0.0);
+const vec3 particle_color = vec3(0.95, 0.3, 0.3);
 
 void main() {
     out_color = vec4(particle_color, max(1.0 - vertex.seconds_since_spawn / partcile_ttl, 0.0));
