@@ -71,7 +71,7 @@ This project is in its early stage of development. There are only some very basi
 - [ ] Implement possibility to pause/unpause writing profiler traces
 - [ ] Look for weak spots in performance and optimize them if found and possible
 - [ ] Add visual indicators for better debugging (mobs health, network state, fps, latency etc)
-- [ ] Refactor UI code (current definition files and the system are huge)
+- [x] Refactor UI code (current definition files and the system are huge)
 - [ ] Better visuals (polishing animations, adding some nice shaders for spells)
 - [ ] Implement defining spells and monsters with *.ron files (no more hardcoded values)
 - [ ] Unit tests
