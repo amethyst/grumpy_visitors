@@ -28,7 +28,7 @@ use amethyst::{
     animation::{AnimationCommand, AnimationControlSet, AnimationSet, EndControl},
     assets::Handle,
     core::{Named, ParentHierarchy},
-    ecs::{Read, ReadExpect, ReadStorage},
+    ecs::{ReadExpect, ReadStorage},
     renderer::{sprite::SpriteRender, Material, Mesh},
 };
 
@@ -37,8 +37,6 @@ use std::marker::PhantomData;
 use std::{cell::RefCell, rc::Rc};
 
 use gv_animation_prefabs::AnimationId;
-#[cfg(feature = "client")]
-use gv_client_shared::ecs::resources::MissileGraphics;
 #[cfg(feature = "client")]
 use gv_core::ecs::resources::world::{
     ClientWorldUpdates, PlayerActionUpdates, ReceivedServerWorldUpdate,
@@ -72,8 +70,8 @@ type WriteStorageCell<'s, T> = Rc<RefCell<WriteStorage<'s, T>>>;
 type WriteExpectCell<'s, T> = Rc<RefCell<WriteExpect<'s, T>>>;
 
 #[cfg(feature = "client")]
+#[allow(dead_code)]
 pub struct GraphicsResourceBundle<'s> {
-    missile_graphics: Option<Read<'s, MissileGraphics>>,
     meshes: WriteStorageCell<'s, Handle<Mesh>>,
     materials: WriteStorageCell<'s, Handle<Material>>,
 }
