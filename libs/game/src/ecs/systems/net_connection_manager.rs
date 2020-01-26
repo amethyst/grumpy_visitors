@@ -181,7 +181,18 @@ impl NetConnectionManagerSystem {
         }
         let peer_addr = peer_addr.unwrap();
 
-        if let NetworkSimulationEvent::Connect(_) = event {
+        if let NetworkSimulationEvent::Connect(socket_addr) = event {
+            let existing_connection = (net_connection_models)
+                .join()
+                .find(|connection_model| connection_model.addr == *socket_addr);
+            if let Some(connection_model) = existing_connection {
+                log::warn!(
+                    "Duplicate Connect event for an existing connection ({})",
+                    connection_model.id
+                );
+                return (None, None);
+            }
+
             let connection_id = self.next_connection_id();
             log::info!("New connection ({}): {}", connection_id, peer_addr);
             let net_connection_model = NetConnectionModel::new(connection_id, peer_addr);

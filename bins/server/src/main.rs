@@ -107,7 +107,7 @@ fn main() -> amethyst::Result<()> {
         .with(
             WorldPositionTransformSystem,
             "world_position_transform_system",
-            &["particle_system"],
+            &["action_system"],
         )
         .with(
             GameUpdatesBroadcastingSystem::default(),
