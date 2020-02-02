@@ -56,7 +56,7 @@ Supported platforms:
 ## Current state
 This project is in its early stage of development. There are only some very basic features implemented:
 - Multiplayer
-- Casting a spell (homing ~~missile~~ red dot)
+- Casting a spell
 - Spawning monsters
 - Monster AI (actually just randomly walking around the map and starting to chase a player if they're close enough)
 - Character moving
@@ -78,8 +78,6 @@ This project is in its early stage of development. There are only some very basi
 
 ### Known issues
 - Starting a multiplayer game before the connected peers pop up in the players list will cause a crash
-- Starting a multiplayer game with two or more players will start a paused (with no way to unpause) game
-([amethyst#2024](https://github.com/amethyst/amethyst/issues/2024))
 - The multiplayer game will eventually crash because of `ExceededMaxPacketSize` error
 - You have only one chance to join or host a game. Anything went wrong? Just restart it.
 (A lot of menu transitions polishing still needs to be done.)
