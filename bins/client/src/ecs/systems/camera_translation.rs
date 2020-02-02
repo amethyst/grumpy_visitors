@@ -7,7 +7,6 @@ use amethyst::{
     renderer::Camera,
     window::ScreenDimensions,
 };
-use num;
 
 use gv_core::ecs::resources::GameLevelState;
 

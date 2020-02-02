@@ -9,7 +9,7 @@ use std::f32::consts::PI;
 use gv_client_shared::ecs::components::SpellParticle;
 use gv_core::{
     ecs::{
-        components::{missile::Missile, WorldPosition},
+        components::{missile::Missile, Dead, WorldPosition},
         system_data::time::GameTimeService,
     },
     math::{Vector2, Vector3},
@@ -25,6 +25,7 @@ impl<'s> System<'s> for ParticleSystem {
         GameTimeService<'s>,
         Entities<'s>,
         ReadStorage<'s, Missile>,
+        ReadStorage<'s, Dead>,
         ReadStorage<'s, WorldPosition>,
         WriteStorage<'s, SpellParticle>,
         WriteStorage<'s, Transform>,
@@ -36,6 +37,7 @@ impl<'s> System<'s> for ParticleSystem {
             game_time_service,
             entities,
             missiles,
+            dead,
             world_positions,
             mut spell_particles,
             mut transforms,
@@ -43,7 +45,7 @@ impl<'s> System<'s> for ParticleSystem {
     ) {
         let mut rng = rand::thread_rng();
         let frame_number = game_time_service.game_frame_number();
-        for (missile_entity, missile) in (&entities, &missiles).join() {
+        for (missile_entity, missile, _) in (&entities, &missiles, !&dead).join() {
             let missile_position = world_positions
                 .get(missile_entity)
                 .expect("Expected WorldPosition for a missile")

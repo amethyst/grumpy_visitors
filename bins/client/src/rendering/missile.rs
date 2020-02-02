@@ -31,7 +31,10 @@ use glsl_layout::{float, vec2, AsStd140};
 
 use std::path::PathBuf;
 
-use gv_core::ecs::{components::missile::Missile, system_data::time::GameTimeService};
+use gv_core::ecs::{
+    components::{missile::Missile, Dead},
+    system_data::time::GameTimeService,
+};
 
 /// A [RenderPlugin] for drawing 2d objects with flat shading.
 /// Required to display sprites defined with [SpriteRender] component.
@@ -172,17 +175,18 @@ impl<B: Backend> RenderGroup<B, World> for DrawMissile<B> {
         _subpass: hal::pass::Subpass<'_, B>,
         world: &World,
     ) -> PrepareResult {
-        let (game_time_service, transforms, missiles) = <(
+        let (game_time_service, transforms, missiles, dead) = <(
             GameTimeService<'_>,
             ReadStorage<'_, Transform>,
             ReadStorage<'_, Missile>,
+            ReadStorage<'_, Dead>,
         )>::fetch(world);
 
         self.env.process(factory, index, world);
 
-        let vertices = (&transforms, &missiles)
+        let vertices = (&transforms, &missiles, !&dead)
             .join()
-            .map(|(transform, missile)| {
+            .map(|(transform, missile, _)| {
                 let transform = convert::<_, Matrix4<f32>>(*transform.global_matrix());
                 let pos = (transform * Vector4::new(0.0, 0.0, 0.0, 1.0))
                     .xy()
