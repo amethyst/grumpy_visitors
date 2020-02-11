@@ -74,8 +74,14 @@ impl<'s> MissilePhysicsSubsystem<'s> {
                 .seconds_between_frames(frame_number, missile.frame_spawned)
                 > MISSILE_LIFESPAN_SECS as f32;
             if missile_lifespan_ended {
-                dead.insert(missile_entity, Dead::new(frame_number + 1))
-                    .expect("Expected to insert a Dead component");
+                let dead_since_frame = frame_number + 1;
+                let frame_acknowledged =
+                    dead_since_frame.max(self.game_time_service.game_frame_number());
+                dead.insert(
+                    missile_entity,
+                    Dead::new(dead_since_frame, frame_acknowledged),
+                )
+                .expect("Expected to insert a Dead component");
                 hidden_propagates
                     .insert(missile_entity, HiddenPropagate)
                     .expect("Expected to insert a HiddenPropagate component");
@@ -151,8 +157,14 @@ impl<'s> MissilePhysicsSubsystem<'s> {
                                 },
                             );
                     }
-                    dead.insert(missile_entity, Dead::new(frame_number + 1))
-                        .expect("Expected to insert a Dead component");
+                    let dead_since_frame = frame_number + 1;
+                    let frame_acknowledged =
+                        dead_since_frame.max(self.game_time_service.game_frame_number());
+                    dead.insert(
+                        missile_entity,
+                        Dead::new(dead_since_frame, frame_acknowledged),
+                    )
+                    .expect("Expected to insert a Dead component");
                     hidden_propagates
                         .insert(missile_entity, HiddenPropagate)
                         .expect("Expected to insert a HiddenPropagate component");

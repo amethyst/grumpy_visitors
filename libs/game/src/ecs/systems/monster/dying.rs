@@ -1,29 +1,23 @@
-use amethyst::{
-    core::HiddenPropagate,
-    ecs::{Entities, Join, ReadStorage, System},
-};
+use amethyst::ecs::{Entities, Join, ReadStorage, System};
 
+use gv_animation_prefabs::{AnimationId, MONSTER_BODY};
 use gv_core::ecs::{
     components::{Dead, Monster},
-    resources::world::SAVED_WORLD_STATES_LIMIT,
     system_data::time::GameTimeService,
 };
 
-use crate::ecs::system_data::GameStateHelper;
+use crate::ecs::{system_data::GameStateHelper, systems::AnimationsSystemData};
 
 pub struct MonsterDyingSystem;
-
-// Anything more clever?
-const DYING_TIME_FRAMES: u64 = SAVED_WORLD_STATES_LIMIT as u64;
 
 impl<'s> System<'s> for MonsterDyingSystem {
     type SystemData = (
         GameStateHelper<'s>,
         GameTimeService<'s>,
+        AnimationsSystemData<'s>,
         Entities<'s>,
         ReadStorage<'s, Monster>,
         ReadStorage<'s, Dead>,
-        ReadStorage<'s, HiddenPropagate>,
     );
 
     fn run(
@@ -31,27 +25,29 @@ impl<'s> System<'s> for MonsterDyingSystem {
         (
             game_state_helper,
             game_time_service,
+            mut animations_system_data,
             entities,
             monsters,
             dead,
-            hidden_propagates,
         ): Self::SystemData,
     ) {
         if !game_state_helper.is_running() {
             return;
         }
 
-        for (monster_entity, dead, _, _) in (&entities, &dead, &hidden_propagates, &monsters).join()
-        {
-            let to_be_deleted = !game_state_helper.is_multiplayer()
-                || game_time_service
-                    .game_frame_number()
-                    .saturating_sub(dead.dead_since_frame)
-                    > DYING_TIME_FRAMES;
-            if to_be_deleted {
-                entities
-                    .delete(monster_entity)
-                    .expect("Expected to delete a Monster");
+        // TODO: move to animation system?
+        for (monster_entity, dead, _) in (&entities, &dead, &monsters).join() {
+            if game_time_service.game_frame_number() == dead.frame_acknowledged {
+                animations_system_data.remove_animation(
+                    monster_entity,
+                    MONSTER_BODY,
+                    AnimationId::Walk,
+                );
+                animations_system_data.play_animation(
+                    monster_entity,
+                    MONSTER_BODY,
+                    AnimationId::Death,
+                );
             }
         }
     }

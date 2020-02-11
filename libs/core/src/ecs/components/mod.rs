@@ -123,11 +123,18 @@ pub struct Monster {
 #[storage(VecStorage)]
 pub struct Dead {
     pub dead_since_frame: u64,
+    /// In multiplayer death can happen on earlier frame than current game_frame_number.
+    /// This field reflects a client's game_frame_number, when a death is acknowledged, so it can be
+    /// properly processed.
+    pub frame_acknowledged: u64,
 }
 
 impl Dead {
-    pub fn new(dead_since_frame: u64) -> Self {
-        Self { dead_since_frame }
+    pub fn new(dead_since_frame: u64, frame_acknowledged: u64) -> Self {
+        Self {
+            dead_since_frame,
+            frame_acknowledged,
+        }
     }
 }
 

@@ -43,7 +43,6 @@ pub struct MonsterActionSubsystem<'a, 's> {
     pub world_positions: WriteStorageCell<'s, WorldPosition>,
     pub net_world_positions: WriteStorageCell<'s, NetWorldPosition>,
     pub damage_histories: WriteStorageCell<'s, DamageHistory>,
-    #[cfg_attr(not(feature = "client"), allow(dead_code))]
     pub animations_resource_bundle: &'a AnimationsResourceBundle<'s>,
 }
 

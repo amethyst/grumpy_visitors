@@ -231,6 +231,7 @@ impl<'s> System<'s> for ActionSystem {
         };
         let damage_subsystem = DamageSubsystem {
             game_state_helper: &system_data.game_state_helper,
+            game_time_service: &system_data.game_time_service,
             entities: &system_data.entities,
             entity_net_metadata_storage: entity_net_metadata_storage.clone(),
             entity_net_metadata: entity_net_metadata.clone(),
@@ -238,7 +239,6 @@ impl<'s> System<'s> for ActionSystem {
             monsters: monsters.clone(),
             damage_histories: damage_histories.clone(),
             dead: dead.clone(),
-            hidden_propagates: hidden_propagates.clone(),
         };
 
         system_data

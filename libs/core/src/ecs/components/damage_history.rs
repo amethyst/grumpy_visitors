@@ -2,7 +2,6 @@ use amethyst::ecs::prelude::{Component, DenseVecStorage, FlaggedStorage};
 use serde_derive::{Deserialize, Serialize};
 
 pub struct DamageHistory {
-    pub oldest_updated_frame: u64,
     pub history: Vec<DamageHistoryEntries>,
 }
 
@@ -13,7 +12,6 @@ impl Component for DamageHistory {
 impl DamageHistory {
     pub fn new(frame_number: u64) -> Self {
         Self {
-            oldest_updated_frame: frame_number,
             history: vec![DamageHistoryEntries::new(frame_number)],
         }
     }
@@ -22,10 +20,6 @@ impl DamageHistory {
         log::trace!("Added damage entry (frame {}): {:?}", frame_number, entry);
 
         self.reserve_entries(frame_number);
-
-        if frame_number > self.oldest_updated_frame {
-            self.oldest_updated_frame = frame_number;
-        }
 
         let damage_entries = self
             .history
@@ -56,10 +50,7 @@ impl DamageHistory {
                     frame_number
                 )
             });
-        if !damage_entries.entries.is_empty() {
-            self.oldest_updated_frame = frame_number;
-            damage_entries.entries.clear();
-        }
+        damage_entries.entries.clear();
     }
 
     pub fn get_entries(&self, frame_number: u64) -> &DamageHistoryEntries {
