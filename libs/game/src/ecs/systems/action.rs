@@ -6,7 +6,7 @@ use amethyst::{
     renderer::{sprite::SpriteRender, Material, Mesh},
 };
 use amethyst::{
-    core::{HiddenPropagate, Transform},
+    core::Transform,
     ecs::{
         Entities, Entity, Join, ReadExpect, ReadStorage, System, World, WriteExpect, WriteStorage,
     },
@@ -94,7 +94,6 @@ pub struct ActionSystemData<'s> {
     net_world_positions: WriteStorage<'s, NetWorldPosition>,
     dead: WriteStorage<'s, Dead>,
     damage_histories: WriteStorage<'s, DamageHistory>,
-    hidden_propagates: WriteStorage<'s, HiddenPropagate>,
 }
 
 #[cfg(feature = "client")]
@@ -160,7 +159,6 @@ impl<'s> System<'s> for ActionSystem {
         let net_world_positions = Rc::new(RefCell::new(system_data.net_world_positions));
         let dead = Rc::new(RefCell::new(system_data.dead));
         let damage_histories = Rc::new(RefCell::new(system_data.damage_histories));
-        let hidden_propagates = Rc::new(RefCell::new(system_data.hidden_propagates));
 
         let world_state_subsystem = WorldStateSubsystem {
             entities: &system_data.entities,
@@ -227,7 +225,6 @@ impl<'s> System<'s> for ActionSystem {
             dead: dead.clone(),
             damage_histories: damage_histories.clone(),
             world_positions: world_positions.clone(),
-            hidden_propagates: hidden_propagates.clone(),
         };
         let damage_subsystem = DamageSubsystem {
             game_state_helper: &system_data.game_state_helper,

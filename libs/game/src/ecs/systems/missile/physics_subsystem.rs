@@ -1,7 +1,6 @@
 use amethyst::{
     core::{
         math::{clamp, Rotation2},
-        HiddenPropagate,
     },
     ecs::{Entities, Join, ReadExpect},
 };
@@ -47,7 +46,6 @@ pub struct MissilePhysicsSubsystem<'s> {
     pub dead: WriteStorageCell<'s, Dead>,
     pub damage_histories: WriteStorageCell<'s, DamageHistory>,
     pub world_positions: WriteStorageCell<'s, WorldPosition>,
-    pub hidden_propagates: WriteStorageCell<'s, HiddenPropagate>,
 }
 
 impl<'s> MissilePhysicsSubsystem<'s> {
@@ -58,7 +56,6 @@ impl<'s> MissilePhysicsSubsystem<'s> {
         let mut dead = self.dead.borrow_mut();
         let mut damage_histories = self.damage_histories.borrow_mut();
         let mut world_positions = self.world_positions.borrow_mut();
-        let mut hidden_propagates = self.hidden_propagates.borrow_mut();
 
         for (missile_entity, mut missile) in (self.entities, &mut *missiles).join() {
             if missile.frame_spawned > frame_number || is_dead(missile_entity, &*dead, frame_number)
@@ -82,9 +79,6 @@ impl<'s> MissilePhysicsSubsystem<'s> {
                     Dead::new(dead_since_frame, frame_acknowledged),
                 )
                 .expect("Expected to insert a Dead component");
-                hidden_propagates
-                    .insert(missile_entity, HiddenPropagate)
-                    .expect("Expected to insert a HiddenPropagate component");
                 continue;
             }
 
@@ -165,9 +159,6 @@ impl<'s> MissilePhysicsSubsystem<'s> {
                         Dead::new(dead_since_frame, frame_acknowledged),
                     )
                     .expect("Expected to insert a Dead component");
-                    hidden_propagates
-                        .insert(missile_entity, HiddenPropagate)
-                        .expect("Expected to insert a HiddenPropagate component");
                     continue;
                 }
                 let monster = monsters.get(target).expect("Expected a targeted Monster");
