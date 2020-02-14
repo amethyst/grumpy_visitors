@@ -1,5 +1,7 @@
 #![feature(drain_filter)]
+#![feature(clamp)]
 #![allow(clippy::type_complexity, clippy::too_many_arguments)]
+
 pub mod ecs;
 pub mod states;
 pub mod utils;

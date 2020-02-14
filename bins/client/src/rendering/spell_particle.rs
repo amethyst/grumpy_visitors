@@ -143,6 +143,7 @@ impl<B: Backend> RenderGroupDesc<B, World> for DrawSpellParticleDesc {
 #[repr(C, align(4))]
 pub struct SpellParticleVertexData {
     pub pos: vec2,
+    pub opacity: float,
     pub seconds_since_spawn: float,
 }
 
@@ -150,6 +151,7 @@ impl AsVertex for SpellParticleVertexData {
     fn vertex() -> VertexFormat {
         VertexFormat::new((
             (Format::Rg32Sfloat, "pos"),
+            (Format::R32Sfloat, "opacity"),
             (Format::R32Sfloat, "seconds_since_spawn"),
         ))
     }
@@ -192,6 +194,7 @@ impl<B: Backend> RenderGroup<B, World> for DrawSpellParticle<B> {
                     game_time_service.seconds_to_frame(spell_particle.frame_spawned);
                 SpellParticleVertexData {
                     pos,
+                    opacity: spell_particle.missile_energy,
                     seconds_since_spawn,
                 }
             })

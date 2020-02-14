@@ -16,7 +16,7 @@ use gv_core::{
 };
 use gv_game::{
     ecs::systems::missile::{MISSILE_MAX_SPEED, MISSILE_MIN_SPEED},
-    utils::entities::is_dead,
+    utils::entities::{is_dead, missile_energy},
 };
 
 const PARTICLE_SPEED: f32 = 230.0;
@@ -49,6 +49,17 @@ impl<'s> System<'s> for ParticleSystem {
         let mut rng = rand::thread_rng();
         let frame_number = game_time_service.game_frame_number();
         for (missile_entity, missile) in (&entities, &missiles).join() {
+            let is_dead = is_dead(missile_entity, &dead, game_time_service.game_frame_number());
+            let missile_energy = missile_energy(
+                missile,
+                is_dead,
+                &game_time_service,
+                game_time_service.game_frame_number(),
+            );
+            if missile_energy == 0.0 {
+                continue;
+            }
+
             let missile_position = world_positions
                 .get(missile_entity)
                 .expect("Expected WorldPosition for a missile")
@@ -56,10 +67,8 @@ impl<'s> System<'s> for ParticleSystem {
             let mut transform = Transform::default();
             transform.set_translation_xyz(missile_position.x, missile_position.y, 50.0);
 
-            let is_exploding =
-                is_dead(missile_entity, &dead, game_time_service.game_frame_number());
             let missile_speed = missile.velocity.norm();
-            let particle_velocity = if missile_speed == 0.0 || is_exploding {
+            let particle_velocity = if missile_speed == 0.0 || is_dead {
                 let angle = rng.gen_range(0.0, PI * 2.0);
                 Rotation2::new(angle) * Vector2::new(0.0, 0.5) * PARTICLE_SPEED
             } else {
@@ -71,7 +80,7 @@ impl<'s> System<'s> for ParticleSystem {
                 Rotation2::new(PI + angle) * missile.velocity.normalize() * PARTICLE_SPEED
             };
 
-            let inertia = if is_exploding {
+            let inertia = if is_dead {
                 Vector2::zero()
             } else {
                 missile.velocity
@@ -82,6 +91,7 @@ impl<'s> System<'s> for ParticleSystem {
                     SpellParticle {
                         inertia,
                         velocity: particle_velocity,
+                        missile_energy,
                         frame_spawned: frame_number,
                     },
                     &mut spell_particles,

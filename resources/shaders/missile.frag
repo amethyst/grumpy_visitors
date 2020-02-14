@@ -4,6 +4,7 @@ layout(set = 1, binding = 0) uniform sampler2D albedo;
 
 layout(location = 0) in VertexData {
     vec2 uv;
+    float opacity;
     float seconds_since_spawn;
 } vertex;
 layout(location = 0) out vec4 out_color;
@@ -62,5 +63,9 @@ void main() {
                 ray_7),
                 ray_8)
     );
-    out_color = mix(rays_combined, vec4(missile_light_color, a), 1.0 - rays_combined.a);
+    out_color = mix(
+        vec4(rays_combined.rbg, rays_combined.a * vertex.opacity),
+        vec4(missile_light_color, a * vertex.opacity),
+        1.0 - rays_combined.a
+    );
 }

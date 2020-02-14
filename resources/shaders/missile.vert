@@ -9,10 +9,12 @@ layout(std140, set = 0, binding = 0) uniform ViewArgs {
 // Quad transform.
 layout(location = 0) in vec2 pos;
 layout(location = 1) in float seconds_since_spawn;
-layout(location = 2) in float ttl;
+layout(location = 2) in float opacity;
+layout(location = 3) in float ttl;
 
 layout(location = 0) out VertexData {
     vec2 uv;
+    float opacity;
     float seconds_since_spawn;
 } vertex;
 
@@ -43,6 +45,7 @@ void main() {
     }
 
     vertex.uv = vec2(u, v) + vec2(0.5);
+    vertex.opacity = opacity;
     vertex.seconds_since_spawn = seconds_since_spawn;
     vec2 final_pos = pos + vec2(u * size.x, v * size.y);
     vec4 vertex = vec4(final_pos, z, 1.0);

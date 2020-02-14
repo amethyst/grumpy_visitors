@@ -136,6 +136,10 @@ impl Dead {
             frame_acknowledged,
         }
     }
+
+    pub fn is_dead(&self, frame_number: u64) -> bool {
+        self.dead_since_frame <= frame_number
+    }
 }
 
 #[derive(Component)]

@@ -9,7 +9,12 @@ use amethyst::{
 
 #[cfg(feature = "client")]
 use gv_animation_prefabs::AnimationId;
-use gv_core::ecs::components::Dead;
+use gv_core::ecs::{
+    components::{missile::Missile, Dead},
+    system_data::time::GameTimeService,
+};
+
+use crate::ecs::systems::missile::{MISSILE_LIFESPAN_SECS, MISSILE_TIME_TO_FADE};
 
 pub fn is_dead(
     entity: Entity,
@@ -17,7 +22,7 @@ pub fn is_dead(
     frame_number: u64,
 ) -> bool {
     dead.get(entity)
-        .map_or(false, |dead| dead.dead_since_frame <= frame_number)
+        .map_or(false, |dead| dead.is_dead(frame_number))
 }
 
 #[cfg(feature = "client")]
@@ -99,4 +104,25 @@ pub fn remove_animation(
     if let Some(animation_control_set) = animation_control_set {
         animation_control_set.abort(animation_id);
     }
+}
+
+/// Returns values within the range [0.1; 1.0].
+/// Energy start dropping below 1.0 on (MISSILE_LIFESPAN_SECS - MISSILE_TIME_TO_FADE).
+pub fn missile_energy(
+    missile: &Missile,
+    is_dead: bool,
+    game_time_service: &GameTimeService,
+    frame_number: u64,
+) -> f32 {
+    let energy = ((MISSILE_LIFESPAN_SECS
+        - game_time_service.seconds_between_frames(frame_number, missile.frame_spawned))
+        / MISSILE_TIME_TO_FADE)
+        .clamp(0.0, 1.0);
+    if energy == 0.0 {
+        return 0.0;
+    }
+    if is_dead {
+        return 1.0;
+    }
+    energy
 }

@@ -35,7 +35,7 @@ use gv_core::ecs::{
     components::{missile::Missile, Dead},
     system_data::time::GameTimeService,
 };
-use gv_game::ecs::systems::missile::MISSILE_TTL_SECS;
+use gv_game::{ecs::systems::missile::MISSILE_TTL_SECS, utils::entities::missile_energy};
 
 /// A [RenderPlugin] for drawing 2d objects with flat shading.
 /// Required to display sprites defined with [SpriteRender] component.
@@ -147,6 +147,7 @@ impl<B: Backend> RenderGroupDesc<B, World> for DrawMissileDesc {
 pub struct MissileVertexData {
     pub pos: vec2,
     pub seconds_since_spawn: float,
+    pub opacity: float,
     /// Time to live (from 1.0 to 0.0).
     pub ttl: float,
 }
@@ -156,6 +157,7 @@ impl AsVertex for MissileVertexData {
         VertexFormat::new((
             (Format::Rg32Sfloat, "pos"),
             (Format::R32Sfloat, "seconds_since_spawn"),
+            (Format::R32Sfloat, "opacity"),
             (Format::R32Sfloat, "ttl"),
         ))
     }
@@ -196,6 +198,14 @@ impl<B: Backend> RenderGroup<B, World> for DrawMissile<B> {
                     .xy()
                     .into_pod();
                 let seconds_since_spawn = game_time_service.seconds_to_frame(missile.frame_spawned);
+                let opacity = missile_energy(
+                    &missile,
+                    dead.map_or(false, |dead| {
+                        dead.is_dead(game_time_service.game_frame_number())
+                    }),
+                    &game_time_service,
+                    game_time_service.game_frame_number(),
+                );
                 let ttl = dead.map_or(1.0, |dead| {
                     1.0 - game_time_service
                         .seconds_to_frame(dead.dead_since_frame)
@@ -205,6 +215,7 @@ impl<B: Backend> RenderGroup<B, World> for DrawMissile<B> {
                 MissileVertexData {
                     pos,
                     seconds_since_spawn,
+                    opacity,
                     ttl,
                 }
             })

@@ -16,5 +16,6 @@ pub struct PlayerColor(pub [f32; 3]);
 pub struct SpellParticle {
     pub inertia: Vector2,
     pub velocity: Vector2,
+    pub missile_energy: f32,
     pub frame_spawned: u64,
 }
