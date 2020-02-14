@@ -1,7 +1,5 @@
 use amethyst::{
-    core::{
-        math::{clamp, Rotation2},
-    },
+    core::math::{clamp, Rotation2},
     ecs::{Entities, Join, ReadExpect},
 };
 use gv_core::profile_scope;

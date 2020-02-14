@@ -24,7 +24,7 @@ const vec2 positions[4] = vec2[](
 );
 
 const vec2 base_size = vec2(70.0);
-const float max_modifier = 1.5;
+const float max_modifier = 2.0;
 const float max_size_at = 0.4;
 const float z = 50.0;
 

@@ -12,9 +12,12 @@ use gv_core::{
         components::{missile::Missile, Dead, WorldPosition},
         system_data::time::GameTimeService,
     },
-    math::{Vector2, Vector3},
+    math::{Vector2, Vector3, ZeroVector},
 };
-use gv_game::ecs::systems::missile::{MISSILE_MAX_SPEED, MISSILE_MIN_SPEED};
+use gv_game::{
+    ecs::systems::missile::{MISSILE_MAX_SPEED, MISSILE_MIN_SPEED},
+    utils::entities::is_dead,
+};
 
 const PARTICLE_SPEED: f32 = 230.0;
 
@@ -45,7 +48,7 @@ impl<'s> System<'s> for ParticleSystem {
     ) {
         let mut rng = rand::thread_rng();
         let frame_number = game_time_service.game_frame_number();
-        for (missile_entity, missile, _) in (&entities, &missiles, !&dead).join() {
+        for (missile_entity, missile) in (&entities, &missiles).join() {
             let missile_position = world_positions
                 .get(missile_entity)
                 .expect("Expected WorldPosition for a missile")
@@ -53,10 +56,12 @@ impl<'s> System<'s> for ParticleSystem {
             let mut transform = Transform::default();
             transform.set_translation_xyz(missile_position.x, missile_position.y, 50.0);
 
+            let is_exploding =
+                is_dead(missile_entity, &dead, game_time_service.game_frame_number());
             let missile_speed = missile.velocity.norm();
-            let particle_velocity = if missile_speed == 0.0 {
+            let particle_velocity = if missile_speed == 0.0 || is_exploding {
                 let angle = rng.gen_range(0.0, PI * 2.0);
-                Rotation2::new(angle) * Vector2::new(0.0, 1.0) * PARTICLE_SPEED
+                Rotation2::new(angle) * Vector2::new(0.0, 0.5) * PARTICLE_SPEED
             } else {
                 let min_rotation = PI / 6.0;
                 let speed_multiplier = 1.0
@@ -66,11 +71,16 @@ impl<'s> System<'s> for ParticleSystem {
                 Rotation2::new(PI + angle) * missile.velocity.normalize() * PARTICLE_SPEED
             };
 
+            let inertia = if is_exploding {
+                Vector2::zero()
+            } else {
+                missile.velocity
+            };
             entities
                 .build_entity()
                 .with(
                     SpellParticle {
-                        inertia: missile.velocity,
+                        inertia,
                         velocity: particle_velocity,
                         frame_spawned: frame_number,
                     },
