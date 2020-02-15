@@ -1,3 +1,4 @@
+#![feature(clamp)]
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
 mod ecs;

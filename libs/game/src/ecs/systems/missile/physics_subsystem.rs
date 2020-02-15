@@ -1,8 +1,5 @@
 use amethyst::{
-    core::{
-        math::{clamp, Rotation2},
-        HiddenPropagate,
-    },
+    core::math::{clamp, Rotation2},
     ecs::{Entities, Join, ReadExpect},
 };
 use gv_core::profile_scope;
@@ -20,17 +17,18 @@ use gv_core::ecs::{
 use crate::{
     ecs::{system_data::GameStateHelper, systems::WriteStorageCell},
     utils::{
-        entities::is_dead,
+        entities::{is_dead, missile_energy},
         world::{closest_monster, find_first_hit_monster, random_scene_position},
     },
 };
 
 pub const MISSILE_MAX_SPEED: f32 = 300.0;
 pub const MISSILE_MIN_SPEED: f32 = 80.0;
+pub const MISSILE_TIME_TO_FADE: f32 = 0.5;
+pub const MISSILE_LIFESPAN_SECS: f32 = 5.0;
 
 const MS_PER_FRAME: f32 = 1000.0 / 60.0;
 
-const MISSILE_LIFESPAN_SECS: u64 = 5;
 const TIME_TO_ACCELERATE: f32 = 2000.0;
 const MISSILE_ACCELERATION: f32 =
     (MISSILE_MAX_SPEED - MISSILE_MIN_SPEED) / TIME_TO_ACCELERATE * MS_PER_FRAME;
@@ -47,7 +45,6 @@ pub struct MissilePhysicsSubsystem<'s> {
     pub dead: WriteStorageCell<'s, Dead>,
     pub damage_histories: WriteStorageCell<'s, DamageHistory>,
     pub world_positions: WriteStorageCell<'s, WorldPosition>,
-    pub hidden_propagates: WriteStorageCell<'s, HiddenPropagate>,
 }
 
 impl<'s> MissilePhysicsSubsystem<'s> {
@@ -58,29 +55,30 @@ impl<'s> MissilePhysicsSubsystem<'s> {
         let mut dead = self.dead.borrow_mut();
         let mut damage_histories = self.damage_histories.borrow_mut();
         let mut world_positions = self.world_positions.borrow_mut();
-        let mut hidden_propagates = self.hidden_propagates.borrow_mut();
 
         for (missile_entity, mut missile) in (self.entities, &mut *missiles).join() {
-            if missile.frame_spawned > frame_number || is_dead(missile_entity, &*dead, frame_number)
-            {
+            let is_dead = is_dead(missile_entity, &*dead, frame_number);
+            if missile.frame_spawned > frame_number || is_dead {
+                continue;
+            }
+
+            let missile_energy =
+                missile_energy(&missile, is_dead, &self.game_time_service, frame_number);
+            if missile_energy == 0.0 {
+                let dead_since_frame = frame_number + 1;
+                let frame_acknowledged =
+                    dead_since_frame.max(self.game_time_service.game_frame_number());
+                dead.insert(
+                    missile_entity,
+                    Dead::new(dead_since_frame, frame_acknowledged),
+                )
+                .expect("Expected to insert a Dead component");
                 continue;
             }
 
             let missile_position = **world_positions
                 .get(missile_entity)
                 .expect("Expected a missile");
-            let missile_lifespan_ended = self
-                .game_time_service
-                .seconds_between_frames(frame_number, missile.frame_spawned)
-                > MISSILE_LIFESPAN_SECS as f32;
-            if missile_lifespan_ended {
-                dead.insert(missile_entity, Dead::new(frame_number + 1))
-                    .expect("Expected to insert a Dead component");
-                hidden_propagates
-                    .insert(missile_entity, HiddenPropagate)
-                    .expect("Expected to insert a HiddenPropagate component");
-                continue;
-            }
 
             let (destination, new_target) = match missile.target {
                 MissileTarget::Target(target) => {
@@ -131,32 +129,37 @@ impl<'s> MissilePhysicsSubsystem<'s> {
             }
 
             let direction = if let MissileTarget::Target(target) = missile.target {
-                if let Some(hit_monster) = find_first_hit_monster(
-                    missile_position,
-                    missile.radius,
-                    &monsters,
-                    &world_positions,
-                    &self.entities,
-                    &*dead,
-                    frame_number,
-                ) {
-                    if self.game_state_helper.is_authoritative() {
-                        damage_histories
-                            .get_mut(hit_monster)
-                            .expect("Expected a DamageHistory")
-                            .add_entry(
-                                frame_number,
-                                DamageHistoryEntry {
-                                    damage: missile.damage,
-                                },
-                            );
-                    }
-                    dead.insert(missile_entity, Dead::new(frame_number + 1))
+                if missile_energy >= 1.0 {
+                    if let Some(hit_monster) = find_first_hit_monster(
+                        missile_position,
+                        missile.radius,
+                        &monsters,
+                        &world_positions,
+                        &self.entities,
+                        &*dead,
+                        frame_number,
+                    ) {
+                        if self.game_state_helper.is_authoritative() {
+                            damage_histories
+                                .get_mut(hit_monster)
+                                .expect("Expected a DamageHistory")
+                                .add_entry(
+                                    frame_number,
+                                    DamageHistoryEntry {
+                                        damage: missile.damage,
+                                    },
+                                );
+                        }
+                        let dead_since_frame = frame_number + 1;
+                        let frame_acknowledged =
+                            dead_since_frame.max(self.game_time_service.game_frame_number());
+                        dead.insert(
+                            missile_entity,
+                            Dead::new(dead_since_frame, frame_acknowledged),
+                        )
                         .expect("Expected to insert a Dead component");
-                    hidden_propagates
-                        .insert(missile_entity, HiddenPropagate)
-                        .expect("Expected to insert a HiddenPropagate component");
-                    continue;
+                        continue;
+                    }
                 }
                 let monster = monsters.get(target).expect("Expected a targeted Monster");
                 destination + monster.velocity - missile_position

@@ -1,8 +1,4 @@
-use amethyst::{
-    core::HiddenPropagate,
-    ecs::{Entities, Join, WriteStorage},
-};
-use gv_core::profile_scope;
+use amethyst::ecs::{Entities, Join, WriteStorage};
 
 use gv_core::{
     ecs::{
@@ -11,8 +7,10 @@ use gv_core::{
             Dead, EntityNetMetadata, Monster, Player,
         },
         resources::net::EntityNetMetadataStorage,
+        system_data::time::GameTimeService,
     },
     net::NetUpdate,
+    profile_scope,
 };
 
 use crate::{
@@ -25,6 +23,7 @@ use crate::{
 
 pub struct DamageSubsystem<'s> {
     pub game_state_helper: &'s GameStateHelper<'s>,
+    pub game_time_service: &'s GameTimeService<'s>,
     pub entities: &'s Entities<'s>,
     pub entity_net_metadata_storage: WriteExpectCell<'s, EntityNetMetadataStorage>,
     pub entity_net_metadata: WriteStorageCell<'s, EntityNetMetadata>,
@@ -32,10 +31,10 @@ pub struct DamageSubsystem<'s> {
     pub monsters: WriteStorageCell<'s, Monster>,
     pub damage_histories: WriteStorageCell<'s, DamageHistory>,
     pub dead: WriteStorageCell<'s, Dead>,
-    pub hidden_propagates: WriteStorageCell<'s, HiddenPropagate>,
 }
 
 impl<'s> DamageSubsystem<'s> {
+    /// We need to reset damage entries when replaying world state in multiplayer.
     pub fn reset_damage_entries(&self, frame_number: u64) {
         profile_scope!("DamageSubsystem::reset_damage_entries");
         let entity_net_metadata = self.entity_net_metadata.borrow();
@@ -46,6 +45,8 @@ impl<'s> DamageSubsystem<'s> {
                 .map_or(true, |entity_net_metadata| {
                     entity_net_metadata.spawned_frame_number <= frame_number
                 });
+            // We won't have damage history for an entity that is not spawned,
+            // without this check the code will panic.
             if is_spawned {
                 damage_history.reset_entries(frame_number);
             }
@@ -71,9 +72,8 @@ impl<'s> DamageSubsystem<'s> {
         let mut players = self.players.borrow_mut();
         let mut monsters = self.monsters.borrow_mut();
         let mut dead = self.dead.borrow_mut();
-        let mut hidden_propagates = self.hidden_propagates.borrow_mut();
 
-        for (entity, mut damage_history) in (self.entities, &mut *damage_histories).join() {
+        for (entity, damage_history) in (self.entities, &*damage_histories).join() {
             if is_dead(entity, &*dead, frame_number) {
                 continue;
             }
@@ -97,7 +97,6 @@ impl<'s> DamageSubsystem<'s> {
                     outcoming_net_updates,
                     damage_history.get_entries(frame_number).clone(),
                 );
-                damage_history.oldest_updated_frame += 1;
             }
 
             for damage_history_entry in &damage_history.get_entries(frame_number).entries {
@@ -109,39 +108,38 @@ impl<'s> DamageSubsystem<'s> {
             }
         }
 
-        for (entity, mut player) in (self.entities, &mut *players).join() {
-            if player.health < 0.001 {
-                player.health = 0.0;
-                dead.insert(entity, Dead::new(frame_number + 1))
-                    .expect("Expected to insert Dead component");
-            } else {
-                let will_be_killed = dead
-                    .get(entity)
-                    .map_or(false, |dead| frame_number + 1 == dead.dead_since_frame);
-                if will_be_killed && player.health >= 0.001 {
-                    dead.remove(entity)
-                        .expect("Expected to remove Dead component");
+        for entity in (self.entities).join() {
+            let health = {
+                if let Some(player) = players.get_mut(entity) {
+                    &mut player.health
+                } else if let Some(monster) = monsters.get_mut(entity) {
+                    &mut monster.health
+                } else {
+                    continue;
                 }
-            }
-        }
-        for (entity, mut monster) in (self.entities, &mut *monsters).join() {
-            if monster.health < 0.001 {
-                monster.health = 0.0;
-                dead.insert(entity, Dead::new(frame_number + 1))
-                    .expect("Expected to insert Dead component");
-                hidden_propagates
-                    .insert(entity, HiddenPropagate)
-                    .expect("Expected to insert HiddenPropagate component");
+            };
+            if *health < 0.001 {
+                let is_already_dead = dead
+                    .get(entity)
+                    .map_or(false, |dead| frame_number >= dead.dead_since_frame);
+                if !is_already_dead {
+                    *health = 0.0;
+                    let dead_since_frame = frame_number + 1;
+                    let frame_acknowledged =
+                        dead_since_frame.max(self.game_time_service.game_frame_number());
+                    dead.insert(entity, Dead::new(dead_since_frame, frame_acknowledged))
+                        .expect("Expected to insert Dead component");
+                }
             } else {
+                // If an entity has Dead component for whatever reason, but it has positive health,
+                // remove it's Dead component.
+                // TODO: do we really need this code?
                 let will_be_killed = dead
                     .get(entity)
                     .map_or(false, |dead| frame_number + 1 == dead.dead_since_frame);
-                if will_be_killed && monster.health >= 0.001 {
+                if will_be_killed {
                     dead.remove(entity)
                         .expect("Expected to remove Dead component");
-                    hidden_propagates
-                        .remove(entity)
-                        .expect("Expected to remove HiddenPropagate component");
                 }
             }
         }

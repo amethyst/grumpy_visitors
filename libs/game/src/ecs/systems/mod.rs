@@ -22,10 +22,13 @@ pub use self::{
     world_state_subsystem::WorldStateSubsystem,
 };
 
-use amethyst::ecs::{Entity, WriteExpect, WriteStorage};
+use amethyst::ecs::{
+    shred::{ResourceId, SystemData},
+    Entity, World, WriteExpect, WriteStorage,
+};
 #[cfg(feature = "client")]
 use amethyst::{
-    animation::{AnimationCommand, AnimationControlSet, AnimationSet, EndControl},
+    animation::{AnimationControlSet, AnimationSet},
     assets::Handle,
     core::{Named, ParentHierarchy},
     ecs::{ReadExpect, ReadStorage},
@@ -45,6 +48,9 @@ use gv_core::ecs::resources::world::{
 use gv_core::ecs::resources::world::{
     DummyFramedUpdate, ReceivedClientActionUpdates, ServerWorldUpdate, ServerWorldUpdates,
 };
+
+#[cfg(feature = "client")]
+use crate::utils::entities::{play_animation, remove_animation};
 
 #[cfg(feature = "client")]
 pub type AggregatedOutcomingUpdates = ClientWorldUpdates;
@@ -82,6 +88,71 @@ pub struct GraphicsResourceBundle<'s> {
 }
 
 #[cfg(feature = "client")]
+#[derive(SystemData)]
+pub struct AnimationsSystemData<'s> {
+    pub parent_hierarchy: ReadExpect<'s, ParentHierarchy>,
+    pub named: ReadStorage<'s, Named>,
+    pub animation_sets: ReadStorage<'s, AnimationSet<AnimationId, SpriteRender>>,
+    pub animation_control_sets: WriteStorage<'s, AnimationControlSet<AnimationId, SpriteRender>>,
+}
+
+#[cfg(not(feature = "client"))]
+#[derive(SystemData)]
+pub struct AnimationsSystemData<'s> {
+    _lifetime: PhantomData<&'s ()>,
+}
+
+impl<'s> AnimationsSystemData<'s> {
+    #[cfg(feature = "client")]
+    fn play_animation(&mut self, entity: Entity, body_part_name: &str, animation_id: AnimationId) {
+        play_animation(
+            &self.parent_hierarchy,
+            &self.named,
+            &self.animation_sets,
+            &mut self.animation_control_sets,
+            entity,
+            body_part_name,
+            animation_id,
+        );
+    }
+
+    #[cfg(not(feature = "client"))]
+    fn play_animation(
+        &mut self,
+        _entity: Entity,
+        _body_part_name: &str,
+        _animation_id: AnimationId,
+    ) {
+    }
+
+    #[cfg(feature = "client")]
+    fn remove_animation(
+        &mut self,
+        entity: Entity,
+        body_part_name: &str,
+        animation_id: AnimationId,
+    ) {
+        remove_animation(
+            &self.parent_hierarchy,
+            &self.named,
+            &mut self.animation_control_sets,
+            entity,
+            body_part_name,
+            animation_id,
+        );
+    }
+
+    #[cfg(not(feature = "client"))]
+    fn remove_animation(
+        &mut self,
+        _entity: Entity,
+        _body_part_name: &str,
+        _animation_id: AnimationId,
+    ) {
+    }
+}
+
+#[cfg(feature = "client")]
 pub struct AnimationsResourceBundle<'s> {
     pub parent_hierarchy: ReadExpect<'s, ParentHierarchy>,
     pub named: ReadStorage<'s, Named>,
@@ -98,42 +169,15 @@ pub struct AnimationsResourceBundle<'s> {
 impl<'s> AnimationsResourceBundle<'s> {
     #[cfg(feature = "client")]
     fn play_animation(&self, entity: Entity, body_part_name: &str, animation_id: AnimationId) {
-        let body_part_entity = self
-            .parent_hierarchy
-            .children(entity)
-            .iter()
-            .find(|child_entity| {
-                if let Some(entity_name) = self.named.get(**child_entity) {
-                    if entity_name.name == body_part_name {
-                        return true;
-                    }
-                }
-                false
-            });
-        if body_part_entity.is_none() {
-            log::warn!(
-                "Couldn't find the body part and play an animation: {}",
-                body_part_name
-            );
-            return;
-        }
-        let body_part_entity = body_part_entity.unwrap();
-
-        let mut animation_control_sets = self.animation_control_sets.borrow_mut();
-        let animation_control_set = animation_control_sets.get_mut(*body_part_entity);
-        if let Some(animation_control_set) = animation_control_set {
-            let animation_set = self
-                .animation_sets
-                .get(*body_part_entity)
-                .expect("Expected AnimationSet for an entity with AnimationControlSet");
-            animation_control_set.add_animation(
-                animation_id,
-                &animation_set.get(&animation_id).unwrap(),
-                EndControl::Stay,
-                1.0,
-                AnimationCommand::Start,
-            );
-        }
+        play_animation(
+            &self.parent_hierarchy,
+            &self.named,
+            &self.animation_sets,
+            &mut self.animation_control_sets.borrow_mut(),
+            entity,
+            body_part_name,
+            animation_id,
+        );
     }
 
     #[cfg(not(feature = "client"))]

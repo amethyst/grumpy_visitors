@@ -31,7 +31,11 @@ use glsl_layout::{float, vec2, AsStd140};
 
 use std::path::PathBuf;
 
-use gv_core::ecs::{components::missile::Missile, system_data::time::GameTimeService};
+use gv_core::ecs::{
+    components::{missile::Missile, Dead},
+    system_data::time::GameTimeService,
+};
+use gv_game::{ecs::systems::missile::MISSILE_TTL_SECS, utils::entities::missile_energy};
 
 /// A [RenderPlugin] for drawing 2d objects with flat shading.
 /// Required to display sprites defined with [SpriteRender] component.
@@ -143,6 +147,9 @@ impl<B: Backend> RenderGroupDesc<B, World> for DrawMissileDesc {
 pub struct MissileVertexData {
     pub pos: vec2,
     pub seconds_since_spawn: float,
+    pub opacity: float,
+    /// Time to live (from 1.0 to 0.0).
+    pub ttl: float,
 }
 
 impl AsVertex for MissileVertexData {
@@ -150,6 +157,8 @@ impl AsVertex for MissileVertexData {
         VertexFormat::new((
             (Format::Rg32Sfloat, "pos"),
             (Format::R32Sfloat, "seconds_since_spawn"),
+            (Format::R32Sfloat, "opacity"),
+            (Format::R32Sfloat, "ttl"),
         ))
     }
 }
@@ -172,25 +181,42 @@ impl<B: Backend> RenderGroup<B, World> for DrawMissile<B> {
         _subpass: hal::pass::Subpass<'_, B>,
         world: &World,
     ) -> PrepareResult {
-        let (game_time_service, transforms, missiles) = <(
+        let (game_time_service, transforms, missiles, dead) = <(
             GameTimeService<'_>,
             ReadStorage<'_, Transform>,
             ReadStorage<'_, Missile>,
+            ReadStorage<'_, Dead>,
         )>::fetch(world);
 
         self.env.process(factory, index, world);
 
-        let vertices = (&transforms, &missiles)
+        let vertices = (&transforms, &missiles, dead.maybe())
             .join()
-            .map(|(transform, missile)| {
+            .map(|(transform, missile, dead)| {
                 let transform = convert::<_, Matrix4<f32>>(*transform.global_matrix());
                 let pos = (transform * Vector4::new(0.0, 0.0, 0.0, 1.0))
                     .xy()
                     .into_pod();
                 let seconds_since_spawn = game_time_service.seconds_to_frame(missile.frame_spawned);
+                let opacity = missile_energy(
+                    &missile,
+                    dead.map_or(false, |dead| {
+                        dead.is_dead(game_time_service.game_frame_number())
+                    }),
+                    &game_time_service,
+                    game_time_service.game_frame_number(),
+                );
+                let ttl = dead.map_or(1.0, |dead| {
+                    1.0 - game_time_service
+                        .seconds_to_frame(dead.dead_since_frame)
+                        .clamp(0.0, MISSILE_TTL_SECS)
+                        / MISSILE_TTL_SECS
+                });
                 MissileVertexData {
                     pos,
                     seconds_since_spawn,
+                    opacity,
+                    ttl,
                 }
             })
             .collect::<Vec<_>>();

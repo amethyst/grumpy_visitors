@@ -17,9 +17,9 @@ dependencies = [
 
 [[package]]
 name = "aho-corasick"
-version = "0.7.6"
+version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58fb5e95d83b38284460a5fda7d6470aa0b8844d283a0b614b8535e880800d2d"
+checksum = "743ad5a418686aad3b87fd14c43badd828cf26e214a00f92a384291cf22e1811"
 dependencies = [
  "memchr",
 ]
@@ -61,8 +61,8 @@ dependencies = [
 
 [[package]]
 name = "amethyst"
-version = "0.13.2"
-source = "git+https://github.com/amethyst/amethyst#37df46b807699715551f5a20a1c49349a626c4ce"
+version = "0.14.0"
+source = "git+https://github.com/amethyst/amethyst#cf7906e8aed4b5f9561482d6556bbab694adc8f7"
 dependencies = [
  "amethyst_animation",
  "amethyst_assets",
@@ -99,8 +99,8 @@ dependencies = [
 
 [[package]]
 name = "amethyst_animation"
-version = "0.8.1"
-source = "git+https://github.com/amethyst/amethyst#37df46b807699715551f5a20a1c49349a626c4ce"
+version = "0.9.0"
+source = "git+https://github.com/amethyst/amethyst#cf7906e8aed4b5f9561482d6556bbab694adc8f7"
 dependencies = [
  "amethyst_assets",
  "amethyst_core",
@@ -119,8 +119,8 @@ dependencies = [
 
 [[package]]
 name = "amethyst_assets"
-version = "0.9.1"
-source = "git+https://github.com/amethyst/amethyst#37df46b807699715551f5a20a1c49349a626c4ce"
+version = "0.10.0"
+source = "git+https://github.com/amethyst/amethyst#cf7906e8aed4b5f9561482d6556bbab694adc8f7"
 dependencies = [
  "amethyst_core",
  "amethyst_derive",
@@ -144,8 +144,8 @@ dependencies = [
 
 [[package]]
 name = "amethyst_audio"
-version = "0.8.0"
-source = "git+https://github.com/amethyst/amethyst#37df46b807699715551f5a20a1c49349a626c4ce"
+version = "0.9.0"
+source = "git+https://github.com/amethyst/amethyst#cf7906e8aed4b5f9561482d6556bbab694adc8f7"
 dependencies = [
  "amethyst_assets",
  "amethyst_core",
@@ -155,14 +155,14 @@ dependencies = [
  "log",
  "rodio",
  "serde",
- "smallvec 1.1.0",
+ "smallvec 1.2.0",
  "thread_profiler",
 ]
 
 [[package]]
 name = "amethyst_config"
-version = "0.12.0"
-source = "git+https://github.com/amethyst/amethyst#37df46b807699715551f5a20a1c49349a626c4ce"
+version = "0.13.0"
+source = "git+https://github.com/amethyst/amethyst#cf7906e8aed4b5f9561482d6556bbab694adc8f7"
 dependencies = [
  "log",
  "ron",
@@ -172,8 +172,8 @@ dependencies = [
 
 [[package]]
 name = "amethyst_controls"
-version = "0.7.0"
-source = "git+https://github.com/amethyst/amethyst#37df46b807699715551f5a20a1c49349a626c4ce"
+version = "0.8.0"
+source = "git+https://github.com/amethyst/amethyst#cf7906e8aed4b5f9561482d6556bbab694adc8f7"
 dependencies = [
  "amethyst_assets",
  "amethyst_core",
@@ -189,8 +189,8 @@ dependencies = [
 
 [[package]]
 name = "amethyst_core"
-version = "0.8.1"
-source = "git+https://github.com/amethyst/amethyst#37df46b807699715551f5a20a1c49349a626c4ce"
+version = "0.9.0"
+source = "git+https://github.com/amethyst/amethyst#cf7906e8aed4b5f9561482d6556bbab694adc8f7"
 dependencies = [
  "alga",
  "alga_derive",
@@ -212,8 +212,8 @@ dependencies = [
 
 [[package]]
 name = "amethyst_derive"
-version = "0.6.1"
-source = "git+https://github.com/amethyst/amethyst#37df46b807699715551f5a20a1c49349a626c4ce"
+version = "0.7.0"
+source = "git+https://github.com/amethyst/amethyst#cf7906e8aed4b5f9561482d6556bbab694adc8f7"
 dependencies = [
  "heck",
  "proc-macro-crate",
@@ -225,16 +225,16 @@ dependencies = [
 
 [[package]]
 name = "amethyst_error"
-version = "0.3.0"
-source = "git+https://github.com/amethyst/amethyst#37df46b807699715551f5a20a1c49349a626c4ce"
+version = "0.4.0"
+source = "git+https://github.com/amethyst/amethyst#cf7906e8aed4b5f9561482d6556bbab694adc8f7"
 dependencies = [
  "backtrace",
 ]
 
 [[package]]
 name = "amethyst_input"
-version = "0.9.1"
-source = "git+https://github.com/amethyst/amethyst#37df46b807699715551f5a20a1c49349a626c4ce"
+version = "0.10.0"
+source = "git+https://github.com/amethyst/amethyst#cf7906e8aed4b5f9561482d6556bbab694adc8f7"
 dependencies = [
  "amethyst_config",
  "amethyst_core",
@@ -251,8 +251,8 @@ dependencies = [
 
 [[package]]
 name = "amethyst_locale"
-version = "0.7.2"
-source = "git+https://github.com/amethyst/amethyst#37df46b807699715551f5a20a1c49349a626c4ce"
+version = "0.8.0"
+source = "git+https://github.com/amethyst/amethyst#cf7906e8aed4b5f9561482d6556bbab694adc8f7"
 dependencies = [
  "amethyst_assets",
  "amethyst_core",
@@ -265,8 +265,8 @@ dependencies = [
 
 [[package]]
 name = "amethyst_network"
-version = "0.6.1"
-source = "git+https://github.com/amethyst/amethyst#37df46b807699715551f5a20a1c49349a626c4ce"
+version = "0.7.0"
+source = "git+https://github.com/amethyst/amethyst#cf7906e8aed4b5f9561482d6556bbab694adc8f7"
 dependencies = [
  "amethyst_core",
  "amethyst_error",
@@ -277,8 +277,8 @@ dependencies = [
 
 [[package]]
 name = "amethyst_rendy"
-version = "0.3.0"
-source = "git+https://github.com/amethyst/amethyst#37df46b807699715551f5a20a1c49349a626c4ce"
+version = "0.4.0"
+source = "git+https://github.com/amethyst/amethyst#cf7906e8aed4b5f9561482d6556bbab694adc8f7"
 dependencies = [
  "amethyst_assets",
  "amethyst_config",
@@ -306,8 +306,8 @@ dependencies = [
 
 [[package]]
 name = "amethyst_tiles"
-version = "0.1.3"
-source = "git+https://github.com/amethyst/amethyst#37df46b807699715551f5a20a1c49349a626c4ce"
+version = "0.2.0"
+source = "git+https://github.com/amethyst/amethyst#cf7906e8aed4b5f9561482d6556bbab694adc8f7"
 dependencies = [
  "amethyst_assets",
  "amethyst_core",
@@ -331,8 +331,8 @@ dependencies = [
 
 [[package]]
 name = "amethyst_ui"
-version = "0.8.1"
-source = "git+https://github.com/amethyst/amethyst#37df46b807699715551f5a20a1c49349a626c4ce"
+version = "0.9.0"
+source = "git+https://github.com/amethyst/amethyst#cf7906e8aed4b5f9561482d6556bbab694adc8f7"
 dependencies = [
  "amethyst_assets",
  "amethyst_audio",
@@ -365,8 +365,8 @@ dependencies = [
 
 [[package]]
 name = "amethyst_utils"
-version = "0.8.0"
-source = "git+https://github.com/amethyst/amethyst#37df46b807699715551f5a20a1c49349a626c4ce"
+version = "0.9.0"
+source = "git+https://github.com/amethyst/amethyst#cf7906e8aed4b5f9561482d6556bbab694adc8f7"
 dependencies = [
  "amethyst_assets",
  "amethyst_controls",
@@ -385,8 +385,8 @@ dependencies = [
 
 [[package]]
 name = "amethyst_window"
-version = "0.3.0"
-source = "git+https://github.com/amethyst/amethyst#37df46b807699715551f5a20a1c49349a626c4ce"
+version = "0.4.0"
+source = "git+https://github.com/amethyst/amethyst#cf7906e8aed4b5f9561482d6556bbab694adc8f7"
 dependencies = [
  "amethyst_config",
  "amethyst_core",
@@ -442,9 +442,9 @@ dependencies = [
 
 [[package]]
 name = "arrayref"
-version = "0.3.5"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d382e583f07208808f6b1249e60848879ba3543f57c32277bf52d69c2f0f0ee"
+checksum = "a4c527152e37cf757a3f78aae5a06fbeefdb07ccc535c980a3208ee3060dd544"
 
 [[package]]
 name = "arrayvec"
@@ -515,9 +515,9 @@ checksum = "f8aac770f1885fd7e387acedd76065302551364496e46b3dd00860b2f8359b9d"
 
 [[package]]
 name = "backtrace"
-version = "0.3.42"
+version = "0.3.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4b1549d804b6c73f4817df2ba073709e96e426f12987127c48e6745568c350b"
+checksum = "e4036b9bf40f3cf16aba72a3d65e8a520fc4bafcdc7079aea8f848c58c5b5536"
 dependencies = [
  "backtrace-sys",
  "cfg-if",
@@ -616,9 +616,9 @@ checksum = "39092a32794787acd8525ee150305ff051b0aa6cc2abaf193924f5ab05425f39"
 
 [[package]]
 name = "byteorder"
-version = "1.3.2"
+version = "1.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7c3dd8985a7111efc5c80b44e23ecdd8c007de8ade3b96595387e812b957cf5"
+checksum = "08c48aae112d48ed9f069b33538ea9e3e90aa263cfa3d1c24309612b1f7472de"
 
 [[package]]
 name = "bytes"
@@ -1640,9 +1640,9 @@ dependencies = [
 
 [[package]]
 name = "image"
-version = "0.22.4"
+version = "0.22.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53cb19c4e35102e5c6fb9ade5e0e236c5588424dc171a849af3141bf0b47768a"
+checksum = "08ed2ada878397b045454ac7cfb011d73132c59f31a955d230bd1f1c2e68eb4a"
 dependencies = [
  "byteorder",
  "gif",
@@ -2060,9 +2060,9 @@ dependencies = [
 
 [[package]]
 name = "num-bigint"
-version = "0.2.5"
+version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6f115de20ad793e857f76da2563ff4a09fbcfd6fe93cca0c5d996ab5f3ee38d"
+checksum = "090c7f9998ee0ff65aa5b723e4009f7b217707f1fb5ea551329cc4d6231fb304"
 dependencies = [
  "autocfg 1.0.0",
  "num-integer",
@@ -2708,9 +2708,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.3.3"
+version = "1.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5508c1941e4e7cb19965abef075d35a9a8b5cdf0846f30b4050e9b55dc55e87"
+checksum = "322cf97724bea3ee221b78fe25ac9c46114ebb51747ad5babd51a2fc6a8235a8"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -2720,9 +2720,9 @@ dependencies = [
 
 [[package]]
 name = "regex-syntax"
-version = "0.6.13"
+version = "0.6.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e734e891f5b408a29efbf8309e656876276f49ab6a6ac208600b4419bd893d90"
+checksum = "b28dfe3fe9badec5dbf0a79a9cccad2cfc2ab5484bdb3e44cbd1ae8b3ba2be06"
 
 [[package]]
 name = "relevant"
@@ -2952,7 +2952,7 @@ dependencies = [
  "derivative",
  "failure",
  "gfx-hal",
- "image 0.22.4",
+ "image 0.22.5",
  "log",
  "palette",
  "rendy-factory",
@@ -3065,12 +3065,9 @@ checksum = "4c691c0e608126e00913e33f0ccf3727d5fc84573623b8d65b2df340b5201783"
 
 [[package]]
 name = "rustc-hash"
-version = "1.0.1"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7540fc8b0c49f096ee9c961cda096467dce8084bec6bdca2fc83895fd9b28cb8"
-dependencies = [
- "byteorder",
-]
+checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
 name = "rustc_version"
@@ -3190,9 +3187,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.45"
+version = "1.0.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eab8f15f15d6c41a154c1b128a22f2dfabe350ef53c40953d84e36155c91192b"
+checksum = "15913895b61e0be854afd32fd4163fcd2a3df34142cf2cb961b310ce694cbf90"
 dependencies = [
  "itoa",
  "ryu",
@@ -3345,9 +3342,9 @@ dependencies = [
 
 [[package]]
 name = "smallvec"
-version = "1.1.0"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44e59e0c9fa00817912ae6e4e6e3c4fe04455e75699d06eedc7d85917ed8e8f4"
+checksum = "5c2fb2ec9bcd216a5b0d0ccf31ab17b5ed1d627960edff65bbe95d3ce221cefc"
 dependencies = [
  "serde",
 ]
@@ -3653,7 +3650,7 @@ version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5479532badd04e128284890390c1e876ef7a993d0570b3597ae43dfa1d59afa4"
 dependencies = [
- "smallvec 1.1.0",
+ "smallvec 1.2.0",
 ]
 
 [[package]]

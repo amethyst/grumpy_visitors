@@ -8,7 +8,6 @@ use amethyst::{
     },
     shrev::EventChannel,
 };
-use log;
 
 use std::{
     net::SocketAddr,
