@@ -34,7 +34,7 @@ features = ["client"]
 
 [dependencies.amethyst]
 git = "https://github.com/amethyst/amethyst"
-features = ["nightly", "shader-compiler"]
+features = ["shader-compiler"]
 
 # Bad news: https://github.com/rust-lang/cargo/issues/1197
 

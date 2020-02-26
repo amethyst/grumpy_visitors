@@ -28,4 +28,4 @@ features = []
 
 [dependencies.amethyst]
 git = "https://github.com/amethyst/amethyst"
-features = ["nightly", "empty"]
+features = ["empty"]
