@@ -35,6 +35,7 @@ type MenuElement = &'static str;
 const MENU_FADE_OUT_DURATION_MS: u64 = 500;
 const CONTAINER_TAG: &str = "_container";
 const BACKGROUND_TAG: &str = "_bg";
+const MODAL_TAG: &str = "_modal";
 const UI_MAIN_CONTAINER: &str = "ui_main_container";
 const UI_LOADING_LABEL: &str = "ui_loading_label";
 
@@ -77,6 +78,12 @@ const UI_MP_ROOM_PLAYER4_NUMBER: &str = "ui_mp_room_player4_number";
 const UI_MP_ROOM_PLAYER4_NICKNAME: &str = "ui_mp_room_player4_nickname";
 const UI_MP_ROOM_PLAYER4_KICK: &str = "ui_mp_room_player4_kick";
 
+const UI_MODAL_BACKGROUND: &str = "ui_modal_background";
+const UI_MODAL_WINDOW_BORDER: &str = "ui_modal_window_border";
+const UI_MODAL_WINDOW: &str = "ui_modal_window";
+const UI_MODAL_TITLE: &str = "ui_modal_title";
+const UI_MODAL_CONFIRM_BUTTON: &str = "ui_modal_confirm_button";
+
 trait MenuScreen {
     fn elements_to_show(&self, system_data: &MenuSystemData) -> Vec<MenuElement>;
 
@@ -88,6 +95,7 @@ trait MenuScreen {
         &mut self,
         system_data: &mut MenuSystemData,
         button_pressed: Option<&str>,
+        modal_window_id: Option<&str>,
     ) -> StateUpdate;
 }
 
@@ -135,6 +143,12 @@ lazy_static! {
         UI_MP_ROOM_PLAYER4_NICKNAME,
         // UI_MP_ROOM_PLAYER4_KICK,
     ];
+    static ref MODAL_WINDOW_ELEMENTS: &'static [&'static str] = &[
+        UI_MODAL_BACKGROUND,
+        UI_MODAL_WINDOW_BORDER,
+        UI_MODAL_WINDOW,
+        UI_MODAL_TITLE,
+    ];
 }
 
 #[derive(SystemData)]
@@ -159,6 +173,7 @@ pub struct MenuSystemData<'s> {
 
 pub struct MenuSystem {
     menu_screens: MenuScreens,
+    modal_window_id: Option<String>,
     elements_to_hide: Vec<&'static str>,
     elements_to_show: Vec<&'static str>,
     mouse_reactive: Vec<&'static str>,
@@ -188,30 +203,31 @@ impl MenuScreens {
     }
 }
 
-struct StateUpdate {
-    game_engine_state: Option<GameEngineState>,
-    menu_screen: Option<GameMenuScreen>,
+enum StateUpdate {
+    GameMenuUpdate {
+        game_engine_state: Option<GameEngineState>,
+        menu_screen: Option<GameMenuScreen>,
+    },
+    ShowModalWindow {
+        id: String,
+        title: String,
+        show_confirmation: bool,
+    },
+    None,
 }
 
 impl StateUpdate {
     pub fn new_game_engine_state(game_engine_state: GameEngineState) -> Self {
-        Self {
+        Self::GameMenuUpdate {
             game_engine_state: Some(game_engine_state),
             menu_screen: None,
         }
     }
 
     pub fn new_menu_screen(menu_screen: GameMenuScreen) -> Self {
-        Self {
+        Self::GameMenuUpdate {
             game_engine_state: None,
             menu_screen: Some(menu_screen),
-        }
-    }
-
-    pub fn none() -> Self {
-        Self {
-            game_engine_state: None,
-            menu_screen: None,
         }
     }
 }
@@ -225,6 +241,7 @@ impl MenuSystem {
                 multiplayer_room_menu_screen: MultiplayerRoomMenuScreen,
                 restart_menu_screen: RestartMenuScreen,
             },
+            modal_window_id: None,
             elements_to_hide: Vec::new(),
             elements_to_show: Vec::new(),
             mouse_reactive: vec![
@@ -243,6 +260,7 @@ impl MenuSystem {
                 UI_MP_ROOM_PLAYER2_KICK,
                 UI_MP_ROOM_PLAYER3_KICK,
                 UI_MP_ROOM_PLAYER4_KICK,
+                UI_MODAL_CONFIRM_BUTTON,
             ],
             is_transitioning: false,
             transition_began_at: Duration::new(0, 0),
@@ -313,51 +331,96 @@ impl<'s> System<'s> for MenuSystem {
                 menu_screen.process_events(
                     &mut system_data,
                     button_pressed.as_ref().map(std::string::String::as_str),
+                    self.modal_window_id
+                        .as_ref()
+                        .map(std::string::String::as_str),
                 )
             }
             (GameEngineState::Playing, menu_screen) if menu_screen != GameMenuScreen::Hidden => {
                 StateUpdate::new_menu_screen(GameMenuScreen::Hidden)
             }
-            (GameEngineState::Playing, _) if system_data.game_level_state.is_over => StateUpdate {
-                game_engine_state: Some(GameEngineState::Menu),
-                menu_screen: Some(GameMenuScreen::RestartMenu),
-            },
-            _ => StateUpdate::none(),
+            (GameEngineState::Playing, _) if system_data.game_level_state.is_over => {
+                StateUpdate::GameMenuUpdate {
+                    game_engine_state: Some(GameEngineState::Menu),
+                    menu_screen: Some(GameMenuScreen::RestartMenu),
+                }
+            }
+            _ => StateUpdate::None,
         };
 
-        if let Some(new_game_engine_state) = state_update.game_engine_state {
-            *system_data.new_game_engine_state = NewGameEngineState(new_game_engine_state);
-        }
-        if let Some(new_menu_screen) = state_update.menu_screen {
-            let current_menu_screen = self.menu_screen;
-            let elements_to_hide = if let GameMenuScreen::Loading = current_menu_screen {
-                vec![UI_LOADING_LABEL]
-            } else {
-                self.menu_screens
-                    .menu_screen(current_menu_screen)
-                    .map(|menu_screen| {
-                        let elements = menu_screen.elements_to_hide(&system_data);
-                        if let GameMenuScreen::Hidden = new_menu_screen {
-                            with_background(&elements)
-                        } else {
-                            elements
-                        }
-                    })
-                    .unwrap_or_default()
-            };
-            let elements_to_show = self
-                .menu_screens
-                .menu_screen(new_menu_screen)
-                .map(|menu_screen| {
-                    let elements = menu_screen.elements_to_show(&system_data);
-                    if let GameMenuScreen::Hidden = current_menu_screen {
-                        with_background(&elements)
+        let (elements_to_show, mut elements_to_hide) = match state_update {
+            StateUpdate::GameMenuUpdate {
+                game_engine_state,
+                menu_screen,
+            } => {
+                if let Some(new_game_engine_state) = game_engine_state {
+                    *system_data.new_game_engine_state = NewGameEngineState(new_game_engine_state);
+                }
+                if let Some(new_menu_screen) = menu_screen {
+                    let current_menu_screen = self.menu_screen;
+                    let elements_to_hide = if let GameMenuScreen::Loading = current_menu_screen {
+                        vec![UI_LOADING_LABEL]
                     } else {
-                        elements
-                    }
-                })
-                .unwrap_or_default();
-            self.menu_screen = new_menu_screen;
+                        self.menu_screens
+                            .menu_screen(current_menu_screen)
+                            .map(|menu_screen| {
+                                let elements = menu_screen.elements_to_hide(&system_data);
+                                if let GameMenuScreen::Hidden = new_menu_screen {
+                                    with_background(&elements)
+                                } else {
+                                    elements
+                                }
+                            })
+                            .unwrap_or_default()
+                    };
+                    let elements_to_show = self
+                        .menu_screens
+                        .menu_screen(new_menu_screen)
+                        .map(|menu_screen| {
+                            let elements = menu_screen.elements_to_show(&system_data);
+                            if let GameMenuScreen::Hidden = current_menu_screen {
+                                with_background(&elements)
+                            } else {
+                                elements
+                            }
+                        })
+                        .unwrap_or_default();
+                    self.menu_screen = new_menu_screen;
+                    (elements_to_show, elements_to_hide)
+                } else {
+                    (vec![], vec![])
+                }
+            }
+            StateUpdate::ShowModalWindow {
+                id,
+                title,
+                show_confirmation,
+            } => {
+                self.modal_window_id = Some(id);
+                *system_data
+                    .ui_finder
+                    .get_ui_text_mut(&mut system_data.ui_texts, UI_MODAL_TITLE)
+                    .unwrap() = title;
+                let elements_to_show = if show_confirmation {
+                    modal_window_with_confirmation()
+                } else {
+                    modal_window()
+                };
+                (elements_to_show, vec![])
+            }
+            StateUpdate::None => (vec![], vec![]),
+        };
+
+        if self.modal_window_id.is_some() {
+            if let Some(UI_MODAL_CONFIRM_BUTTON) =
+                button_pressed.as_ref().map(std::string::String::as_str)
+            {
+                self.modal_window_id = None;
+                elements_to_hide.append(&mut modal_window_with_confirmation());
+            }
+        }
+
+        if !elements_to_show.is_empty() || !elements_to_hide.is_empty() {
             self.set_fade_animation(now, elements_to_hide, elements_to_show);
         }
     }
@@ -372,7 +435,7 @@ impl MenuSystem {
     ) {
         if let TransitionState::Still = self.transition_state {
         } else {
-            panic!("Transition state must be Still before new transition");
+            panic!("Transition state must be Still before starting a new transition");
         }
 
         if !elements_to_hide.is_empty() {
@@ -402,6 +465,15 @@ impl MenuSystem {
                 let new_alpha = num::Float::max(0.0, 1.0 - transition_completed);
 
                 for element_to_hide in &self.elements_to_hide {
+                    let new_alpha = if element_to_hide.contains(MODAL_TAG) {
+                        if *element_to_hide == UI_MODAL_BACKGROUND {
+                            new_alpha * 0.7
+                        } else {
+                            0.0
+                        }
+                    } else {
+                        new_alpha
+                    };
                     let ui_entity = system_data
                         .ui_finder
                         .find_with_mut_transform(element_to_hide);
@@ -412,8 +484,14 @@ impl MenuSystem {
                         continue;
                     };
 
-                    if !is_container && !element_to_hide.contains(BACKGROUND_TAG) {
+                    if !is_container
+                        && !element_to_hide.contains(BACKGROUND_TAG)
+                        && *element_to_hide != UI_MODAL_BACKGROUND
+                    {
                         ui_transform.local_z = 0.5;
+                    } else if *element_to_hide == UI_MODAL_BACKGROUND && transition_completed > 1.0
+                    {
+                        ui_transform.local_z = 100.0;
                     }
                     system_data.ui_interactables.remove(ui_entity);
 
@@ -422,7 +500,10 @@ impl MenuSystem {
                     } else {
                         Some(&system_data.hierarchy)
                     };
-                    if transition_completed > 1.0 {
+                    if transition_completed > 1.0
+                        || (element_to_hide.contains(MODAL_TAG)
+                            && *element_to_hide != UI_MODAL_BACKGROUND)
+                    {
                         if is_container {
                             system_data
                                 .hidden
@@ -455,6 +536,15 @@ impl MenuSystem {
                 let new_alpha = num::Float::min(1.0, transition_completed);
 
                 for element_to_show in &self.elements_to_show {
+                    let new_alpha = if element_to_show.contains(MODAL_TAG) {
+                        if *element_to_show == UI_MODAL_BACKGROUND {
+                            new_alpha * 0.7
+                        } else {
+                            1.0
+                        }
+                    } else {
+                        new_alpha
+                    };
                     let ui_entity = system_data
                         .ui_finder
                         .find_with_mut_transform(element_to_show);
@@ -479,8 +569,14 @@ impl MenuSystem {
                         &mut system_data.ui_images,
                         hierarchy,
                     );
+                    if *element_to_show == UI_MODAL_BACKGROUND {
+                        ui_transform.local_z = 150.0;
+                    }
                     if transition_completed > 1.0 {
-                        if !is_container && !element_to_show.contains(BACKGROUND_TAG) {
+                        if !is_container
+                            && !element_to_show.contains(BACKGROUND_TAG)
+                            && *element_to_show != UI_MODAL_BACKGROUND
+                        {
                             ui_transform.local_z = 1.0;
                         }
                         if self.mouse_reactive.contains(element_to_show) {
@@ -533,5 +629,15 @@ impl MenuSystem {
 fn with_background(menu_elements: &[MenuElement]) -> Vec<MenuElement> {
     let mut elements = menu_elements.to_vec();
     elements.push(UI_MAIN_CONTAINER);
+    elements
+}
+
+fn modal_window() -> Vec<MenuElement> {
+    MODAL_WINDOW_ELEMENTS.to_vec()
+}
+
+fn modal_window_with_confirmation() -> Vec<MenuElement> {
+    let mut elements = MODAL_WINDOW_ELEMENTS.to_vec();
+    elements.push(UI_MODAL_CONFIRM_BUTTON);
     elements
 }

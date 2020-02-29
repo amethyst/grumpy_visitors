@@ -4,6 +4,8 @@ use super::*;
 
 pub struct LobbyMenuScreen;
 
+const INVALID_IP_ADDRESS: &str = "LOBBY_INVALID_IP_ADDRESS";
+
 impl MenuScreen for LobbyMenuScreen {
     fn elements_to_show(&self, _system_data: &MenuSystemData) -> Vec<MenuElement> {
         vec![
@@ -24,6 +26,7 @@ impl MenuScreen for LobbyMenuScreen {
         &mut self,
         system_data: &mut MenuSystemData,
         button_pressed: Option<&str>,
+        _modal_window_id: Option<&str>,
     ) -> StateUpdate {
         match button_pressed {
             Some(UI_MAIN_MENU_BUTTON) => StateUpdate::new_menu_screen(GameMenuScreen::MainMenu),
@@ -37,19 +40,24 @@ impl MenuScreen for LobbyMenuScreen {
                 };
                 let addr = system_data
                     .ui_finder
-                    .find(address_field)
-                    .and_then(|entity| system_data.ui_texts.get(entity))
-                    .map(|ui_text| ui_text.text.clone())
+                    .get_ui_text(&system_data.ui_texts, address_field)
                     .unwrap();
                 let nickname = system_data
                     .ui_finder
-                    .find(UI_LOBBY_NICKNAME_EDITABLE)
-                    .and_then(|entity| system_data.ui_texts.get(entity))
-                    .map(|ui_text| ui_text.text.clone())
+                    .get_ui_text(&system_data.ui_texts, UI_LOBBY_NICKNAME_EDITABLE)
+                    .cloned()
                     .unwrap();
 
-                // TODO: error validations.
-                let server_addr = addr.parse().expect("Expected a valid address");
+                let server_addr = addr.parse();
+                if server_addr.is_err() {
+                    return StateUpdate::ShowModalWindow {
+                        id: INVALID_IP_ADDRESS.to_owned(),
+                        title: "Server IP address has invalid format".to_owned(),
+                        show_confirmation: true,
+                    };
+                }
+                let server_addr = server_addr.unwrap();
+
                 if is_host {
                     let mut host_client_addr = system_data
                         .laminar_socket
@@ -73,7 +81,7 @@ impl MenuScreen for LobbyMenuScreen {
 
                 StateUpdate::new_menu_screen(GameMenuScreen::MultiplayerRoomMenu)
             }
-            _ => StateUpdate::none(),
+            _ => StateUpdate::None,
         }
     }
 }

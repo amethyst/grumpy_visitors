@@ -67,6 +67,7 @@ impl MenuScreen for MultiplayerRoomMenuScreen {
         &mut self,
         system_data: &mut MenuSystemData,
         button_pressed: Option<&str>,
+        _modal_window_id: Option<&str>,
     ) -> StateUpdate {
         match button_pressed {
             Some(UI_MP_ROOM_LOBBY_BUTTON) => {
@@ -74,11 +75,11 @@ impl MenuScreen for MultiplayerRoomMenuScreen {
             }
             Some(UI_MP_ROOM_START_BUTTON) => {
                 system_data.multiplayer_room_state.has_started = true;
-                StateUpdate::none()
+                StateUpdate::None
             }
             _ => {
                 Self::update_players(system_data);
-                StateUpdate::none()
+                StateUpdate::None
             }
         }
     }
