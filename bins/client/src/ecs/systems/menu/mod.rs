@@ -215,6 +215,10 @@ enum StateUpdate {
         title: String,
         show_confirmation: bool,
     },
+    CustomAnimation {
+        elements_to_hide: Vec<&'static str>,
+        elements_to_show: Vec<&'static str>,
+    },
     None,
 }
 
@@ -349,7 +353,7 @@ impl<'s> System<'s> for MenuSystem {
             _ => StateUpdate::None,
         };
 
-        let (elements_to_show, mut elements_to_hide) = match state_update {
+        let (mut elements_to_hide, elements_to_show) = match state_update {
             StateUpdate::GameMenuUpdate {
                 game_engine_state,
                 menu_screen,
@@ -390,7 +394,7 @@ impl<'s> System<'s> for MenuSystem {
                     self.menu_screen = new_menu_screen;
                     self.modal_window_id = None;
                     elements_to_hide.append(&mut modal_window_with_confirmation());
-                    (elements_to_show, elements_to_hide)
+                    (elements_to_hide, elements_to_show)
                 } else {
                     (vec![], vec![])
                 }
@@ -415,8 +419,12 @@ impl<'s> System<'s> for MenuSystem {
                 } else {
                     modal_window()
                 };
-                (elements_to_show, vec![])
+                (vec![], elements_to_show)
             }
+            StateUpdate::CustomAnimation {
+                elements_to_hide,
+                elements_to_show,
+            } => (elements_to_hide, elements_to_show),
             StateUpdate::None => (vec![], vec![]),
         };
 
@@ -448,6 +456,7 @@ impl MenuSystem {
         })
     }
 
+    #[allow(clippy::cognitive_complexity)]
     fn run_fade_animation(
         &mut self,
         system_data: &mut <Self as System>::SystemData,

@@ -77,16 +77,16 @@ impl MenuScreen for MultiplayerRoomMenuScreen {
                 system_data.multiplayer_room_state.has_started = true;
                 StateUpdate::None
             }
-            _ => {
-                Self::update_players(system_data);
-                StateUpdate::None
-            }
+            _ => Self::update_players(system_data),
         }
     }
 }
 
 impl MultiplayerRoomMenuScreen {
-    fn update_players(system_data: &mut MenuSystemData) {
+    fn update_players(system_data: &mut MenuSystemData) -> StateUpdate {
+        let mut elements_to_hide = Vec::new();
+        let mut elements_to_show = Vec::new();
+
         if let Some(players) = system_data.multiplayer_game_state.read_updated_players() {
             let rows = [
                 (UI_MP_ROOM_PLAYER1_NUMBER, UI_MP_ROOM_PLAYER1_NICKNAME),
@@ -96,56 +96,23 @@ impl MultiplayerRoomMenuScreen {
             ];
             for (i, row) in rows.iter().enumerate() {
                 {
-                    let (ui_number_entity, ui_number_transform) = system_data
-                        .ui_finder
-                        .find_with_mut_transform(row.0)
-                        .unwrap_or_else(|| {
-                            panic!("Expected a player number UiTransform for row {}", i)
-                        });
-                    let ui_number_text = system_data
-                        .ui_texts
-                        .get_mut(ui_number_entity)
-                        .unwrap_or_else(|| panic!("Expected a player number UiText for row {}", i));
                     if players.get(i).is_some() {
-                        system_data.hidden_propagates.remove(ui_number_entity);
-                        ui_number_transform.local_z = 1.0;
-                        ui_number_text.color[3] = 1.0;
+                        elements_to_show.push(row.0);
+                        elements_to_show.push(row.1);
                     } else {
-                        system_data
-                            .hidden_propagates
-                            .insert(ui_number_entity, HiddenPropagate::new())
-                            .expect("Expected to insert Hidden component");
-                        ui_number_transform.local_z = 0.5;
-                        ui_number_text.color[3] = 0.0;
+                        elements_to_hide.push(row.0);
+                        elements_to_hide.push(row.1);
                     }
                 }
+            }
+        }
 
-                {
-                    let (ui_text_entity, ui_text_transform) = system_data
-                        .ui_finder
-                        .find_with_mut_transform(row.1)
-                        .unwrap_or_else(|| {
-                            panic!("Expected a player nickname UiTransform for row {}", i)
-                        });
-                    let ui_nickname_text = system_data
-                        .ui_texts
-                        .get_mut(ui_text_entity)
-                        .unwrap_or_else(|| panic!("Expected a player number UiText for row {}", i));
-
-                    if let Some(player) = players.get(i) {
-                        system_data.hidden_propagates.remove(ui_text_entity);
-                        ui_text_transform.local_z = 1.0;
-                        ui_nickname_text.color[3] = 1.0;
-                        ui_nickname_text.text = player.nickname.clone();
-                    } else {
-                        system_data
-                            .hidden_propagates
-                            .insert(ui_text_entity, HiddenPropagate::new())
-                            .expect("Expected to insert Hidden component");
-                        ui_text_transform.local_z = 0.5;
-                        ui_nickname_text.color[3] = 0.0;
-                    }
-                }
+        if elements_to_hide.is_empty() && elements_to_show.is_empty() {
+            StateUpdate::None
+        } else {
+            StateUpdate::CustomAnimation {
+                elements_to_hide,
+                elements_to_show,
             }
         }
     }
