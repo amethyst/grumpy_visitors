@@ -5,7 +5,7 @@ use amethyst::{
 
 use std::cmp::Ordering;
 
-use gv_client_shared::ecs::resources::MultiplayerRoomState;
+use gv_client_shared::ecs::resources::{ConnectionStatus, MultiplayerRoomState};
 use gv_core::{
     actions::monster_spawn::SpawnActions,
     ecs::{
@@ -141,7 +141,8 @@ impl<'s> System<'s> for ClientNetworkSystem {
                         );
                     }
 
-                    multiplayer_room_state.connection_id = Some(connection_id);
+                    multiplayer_room_state.connection_status =
+                        ConnectionStatus::Connected(connection_id);
                     multiplayer_room_state.is_host = is_host;
                 }
                 NetEvent::Message(ServerMessagePayload::UpdateRoomPlayers(players)) => {
@@ -149,6 +150,8 @@ impl<'s> System<'s> for ClientNetworkSystem {
                     *multiplayer_game_state.update_players() = players;
                 }
                 NetEvent::Message(ServerMessagePayload::StartGame(entity_net_ids)) => {
+                    // Looking for an entity_net_id of a client's player
+                    // and storing it in the MultiplayerRoomState.
                     for (i, player) in multiplayer_game_state
                         .update_players()
                         .iter_mut()
@@ -156,7 +159,8 @@ impl<'s> System<'s> for ClientNetworkSystem {
                     {
                         player.entity_net_id = entity_net_ids[i];
                         if multiplayer_room_state
-                            .connection_id
+                            .connection_status
+                            .connection_id()
                             .map_or(false, |connection_id| connection_id == player.connection_id)
                         {
                             multiplayer_room_state.player_net_id = player.entity_net_id;

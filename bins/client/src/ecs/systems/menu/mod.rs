@@ -4,7 +4,7 @@ mod multiplayer_room;
 mod restart;
 
 use amethyst::{
-    core::{Hidden, HiddenPropagate, ParentHierarchy},
+    core::{HiddenPropagate, ParentHierarchy},
     ecs::{Entity, ReadExpect, System, SystemData, World, Write, WriteExpect, WriteStorage},
     network::simulation::laminar::LaminarSocketResource,
     shred::ResourceId,
@@ -78,9 +78,9 @@ const UI_MP_ROOM_PLAYER4_NUMBER: &str = "ui_mp_room_player4_number";
 const UI_MP_ROOM_PLAYER4_NICKNAME: &str = "ui_mp_room_player4_nickname";
 const UI_MP_ROOM_PLAYER4_KICK: &str = "ui_mp_room_player4_kick";
 
-const UI_MODAL_BACKGROUND: &str = "ui_modal_background";
-const UI_MODAL_WINDOW_BORDER: &str = "ui_modal_window_border";
-const UI_MODAL_WINDOW: &str = "ui_modal_window";
+const UI_MODAL_BACKDROP_CONTAINER: &str = "ui_modal_backdrop_container";
+const UI_MODAL_WINDOW_BORDER_CONTAINER: &str = "ui_modal_window_border_container";
+const UI_MODAL_WINDOW_CONTAINER: &str = "ui_modal_window_container";
 const UI_MODAL_TITLE: &str = "ui_modal_title";
 const UI_MODAL_CONFIRM_BUTTON: &str = "ui_modal_confirm_button";
 
@@ -144,9 +144,9 @@ lazy_static! {
         // UI_MP_ROOM_PLAYER4_KICK,
     ];
     static ref MODAL_WINDOW_ELEMENTS: &'static [&'static str] = &[
-        UI_MODAL_BACKGROUND,
-        UI_MODAL_WINDOW_BORDER,
-        UI_MODAL_WINDOW,
+        UI_MODAL_BACKDROP_CONTAINER,
+        UI_MODAL_WINDOW_BORDER_CONTAINER,
+        UI_MODAL_WINDOW_CONTAINER,
         UI_MODAL_TITLE,
     ];
 }
@@ -167,7 +167,6 @@ pub struct MenuSystemData<'s> {
     ui_texts: WriteStorage<'s, UiText>,
     ui_images: WriteStorage<'s, UiImage>,
     ui_interactables: WriteStorage<'s, Interactable>,
-    hidden: WriteStorage<'s, Hidden>,
     hidden_propagates: WriteStorage<'s, HiddenPropagate>,
 }
 
@@ -396,6 +395,11 @@ impl<'s> System<'s> for MenuSystem {
                 title,
                 show_confirmation,
             } => {
+                log::info!(
+                    "Show modal window {}, show confirmation: {}",
+                    id,
+                    show_confirmation
+                );
                 self.modal_window_id = Some(id);
                 *system_data
                     .ui_finder
@@ -466,7 +470,7 @@ impl MenuSystem {
 
                 for element_to_hide in &self.elements_to_hide {
                     let new_alpha = if element_to_hide.contains(MODAL_TAG) {
-                        if *element_to_hide == UI_MODAL_BACKGROUND {
+                        if *element_to_hide == UI_MODAL_BACKDROP_CONTAINER {
                             new_alpha * 0.7
                         } else {
                             0.0
@@ -481,15 +485,14 @@ impl MenuSystem {
                     let (ui_entity, ui_transform) = if let Some(ui_entity) = ui_entity {
                         ui_entity
                     } else {
+                        log::warn!("Couldn't find a UI entity: {}", element_to_hide);
                         continue;
                     };
 
-                    if !is_container
-                        && !element_to_hide.contains(BACKGROUND_TAG)
-                        && *element_to_hide != UI_MODAL_BACKGROUND
-                    {
+                    if !is_container && !element_to_hide.contains(BACKGROUND_TAG) {
                         ui_transform.local_z = 0.5;
-                    } else if *element_to_hide == UI_MODAL_BACKGROUND && transition_completed > 1.0
+                    } else if *element_to_hide == UI_MODAL_BACKDROP_CONTAINER
+                        && transition_completed > 1.0
                     {
                         ui_transform.local_z = 100.0;
                     }
@@ -502,19 +505,12 @@ impl MenuSystem {
                     };
                     if transition_completed > 1.0
                         || (element_to_hide.contains(MODAL_TAG)
-                            && *element_to_hide != UI_MODAL_BACKGROUND)
+                            && *element_to_hide != UI_MODAL_BACKDROP_CONTAINER)
                     {
-                        if is_container {
-                            system_data
-                                .hidden
-                                .insert(ui_entity, Hidden)
-                                .expect("Expected to insert Hidden component");
-                        } else {
-                            system_data
-                                .hidden_propagates
-                                .insert(ui_entity, HiddenPropagate)
-                                .expect("Expected to insert HiddenPropagate component");
-                        }
+                        system_data
+                            .hidden_propagates
+                            .insert(ui_entity, HiddenPropagate::new())
+                            .expect("Expected to insert HiddenPropagate component");
                     } else {
                         Self::set_alpha_for(
                             new_alpha,
@@ -537,7 +533,7 @@ impl MenuSystem {
 
                 for element_to_show in &self.elements_to_show {
                     let new_alpha = if element_to_show.contains(MODAL_TAG) {
-                        if *element_to_show == UI_MODAL_BACKGROUND {
+                        if *element_to_show == UI_MODAL_BACKDROP_CONTAINER {
                             new_alpha * 0.7
                         } else {
                             1.0
@@ -552,14 +548,14 @@ impl MenuSystem {
                     let (ui_entity, ui_transform) = if let Some(ui_entity) = ui_entity {
                         ui_entity
                     } else {
+                        log::warn!("Couldn't find a UI entity: {}", element_to_show);
                         continue;
                     };
 
+                    system_data.hidden_propagates.remove(ui_entity);
                     let hierarchy = if is_container {
-                        system_data.hidden.remove(ui_entity);
                         None
                     } else {
-                        system_data.hidden_propagates.remove(ui_entity);
                         Some(&system_data.hierarchy)
                     };
                     Self::set_alpha_for(
@@ -569,14 +565,11 @@ impl MenuSystem {
                         &mut system_data.ui_images,
                         hierarchy,
                     );
-                    if *element_to_show == UI_MODAL_BACKGROUND {
+                    if *element_to_show == UI_MODAL_BACKDROP_CONTAINER {
                         ui_transform.local_z = 150.0;
                     }
                     if transition_completed > 1.0 {
-                        if !is_container
-                            && !element_to_show.contains(BACKGROUND_TAG)
-                            && *element_to_show != UI_MODAL_BACKGROUND
-                        {
+                        if !is_container && !element_to_show.contains(BACKGROUND_TAG) {
                             ui_transform.local_z = 1.0;
                         }
                         if self.mouse_reactive.contains(element_to_show) {

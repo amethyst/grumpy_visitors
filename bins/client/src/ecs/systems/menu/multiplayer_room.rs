@@ -113,7 +113,7 @@ impl MultiplayerRoomMenuScreen {
                     } else {
                         system_data
                             .hidden_propagates
-                            .insert(ui_number_entity, HiddenPropagate)
+                            .insert(ui_number_entity, HiddenPropagate::new())
                             .expect("Expected to insert Hidden component");
                         ui_number_transform.local_z = 0.5;
                         ui_number_text.color[3] = 0.0;
@@ -140,7 +140,7 @@ impl MultiplayerRoomMenuScreen {
                     } else {
                         system_data
                             .hidden_propagates
-                            .insert(ui_text_entity, HiddenPropagate)
+                            .insert(ui_text_entity, HiddenPropagate::new())
                             .expect("Expected to insert Hidden component");
                         ui_text_transform.local_z = 0.5;
                         ui_nickname_text.color[3] = 0.0;

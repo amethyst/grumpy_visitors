@@ -5,7 +5,10 @@ use amethyst::{
     ui::FontHandle,
 };
 
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::{
+    io,
+    net::{Ipv4Addr, SocketAddr, SocketAddrV4},
+};
 
 use gv_animation_prefabs::GameSpriteAnimationPrefab;
 use gv_core::{math::Vector3, net::NetIdentifier};
@@ -66,7 +69,7 @@ pub struct MultiplayerRoomState {
     pub has_sent_start_message: bool,
     pub server_addr: SocketAddr,
     pub is_host: bool,
-    pub connection_id: Option<NetIdentifier>,
+    pub connection_status: ConnectionStatus,
     pub player_net_id: NetIdentifier,
 }
 
@@ -80,7 +83,7 @@ impl MultiplayerRoomState {
             has_sent_start_message: false,
             server_addr: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 0), 3455)),
             is_host: false,
-            connection_id: None,
+            connection_status: ConnectionStatus::Disconnected,
             player_net_id: 0,
         }
     }
@@ -89,5 +92,29 @@ impl MultiplayerRoomState {
 impl Default for MultiplayerRoomState {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+pub enum ConnectionStatus {
+    Disconnected,
+    Connected(NetIdentifier),
+    ConnectionFailed(io::Error),
+}
+
+impl ConnectionStatus {
+    pub fn is_connected(&self) -> bool {
+        if let ConnectionStatus::Connected(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn connection_id(&self) -> Option<NetIdentifier> {
+        if let ConnectionStatus::Connected(connection_id) = self {
+            Some(*connection_id)
+        } else {
+            None
+        }
     }
 }

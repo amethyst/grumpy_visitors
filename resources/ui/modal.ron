@@ -1,7 +1,7 @@
 #![enable(implicit_some)]
 Container(
     transform: (
-        id: "ui_modal_background",
+        id: "ui_modal_backdrop_container",
         x: 0.0,
         y: 0.0,
         z: 100.0,
@@ -12,11 +12,11 @@ Container(
     children: [
         Container(
             transform: (
-                id: "ui_modal_window_border",
+                id: "ui_modal_window_border_container",
                 anchor: Middle,
                 pivot: Middle,
                 width: 400.0,
-                height: 200.0,
+                height: 250.0,
                 z: 0.5,
                 hidden: true,
             ),
@@ -24,7 +24,7 @@ Container(
             children: [
                 Container(
                     transform: (
-                        id: "ui_modal_window",
+                        id: "ui_modal_window_container",
                         anchor: Middle,
                         pivot: Middle,
                         z: 0.5,
@@ -41,16 +41,17 @@ Container(
                                 x: 0.0,
                                 y: 0.0,
                                 z: 0.5,
-                                width: 390.0,
-                                height: 50.0,
+                                width: 350.0,
+                                height: 100.0,
                                 hidden: true,
                             ),
                             text: (
-                                text: "Connecting...",
+                                text: "Default modal window text",
                                 color: (0.9, 0.9, 0.9, 1.0),
                                 font_size: 28.0,
                                 font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
                                 align: Middle,
+                                line_mode: Wrap,
                             ),
                         ),
 

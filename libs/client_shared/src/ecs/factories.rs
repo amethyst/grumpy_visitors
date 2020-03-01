@@ -78,7 +78,7 @@ impl<'s> PlayerClientFactory<'s> {
             .insert(player_entity, PlayerColor(color))
             .expect("Expected to insert a PlayerColor");
         self.hidden_propagates
-            .insert(player_entity, HiddenPropagate)
+            .insert(player_entity, HiddenPropagate::new())
             .expect("Expected to insert a HiddenPropagate");
         if is_controllable {
             self.health_ui_graphics
