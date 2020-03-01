@@ -286,6 +286,7 @@ enum GameMenuScreen {
     Hidden,
 }
 
+#[derive(Debug)]
 enum TransitionState {
     FadeIn,
     FadeOut,
@@ -458,6 +459,10 @@ impl MenuSystem {
         }
         let menu_screen_animation = menu_screen_animation.unwrap();
         if menu_screen_animation.started_at.is_none() {
+            if let TransitionState::Still = self.transition_state {
+            } else {
+                panic!("Transition state must be Still before starting a new transition");
+            }
             if !menu_screen_animation.elements_to_hide.is_empty() {
                 self.transition_state = TransitionState::FadeOut;
             } else if !menu_screen_animation.elements_to_show.is_empty() {
@@ -465,6 +470,11 @@ impl MenuSystem {
             } else {
                 panic!("There's no elements to show or hide");
             }
+            log::trace!(
+                "Starting a new menu screen animation at {}s ({:?})",
+                now.as_secs_f32(),
+                self.transition_state
+            );
             menu_screen_animation.started_at = Some(now);
         }
         let started_at = menu_screen_animation.started_at.unwrap();
@@ -534,6 +544,11 @@ impl MenuSystem {
                     menu_screen_animation.elements_to_hide.clear();
                     self.transition_state = TransitionState::FadeIn;
                     menu_screen_animation.started_at = Some(now);
+                    log::trace!(
+                        "Starting a new menu screen animation at {}s ({:?})",
+                        now.as_secs_f32(),
+                        self.transition_state
+                    );
                 }
             }
             TransitionState::FadeIn => {
