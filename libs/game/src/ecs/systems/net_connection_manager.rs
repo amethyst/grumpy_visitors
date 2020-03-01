@@ -273,6 +273,14 @@ impl NetConnectionManagerSystem {
                     (None, None)
                 }
             }
+            NetworkSimulationEvent::SendError(err, _) => {
+                log::error!("{:?}", err);
+                (None, None)
+            }
+            NetworkSimulationEvent::RecvError(err) => {
+                log::error!("{:?}", err);
+                (None, None)
+            }
             _ => (None, None),
         }
     }
