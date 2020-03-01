@@ -13,7 +13,7 @@ use amethyst::{
 };
 use lazy_static::lazy_static;
 
-use std::time::Duration;
+use std::{collections::VecDeque, time::Duration};
 
 use gv_client_shared::ecs::resources::MultiplayerRoomState;
 use gv_core::ecs::{
@@ -173,14 +173,17 @@ pub struct MenuSystemData<'s> {
 pub struct MenuSystem {
     menu_screens: MenuScreens,
     modal_window_id: Option<String>,
-    elements_to_hide: Vec<&'static str>,
-    elements_to_show: Vec<&'static str>,
     mouse_reactive: Vec<&'static str>,
-    is_transitioning: bool,
-    transition_began_at: Duration,
+    menu_screen_animations: VecDeque<MenuScreenAnimation>,
     event_readers: Option<ReaderId<UiEvent>>,
     menu_screen: GameMenuScreen,
     transition_state: TransitionState,
+}
+
+struct MenuScreenAnimation {
+    started_at: Option<Duration>,
+    elements_to_hide: Vec<&'static str>,
+    elements_to_show: Vec<&'static str>,
 }
 
 struct MenuScreens {
@@ -241,8 +244,6 @@ impl MenuSystem {
                 restart_menu_screen: RestartMenuScreen,
             },
             modal_window_id: None,
-            elements_to_hide: Vec::new(),
-            elements_to_show: Vec::new(),
             mouse_reactive: vec![
                 UI_SINGLE_PLAYER_BUTTON,
                 UI_MULTIPLAYER_BUTTON,
@@ -261,8 +262,7 @@ impl MenuSystem {
                 UI_MP_ROOM_PLAYER4_KICK,
                 UI_MODAL_CONFIRM_BUTTON,
             ],
-            is_transitioning: false,
-            transition_began_at: Duration::new(0, 0),
+            menu_screen_animations: VecDeque::new(),
             event_readers: None,
             menu_screen: GameMenuScreen::Loading,
             transition_state: TransitionState::Still,
@@ -309,6 +309,7 @@ impl<'s> System<'s> for MenuSystem {
         for event in system_data.ui_events.read(event_readers) {
             if let UiEventType::Click = event.event_type {
                 button_pressed = system_data.ui_finder.get_id_by_entity(event.target);
+                system_data.ui_interactables.remove(event.target);
             }
         }
 
@@ -357,7 +358,8 @@ impl<'s> System<'s> for MenuSystem {
                 }
                 if let Some(new_menu_screen) = menu_screen {
                     let current_menu_screen = self.menu_screen;
-                    let elements_to_hide = if let GameMenuScreen::Loading = current_menu_screen {
+                    let mut elements_to_hide = if let GameMenuScreen::Loading = current_menu_screen
+                    {
                         vec![UI_LOADING_LABEL]
                     } else {
                         self.menu_screens
@@ -385,6 +387,8 @@ impl<'s> System<'s> for MenuSystem {
                         })
                         .unwrap_or_default();
                     self.menu_screen = new_menu_screen;
+                    self.modal_window_id = None;
+                    elements_to_hide.append(&mut modal_window_with_confirmation());
                     (elements_to_show, elements_to_hide)
                 } else {
                     (vec![], vec![])
@@ -425,35 +429,22 @@ impl<'s> System<'s> for MenuSystem {
         }
 
         if !elements_to_show.is_empty() || !elements_to_hide.is_empty() {
-            self.set_fade_animation(now, elements_to_hide, elements_to_show);
+            self.add_fade_animation(elements_to_hide, elements_to_show);
         }
     }
 }
 
 impl MenuSystem {
-    fn set_fade_animation(
+    fn add_fade_animation(
         &mut self,
-        begin_time: Duration,
         elements_to_hide: Vec<&'static str>,
         elements_to_show: Vec<&'static str>,
     ) {
-        if let TransitionState::Still = self.transition_state {
-        } else {
-            panic!("Transition state must be Still before starting a new transition");
-        }
-
-        if !elements_to_hide.is_empty() {
-            self.transition_state = TransitionState::FadeOut;
-        } else if !elements_to_show.is_empty() {
-            self.transition_state = TransitionState::FadeIn;
-        } else {
-            panic!("There's no elements to show or hide");
-        }
-
-        self.transition_began_at = begin_time;
-        self.elements_to_hide = elements_to_hide;
-        self.elements_to_show = elements_to_show;
-        self.is_transitioning = true;
+        self.menu_screen_animations.push_back(MenuScreenAnimation {
+            started_at: None,
+            elements_to_hide,
+            elements_to_show,
+        })
     }
 
     fn run_fade_animation(
@@ -461,14 +452,31 @@ impl MenuSystem {
         system_data: &mut <Self as System>::SystemData,
         now: Duration,
     ) {
+        let menu_screen_animation = self.menu_screen_animations.get_mut(0);
+        if menu_screen_animation.is_none() {
+            return;
+        }
+        let menu_screen_animation = menu_screen_animation.unwrap();
+        if menu_screen_animation.started_at.is_none() {
+            if !menu_screen_animation.elements_to_hide.is_empty() {
+                self.transition_state = TransitionState::FadeOut;
+            } else if !menu_screen_animation.elements_to_show.is_empty() {
+                self.transition_state = TransitionState::FadeIn;
+            } else {
+                panic!("There's no elements to show or hide");
+            }
+            menu_screen_animation.started_at = Some(now);
+        }
+        let started_at = menu_screen_animation.started_at.unwrap();
+
         let transition_completed =
-            (now - self.transition_began_at).as_millis() as f32 / MENU_FADE_OUT_DURATION_MS as f32;
+            (now - started_at).as_millis() as f32 / MENU_FADE_OUT_DURATION_MS as f32;
 
         match self.transition_state {
             TransitionState::FadeOut => {
                 let new_alpha = num::Float::max(0.0, 1.0 - transition_completed);
 
-                for element_to_hide in &self.elements_to_hide {
+                for element_to_hide in &menu_screen_animation.elements_to_hide {
                     let new_alpha = if element_to_hide.contains(MODAL_TAG) {
                         if *element_to_hide == UI_MODAL_BACKDROP_CONTAINER {
                             new_alpha * 0.7
@@ -523,15 +531,15 @@ impl MenuSystem {
                 }
 
                 if transition_completed > 1.0 {
-                    self.elements_to_hide.clear();
+                    menu_screen_animation.elements_to_hide.clear();
                     self.transition_state = TransitionState::FadeIn;
-                    self.transition_began_at = now;
+                    menu_screen_animation.started_at = Some(now);
                 }
             }
             TransitionState::FadeIn => {
                 let new_alpha = num::Float::min(1.0, transition_completed);
 
-                for element_to_show in &self.elements_to_show {
+                for element_to_show in &menu_screen_animation.elements_to_show {
                     let new_alpha = if element_to_show.contains(MODAL_TAG) {
                         if *element_to_show == UI_MODAL_BACKDROP_CONTAINER {
                             new_alpha * 0.7
@@ -582,7 +590,7 @@ impl MenuSystem {
                 }
 
                 if transition_completed > 1.0 {
-                    self.elements_to_show.clear();
+                    menu_screen_animation.elements_to_show.clear();
                     self.transition_state = TransitionState::Still;
                 }
             }
@@ -590,11 +598,11 @@ impl MenuSystem {
         }
 
         if transition_completed > 1.0
-            && self.elements_to_hide.is_empty()
-            && self.elements_to_show.is_empty()
+            && menu_screen_animation.elements_to_hide.is_empty()
+            && menu_screen_animation.elements_to_show.is_empty()
         {
             self.transition_state = TransitionState::Still;
-            self.is_transitioning = false;
+            self.menu_screen_animations.pop_front();
         }
     }
 
