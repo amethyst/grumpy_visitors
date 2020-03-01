@@ -10,5 +10,6 @@ members = [
 [profile.dev.overrides."*"]
 opt-level = 3
 
-#[patch.'https://github.com/amethyst/amethyst']
+[patch.'https://github.com/amethyst/amethyst']
 #amethyst = { path = "../amethyst" }
+amethyst = { git = "https://github.com/mvlabat/amethyst.git", rev = "b22e12a" }
