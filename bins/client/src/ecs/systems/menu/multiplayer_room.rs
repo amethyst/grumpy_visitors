@@ -1,4 +1,8 @@
+use gv_client_shared::ecs::resources::ConnectionStatus;
+
 use super::*;
+
+const DISCONNECTED: &str = "MP_DISCONNECTED";
 
 lazy_static! {
     static ref MP_ROOM_MENU_ELEMENTS_HOST: &'static [&'static str] = &[
@@ -67,15 +71,41 @@ impl MenuScreen for MultiplayerRoomMenuScreen {
         &mut self,
         system_data: &mut MenuSystemData,
         button_pressed: Option<&str>,
-        _modal_window_id: Option<&str>,
+        modal_window_id: Option<&str>,
     ) -> StateUpdate {
-        match button_pressed {
-            Some(UI_MP_ROOM_LOBBY_BUTTON) => {
+        let state_update = if let ConnectionStatus::ConnectionFailed(ref error) =
+            system_data.multiplayer_room_state.connection_status
+        {
+            Some(StateUpdate::ShowModalWindow {
+                id: DISCONNECTED.to_owned(),
+                title: error
+                    .as_ref()
+                    .map(|error| format!("Disconnected: {:?}", error))
+                    .unwrap_or_else(|| "Disconnected".to_owned()),
+                show_confirmation: true,
+            })
+        } else {
+            None
+        };
+        if let Some(state_update) = state_update {
+            system_data.multiplayer_room_state.connection_status = ConnectionStatus::NotConnected;
+            return state_update;
+        }
+
+        match (button_pressed, modal_window_id) {
+            (Some(UI_MP_ROOM_LOBBY_BUTTON), _) => {
+                system_data.multiplayer_room_state.reset();
+                system_data.multiplayer_game_state.reset();
                 StateUpdate::new_menu_screen(GameMenuScreen::LobbyMenu)
             }
-            Some(UI_MP_ROOM_START_BUTTON) => {
+            (Some(UI_MP_ROOM_START_BUTTON), _) => {
                 system_data.multiplayer_room_state.has_started = true;
                 StateUpdate::None
+            }
+            (Some(UI_MODAL_CONFIRM_BUTTON), Some(DISCONNECTED)) => {
+                system_data.multiplayer_room_state.reset();
+                system_data.multiplayer_game_state.reset();
+                StateUpdate::new_menu_screen(GameMenuScreen::LobbyMenu)
             }
             _ => Self::update_players(system_data),
         }

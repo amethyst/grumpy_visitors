@@ -102,16 +102,19 @@ impl MenuScreen for LobbyMenuScreen {
             (None, _) => {
                 let (new_connection_status, state_update) =
                     match &system_data.multiplayer_room_state.connection_status {
-                        ConnectionStatus::Disconnected => (None, StateUpdate::None),
+                        ConnectionStatus::NotConnected => (None, StateUpdate::None),
                         ConnectionStatus::Connected(_) => (
                             None,
                             StateUpdate::new_menu_screen(GameMenuScreen::MultiplayerRoomMenu),
                         ),
                         ConnectionStatus::ConnectionFailed(error) => (
-                            Some(ConnectionStatus::Disconnected),
+                            Some(ConnectionStatus::NotConnected),
                             StateUpdate::ShowModalWindow {
                                 id: CONNECTING_FAILED.to_owned(),
-                                title: format!("Connecting failed: {}", error),
+                                title: error
+                                    .as_ref()
+                                    .map(|error| format!("Disconnected: {:?}", error))
+                                    .unwrap_or_else(|| "Disconnected".to_owned()),
                                 show_confirmation: true,
                             },
                         ),

@@ -224,7 +224,10 @@ impl<'s> System<'s> for ClientNetworkSystem {
                         multiplayer_game_state.lagging_players.clear();
                     }
                 }
-                // TODO: handle disconnects.
+                NetEvent::Disconnected => {
+                    multiplayer_room_state.connection_status =
+                        ConnectionStatus::ConnectionFailed(None);
+                }
                 _ => {}
             }
         }

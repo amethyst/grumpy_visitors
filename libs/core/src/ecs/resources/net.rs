@@ -42,6 +42,10 @@ impl MultiplayerGameState {
         }
     }
 
+    pub fn reset(&mut self) {
+        *self = MultiplayerGameState::new();
+    }
+
     pub fn read_updated_players(&mut self) -> Option<&[MultiplayerRoomPlayer]> {
         if self.players_updated {
             self.players_updated = false;

@@ -297,6 +297,21 @@ enum TransitionState {
     Still,
 }
 
+#[derive(Clone, Copy)]
+enum NewAlpha {
+    FadeIn(f32),
+    FadeOut(f32),
+}
+
+impl NewAlpha {
+    fn modify(&self, current_alpha: &mut [f32; 4]) {
+        current_alpha[3] = match *self {
+            Self::FadeIn(new_alpha) => num::Float::max(new_alpha, current_alpha[3]),
+            Self::FadeOut(new_alpha) => num::Float::min(new_alpha, current_alpha[3]),
+        };
+    }
+}
+
 impl<'s> System<'s> for MenuSystem {
     type SystemData = MenuSystemData<'s>;
 
@@ -414,12 +429,11 @@ impl<'s> System<'s> for MenuSystem {
                     .ui_finder
                     .get_ui_text_mut(&mut system_data.ui_texts, UI_MODAL_TITLE)
                     .unwrap() = title;
-                let elements_to_show = if show_confirmation {
-                    modal_window_with_confirmation()
+                if show_confirmation {
+                    (vec![], modal_window_with_confirmation())
                 } else {
-                    modal_window()
-                };
-                (vec![], elements_to_show)
+                    (vec![UI_MODAL_CONFIRM_BUTTON], modal_window())
+                }
             }
             StateUpdate::CustomAnimation {
                 elements_to_hide,
@@ -540,7 +554,7 @@ impl MenuSystem {
                             .expect("Expected to insert HiddenPropagate component");
                     } else {
                         Self::set_alpha_for(
-                            new_alpha,
+                            NewAlpha::FadeOut(new_alpha),
                             ui_entity,
                             &mut system_data.ui_texts,
                             &mut system_data.ui_images,
@@ -591,7 +605,7 @@ impl MenuSystem {
                         Some(&system_data.hierarchy)
                     };
                     Self::set_alpha_for(
-                        new_alpha,
+                        NewAlpha::FadeIn(new_alpha),
                         ui_entity,
                         &mut system_data.ui_texts,
                         &mut system_data.ui_images,
@@ -631,16 +645,16 @@ impl MenuSystem {
     }
 
     fn set_alpha_for(
-        new_alpha: f32,
+        new_alpha: NewAlpha,
         ui_entity: Entity,
         ui_texts: &mut WriteStorage<UiText>,
         ui_images: &mut WriteStorage<UiImage>,
         hierarchy: Option<&ReadExpect<ParentHierarchy>>,
     ) {
         if let Some(ui_text) = ui_texts.get_mut(ui_entity) {
-            ui_text.color[3] = new_alpha;
+            new_alpha.modify(&mut ui_text.color);
         } else if let Some(UiImage::SolidColor(ref mut color)) = ui_images.get_mut(ui_entity) {
-            color[3] = new_alpha;
+            new_alpha.modify(color);
         }
 
         if let Some(hierarchy) = hierarchy {

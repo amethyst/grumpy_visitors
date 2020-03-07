@@ -83,8 +83,16 @@ impl MultiplayerRoomState {
             has_sent_start_message: false,
             server_addr: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 0), 3455)),
             is_host: false,
-            connection_status: ConnectionStatus::Disconnected,
+            connection_status: ConnectionStatus::NotConnected,
             player_net_id: 0,
+        }
+    }
+
+    pub fn reset(&mut self) {
+        *self = MultiplayerRoomState {
+            nickname: self.nickname.clone(),
+            server_addr: self.server_addr,
+            ..MultiplayerRoomState::new()
         }
     }
 }
@@ -96,9 +104,9 @@ impl Default for MultiplayerRoomState {
 }
 
 pub enum ConnectionStatus {
-    Disconnected,
+    NotConnected,
     Connected(NetIdentifier),
-    ConnectionFailed(io::Error),
+    ConnectionFailed(Option<io::Error>),
 }
 
 impl ConnectionStatus {
