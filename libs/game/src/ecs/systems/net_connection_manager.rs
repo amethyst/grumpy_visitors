@@ -208,10 +208,21 @@ impl NetConnectionManagerSystem {
             );
         }
 
-        let (connection_model_entity, connection_model) = (entities, net_connection_models)
+        let connection = (entities, net_connection_models)
             .join()
-            .find(|(_, connection_model)| connection_model.addr == peer_addr)
-            .unwrap_or_else(|| panic!("Expected a NetConnectionModel for {}", peer_addr));
+            .find(|(_, connection_model)| connection_model.addr == peer_addr);
+        if connection.is_none() {
+            if let NetworkSimulationEvent::Disconnect(_) = event {
+                log::warn!("Duplicate Disconnect event for {}, skipping", peer_addr);
+                return (None, None);
+            }
+            panic!(
+                "Expected a NetConnectionModel for {}, event: {:?}",
+                peer_addr, event
+            )
+        }
+        let (connection_model_entity, connection_model) = connection.unwrap();
+
         let connection_id = connection_model.id;
         match event {
             NetworkSimulationEvent::Disconnect(_) => {
