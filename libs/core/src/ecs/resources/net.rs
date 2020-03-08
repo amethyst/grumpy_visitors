@@ -26,6 +26,7 @@ pub struct MultiplayerGameState {
     /// This is used on client to make sure that we do not unpause before pausing.
     pub waiting_for_players_pause_id: u64,
     pub lagging_players: Vec<NetIdentifier>,
+    pub is_disconnected: bool,
     players_updated: bool,
 }
 
@@ -38,6 +39,7 @@ impl MultiplayerGameState {
             waiting_for_players: false,
             waiting_for_players_pause_id: 0,
             lagging_players: Vec::new(),
+            is_disconnected: false,
             players_updated: false,
         }
     }

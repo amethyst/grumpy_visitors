@@ -3,7 +3,10 @@ use amethyst::{
     network::simulation::TransportResource,
 };
 
-use std::cmp::Ordering;
+use std::{
+    cmp::Ordering,
+    time::{Duration, Instant},
+};
 
 use gv_client_shared::ecs::resources::{ConnectionStatus, MultiplayerRoomState};
 use gv_core::{
@@ -14,7 +17,7 @@ use gv_core::{
             net::MultiplayerGameState,
             world::{
                 FramedUpdates, PlayerActionUpdates, ReceivedPlayerUpdate,
-                ReceivedServerWorldUpdate, ServerWorldUpdate, LAG_COMPENSATION_FRAMES_LIMIT,
+                ReceivedServerWorldUpdate, ServerWorldUpdate, PAUSE_FRAME_THRESHOLD,
             },
             GameEngineState, NewGameEngineState,
         },
@@ -32,9 +35,6 @@ use gv_game::{
 
 use crate::ecs::resources::LastAcknowledgedUpdate;
 
-// Pause the game if we haven't received any message from server for the last 180 frames (3 secs).
-const PAUSE_FRAME_THRESHOLD: u64 =
-    (LAG_COMPENSATION_FRAMES_LIMIT + LAG_COMPENSATION_FRAMES_LIMIT / 2) as u64;
 const HEARTBEAT_FRAME_INTERVAL: u64 = 10;
 
 #[derive(Default)]
@@ -59,6 +59,7 @@ impl<'s> System<'s> for ClientNetworkSystem {
         Write<'s, TransportResource>,
     );
 
+    #[allow(clippy::cognitive_complexity)]
     fn run(
         &mut self,
         (
@@ -77,27 +78,33 @@ impl<'s> System<'s> for ClientNetworkSystem {
             mut transport,
         ): Self::SystemData,
     ) {
-        // A joining (not hosting) client has to initiate a connection.
-        if net_connection_models.count() == 0
-            && multiplayer_room_state.is_active
-            && !multiplayer_room_state.is_host
-            && !multiplayer_room_state.has_sent_join_message
-        {
-            multiplayer_room_state.has_sent_join_message = true;
+        let is_joining = multiplayer_room_state.connection_status.is_connected()
+            || multiplayer_room_state.connection_status.is_connecting()
+                && !multiplayer_room_state.is_host;
+        if !multiplayer_room_state.is_active {
+            net_connection_models.clear();
+            return;
+        } else if net_connection_models.count() == 0 && is_joining {
             let net_connection_model =
                 NetConnectionModel::new(0, multiplayer_room_state.server_addr);
-            send_message_reliable(
-                &mut transport,
-                &net_connection_model,
-                &ClientMessagePayload::JoinRoom {
-                    nickname: multiplayer_room_state.nickname.clone(),
-                },
-            );
+
+            // A joining (not hosting) client has to initiate a connection.
+            if !multiplayer_room_state.is_host && !multiplayer_room_state.has_sent_join_message {
+                log::info!("Sending a JoinRoom message");
+                multiplayer_room_state.has_sent_join_message = true;
+                send_message_reliable(
+                    &mut transport,
+                    &net_connection_model,
+                    &ClientMessagePayload::JoinRoom {
+                        nickname: multiplayer_room_state.nickname.clone(),
+                    },
+                );
+            }
+
             entities
                 .build_entity()
                 .with(net_connection_model, &mut net_connection_models)
                 .build();
-            return;
         }
 
         if multiplayer_room_state.is_host
@@ -116,25 +123,61 @@ impl<'s> System<'s> for ClientNetworkSystem {
             );
         }
 
+        if net_connection_models.count() == 0 {
+            if multiplayer_game_state.is_playing && *game_engine_state == GameEngineState::Playing {
+                multiplayer_game_state.is_disconnected = true;
+            }
+            return;
+        }
+
+        // TODO: implement rejecting incoming connections for client, cause this can fail badly.
+        let net_connection_model = (&mut net_connection_models)
+            .join()
+            .next()
+            .expect("Expected a server connection");
+
         for connection_event in connection_events.0.drain(..) {
+            if net_connection_model.disconnected {
+                let ignore_event = match connection_event.event {
+                    NetEvent::Disconnected
+                    | NetEvent::Message(ServerMessagePayload::Handshake { .. }) => false,
+                    _ => true,
+                };
+                if ignore_event {
+                    continue;
+                }
+            }
+
+            if multiplayer_game_state.is_playing {
+                let ignore_event = match connection_event.event {
+                    NetEvent::Message(ServerMessagePayload::Handshake { .. }) => true,
+                    NetEvent::Message(ServerMessagePayload::UpdateRoomPlayers(_)) => true,
+                    NetEvent::Message(ServerMessagePayload::StartGame(_)) => true,
+                    _ => false,
+                };
+                if ignore_event {
+                    continue;
+                }
+            }
+
             match connection_event.event {
                 NetEvent::Message(ServerMessagePayload::Handshake {
                     net_id: connection_id,
                     is_host,
                 }) => {
-                    log::info!("Received Handshake from a server ({})", connection_id);
-                    let connection = (&mut net_connection_models)
-                        .join()
-                        .next()
-                        .expect("Expected a server connection");
-
+                    log::info!(
+                        "Received Handshake from a server ({}), is_host: {}",
+                        connection_id,
+                        is_host
+                    );
                     // A hosting client won't send a join packet first, as a server initiates
                     // a connection.
                     if !multiplayer_room_state.has_sent_join_message {
+                        log::info!("Sending a JoinRoom message");
                         multiplayer_room_state.has_sent_join_message = true;
                         send_message_reliable(
                             &mut transport,
-                            connection,
+                            net_connection_model,
                             &ClientMessagePayload::JoinRoom {
                                 nickname: multiplayer_room_state.nickname.clone(),
                             },
@@ -150,6 +193,15 @@ impl<'s> System<'s> for ClientNetworkSystem {
                     *multiplayer_game_state.update_players() = players;
                 }
                 NetEvent::Message(ServerMessagePayload::StartGame(entity_net_ids)) => {
+                    last_acknowledged_update.frame_number = 0;
+                    last_acknowledged_update.id = 0;
+
+                    let connection_id = multiplayer_room_state
+                        .connection_status
+                        .connection_id()
+                        .expect("Expected to be connected when receiving StartGame message");
+
+                    let mut found_ourselves = false;
                     // Looking for an entity_net_id of a client's player
                     // and storing it in the MultiplayerRoomState.
                     for (i, player) in multiplayer_game_state
@@ -158,25 +210,28 @@ impl<'s> System<'s> for ClientNetworkSystem {
                         .enumerate()
                     {
                         player.entity_net_id = entity_net_ids[i];
-                        if multiplayer_room_state
-                            .connection_status
-                            .connection_id()
-                            .map_or(false, |connection_id| connection_id == player.connection_id)
-                        {
+                        if connection_id == player.connection_id {
+                            log::info!(
+                                "Starting a new game as a player with net id {}",
+                                player.entity_net_id
+                            );
+                            found_ourselves = true;
                             multiplayer_room_state.player_net_id = player.entity_net_id;
                         }
+                    }
+                    if !found_ourselves {
+                        panic!(
+                            "Couldn't found a player with connection id {}",
+                            connection_id
+                        );
                     }
                     multiplayer_game_state.is_playing = true;
                     new_game_engine_sate.0 = GameEngineState::Playing;
                 }
                 NetEvent::Message(ServerMessagePayload::UpdateWorld { id, mut updates }) => {
-                    let connection = (&mut net_connection_models)
-                        .join()
-                        .next()
-                        .expect("Expected a server connection");
                     send_message_unreliable(
                         &mut transport,
-                        connection,
+                        net_connection_model,
                         &ClientMessagePayload::AcknowledgeWorldUpdate(id),
                     );
 
@@ -225,8 +280,18 @@ impl<'s> System<'s> for ClientNetworkSystem {
                     }
                 }
                 NetEvent::Disconnected => {
-                    multiplayer_room_state.connection_status =
-                        ConnectionStatus::ConnectionFailed(None);
+                    let mut is_not_connected =
+                        multiplayer_room_state.connection_status.is_not_connected();
+                    if let ConnectionStatus::Connecting(started_at) =
+                        multiplayer_room_state.connection_status
+                    {
+                        // A really ugly way to ignore Disconnected events for previous connections.
+                        is_not_connected = Instant::now() - started_at < Duration::from_secs(1);
+                    }
+                    if !is_not_connected {
+                        multiplayer_room_state.connection_status =
+                            ConnectionStatus::ConnectionFailed(None);
+                    }
                 }
                 _ => {}
             }
@@ -234,17 +299,14 @@ impl<'s> System<'s> for ClientNetworkSystem {
 
         if game_time_service.engine_time().frame_number() - self.last_heartbeat_frame
             > HEARTBEAT_FRAME_INTERVAL
+            && !net_connection_model.disconnected
         {
-            let net_connection_model = (&net_connection_models).join().next();
-
-            if let Some(net_connection_model) = net_connection_model {
-                self.last_heartbeat_frame = game_time_service.engine_time().frame_number();
-                send_message_reliable(
-                    &mut transport,
-                    net_connection_model,
-                    &ClientMessagePayload::Heartbeat,
-                );
-            }
+            self.last_heartbeat_frame = game_time_service.engine_time().frame_number();
+            send_message_reliable(
+                &mut transport,
+                net_connection_model,
+                &ClientMessagePayload::Heartbeat,
+            );
         }
 
         // Until the server authorizes to unpause we need to use a chance to catch up with it,
@@ -283,18 +345,13 @@ impl<'s> System<'s> for ClientNetworkSystem {
             );
             log::trace!("Frames ahead: {}", frames_ahead);
             if multiplayer_game_state.waiting_network {
-                multiplayer_game_state.waiting_network = frames_ahead == 0;
+                multiplayer_game_state.waiting_network = frames_ahead != 0;
             } else if frames_ahead > PAUSE_FRAME_THRESHOLD {
                 multiplayer_game_state.waiting_network = true;
             }
 
             if multiplayer_game_state.waiting_network || multiplayer_game_state.waiting_for_players
             {
-                let net_connection_model = (&net_connection_models)
-                    .join()
-                    .next()
-                    .expect("Expected a server connection (NetConnectionModel)");
-
                 log::debug!(
                     "Waiting for server. Frames ahead: {}. Current frame: {}. Last ServerWorldUpdate frame: {}. Estimated server frame: {}",
                     frames_ahead,

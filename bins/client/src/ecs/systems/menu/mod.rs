@@ -1,3 +1,4 @@
+mod hidden;
 mod lobby;
 mod main;
 mod multiplayer_room;
@@ -25,8 +26,8 @@ use crate::ecs::{
     resources::ServerCommand,
     system_data::ui::UiFinderMut,
     systems::menu::{
-        lobby::LobbyMenuScreen, main::MainMenuScreen, multiplayer_room::MultiplayerRoomMenuScreen,
-        restart::RestartMenuScreen,
+        hidden::HiddenMenuScreen, lobby::LobbyMenuScreen, main::MainMenuScreen,
+        multiplayer_room::MultiplayerRoomMenuScreen, restart::RestartMenuScreen,
     },
 };
 
@@ -158,7 +159,7 @@ pub struct MenuSystemData<'s> {
     hierarchy: ReadExpect<'s, ParentHierarchy>,
     game_engine_state: ReadExpect<'s, GameEngineState>,
     new_game_engine_state: WriteExpect<'s, NewGameEngineState>,
-    game_level_state: ReadExpect<'s, GameLevelState>,
+    game_level_state: WriteExpect<'s, GameLevelState>,
     server_command: WriteExpect<'s, ServerCommand>,
     multiplayer_room_state: WriteExpect<'s, MultiplayerRoomState>,
     multiplayer_game_state: WriteExpect<'s, MultiplayerGameState>,
@@ -191,6 +192,7 @@ struct MenuScreens {
     main_menu_screen: MainMenuScreen,
     multiplayer_room_menu_screen: MultiplayerRoomMenuScreen,
     restart_menu_screen: RestartMenuScreen,
+    hidden_menu_screen: HiddenMenuScreen,
 }
 
 impl MenuScreens {
@@ -200,7 +202,8 @@ impl MenuScreens {
             GameMenuScreen::MainMenu => Some(&mut self.main_menu_screen),
             GameMenuScreen::MultiplayerRoomMenu => Some(&mut self.multiplayer_room_menu_screen),
             GameMenuScreen::RestartMenu => Some(&mut self.restart_menu_screen),
-            _ => None,
+            GameMenuScreen::Hidden => Some(&mut self.hidden_menu_screen),
+            GameMenuScreen::Loading => None,
         }
     }
 }
@@ -246,6 +249,7 @@ impl MenuSystem {
                 main_menu_screen: MainMenuScreen,
                 multiplayer_room_menu_screen: MultiplayerRoomMenuScreen,
                 restart_menu_screen: RestartMenuScreen,
+                hidden_menu_screen: HiddenMenuScreen,
             },
             modal_window_id: None,
             mouse_reactive: vec![
@@ -304,8 +308,8 @@ enum NewAlpha {
 }
 
 impl NewAlpha {
-    fn modify(&self, current_alpha: &mut [f32; 4]) {
-        current_alpha[3] = match *self {
+    fn modify(self, current_alpha: &mut [f32; 4]) {
+        current_alpha[3] = match self {
             Self::FadeIn(new_alpha) => num::Float::max(new_alpha, current_alpha[3]),
             Self::FadeOut(new_alpha) => num::Float::min(new_alpha, current_alpha[3]),
         };
@@ -347,7 +351,10 @@ impl<'s> System<'s> for MenuSystem {
                 StateUpdate::new_menu_screen(GameMenuScreen::LobbyMenu)
             }
             (GameEngineState::Menu, menu_screen) => {
-                let menu_screen = self.menu_screens.menu_screen(menu_screen).unwrap();
+                let menu_screen = self
+                    .menu_screens
+                    .menu_screen(menu_screen)
+                    .expect("Expected a menu screen for GameEngineState::Menu");
                 menu_screen.process_events(
                     &mut system_data,
                     button_pressed.as_ref().map(std::string::String::as_str),
@@ -359,12 +366,13 @@ impl<'s> System<'s> for MenuSystem {
             (GameEngineState::Playing, menu_screen) if menu_screen != GameMenuScreen::Hidden => {
                 StateUpdate::new_menu_screen(GameMenuScreen::Hidden)
             }
-            (GameEngineState::Playing, _) if system_data.game_level_state.is_over => {
-                StateUpdate::GameMenuUpdate {
-                    game_engine_state: Some(GameEngineState::Menu),
-                    menu_screen: Some(GameMenuScreen::RestartMenu),
-                }
-            }
+            (GameEngineState::Playing, _) => self.menu_screens.hidden_menu_screen.process_events(
+                &mut system_data,
+                button_pressed.as_ref().map(std::string::String::as_str),
+                self.modal_window_id
+                    .as_ref()
+                    .map(std::string::String::as_str),
+            ),
             _ => StateUpdate::None,
         };
 

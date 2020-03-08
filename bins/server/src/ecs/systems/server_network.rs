@@ -15,14 +15,16 @@ use gv_core::{
             world::{
                 FramedUpdates, ImmediatePlayerActionsUpdates, PlayerLookActionUpdates,
                 ReceivedClientActionUpdates, ServerWorldUpdates, LAG_COMPENSATION_FRAMES_LIMIT,
+                PAUSE_FRAME_THRESHOLD,
             },
             GameEngineState, NewGameEngineState,
         },
         system_data::time::GameTimeService,
     },
     net::{
-        client_message::ClientMessagePayload, server_message::ServerMessagePayload, NetEvent,
-        NetIdentifier, NetUpdate, INTERPOLATION_FRAME_DELAY,
+        client_message::ClientMessagePayload,
+        server_message::{DisconnectReason, ServerMessagePayload},
+        NetEvent, NetIdentifier, NetUpdate, INTERPOLATION_FRAME_DELAY,
     },
 };
 use gv_game::{
@@ -32,10 +34,6 @@ use gv_game::{
 };
 
 use crate::ecs::resources::{HostClientAddress, LastBroadcastedFrame};
-
-// Pause the game if we have a client that hasn't responded for the last 180 frames (3 secs).
-const PAUSE_FRAME_THRESHOLD: u64 =
-    (LAG_COMPENSATION_FRAMES_LIMIT + LAG_COMPENSATION_FRAMES_LIMIT / 2) as u64;
 
 const HEARTBEAT_FRAME_INTERVAL: u64 = 2;
 
@@ -70,6 +68,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
         Write<'s, TransportResource>,
     );
 
+    #[allow(clippy::cognitive_complexity)]
     fn run(
         &mut self,
         (
@@ -108,41 +107,95 @@ impl<'s> System<'s> for ServerNetworkSystem {
 
         for connection_event in connection_events.0.drain(..) {
             let connection_id = connection_event.connection_id;
+            let mut connection_model = (&mut net_connection_models)
+                .join()
+                .find(|net_connection_model| net_connection_model.id == connection_id)
+                .expect("Expected to find a NetConnection");
+
+            // Handle ignored events if the game is already started.
+            if multiplayer_game_state.is_playing {
+                let is_ignored = match connection_event.event {
+                    NetEvent::Message(ClientMessagePayload::JoinRoom { .. }) => {
+                        let player_is_in_game = multiplayer_game_state
+                            .players
+                            .iter()
+                            .any(|player| player.connection_id == connection_id);
+                        if !player_is_in_game {
+                            log::info!(
+                                "A new client ({}) {} tried to connect while the game has already started",
+                                connection_id,
+                                connection_model.addr
+                            );
+                            send_message_reliable(
+                                &mut transport,
+                                connection_model,
+                                &ServerMessagePayload::Disconnect(
+                                    DisconnectReason::GameIsAlreadyStarted,
+                                ),
+                            );
+                        }
+                        true
+                    }
+                    NetEvent::Message(ClientMessagePayload::StartHostedGame) => {
+                        log::info!(
+                            "A client ({}) {} tried to start the game while it's already started",
+                            connection_id,
+                            connection_model.addr
+                        );
+                        true
+                    }
+                    _ => false,
+                };
+
+                if is_ignored {
+                    continue;
+                }
+            }
+
+            if !multiplayer_game_state.is_playing {
+                let is_ignored = match connection_event.event {
+                    NetEvent::Message(ClientMessagePayload::AcknowledgeWorldUpdate(_)) => true,
+                    NetEvent::Message(ClientMessagePayload::WalkActions(_)) => true,
+                    NetEvent::Message(ClientMessagePayload::CastActions(_)) => true,
+                    NetEvent::Message(ClientMessagePayload::LookActions(_)) => true,
+                    _ => false,
+                };
+
+                if is_ignored {
+                    continue;
+                }
+            }
+
             match connection_event.event {
-                NetEvent::Connected => {
+                NetEvent::Message(ClientMessagePayload::JoinRoom { nickname }) => {
                     // TODO: we'll need a more reliable way to determine the host in future.
-                    if multiplayer_game_state.players.is_empty() {
+                    let is_host = multiplayer_game_state.players.is_empty();
+                    if is_host {
                         self.host_connection_id = connection_id;
                     }
 
                     log::info!("Sending a Handshake message: {}", connection_id);
-                    let net_connection = (&mut net_connection_models)
-                        .join()
-                        .find(|net_connection_model| net_connection_model.id == connection_id)
-                        .expect("Expected to find a NetConnection");
                     send_message_reliable(
                         &mut transport,
-                        net_connection,
+                        connection_model,
                         &ServerMessagePayload::Handshake {
                             net_id: connection_id,
-                            is_host: multiplayer_game_state.players.is_empty(),
+                            is_host,
                         },
                     );
-                }
-                NetEvent::Message(ClientMessagePayload::JoinRoom { nickname }) => {
+
                     log::info!(
                         "A client ({}) has joined the room: {}",
                         connection_id,
                         nickname
                     );
-                    if multiplayer_game_state
-                        .players
-                        .iter()
-                        .any(|player| player.connection_id == connection_id)
+                    if let Some(player) = multiplayer_game_state
+                        .update_players()
+                        .iter_mut()
+                        .find(|player| player.connection_id == connection_id)
                     {
-                        log::warn!(
-                            "A client has sent a JoinRoom message more than once, discarding"
-                        );
+                        log::info!("The player already existed, updating the nickname only");
+                        player.nickname = nickname;
                     } else {
                         let color_index = multiplayer_game_state.players.len();
                         multiplayer_game_state
@@ -156,6 +209,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
                             });
                     }
                 }
+
                 NetEvent::Message(ClientMessagePayload::StartHostedGame)
                     if connection_id == self.host_connection_id
                         && !multiplayer_game_state.is_playing =>
@@ -163,6 +217,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
                     multiplayer_game_state.is_playing = true;
                     new_game_engine_state.0 = GameEngineState::Playing;
                 }
+
                 NetEvent::Message(ClientMessagePayload::WalkActions(actions)) => {
                     log::trace!(
                         "Received WalkAction updates (frame {}): {:?}",
@@ -180,18 +235,14 @@ impl<'s> System<'s> for ServerNetworkSystem {
                             "{} walk actions have been discarded",
                             discarded_actions.len()
                         );
-
-                        let net_connection = (&mut net_connection_models)
-                            .join()
-                            .find(|net_connection_model| net_connection_model.id == connection_id)
-                            .expect("Expected to find a NetConnection");
                         send_message_reliable(
                             &mut transport,
-                            net_connection,
+                            connection_model,
                             &ServerMessagePayload::DiscardWalkActions(discarded_actions),
                         );
                     }
                 }
+
                 NetEvent::Message(ClientMessagePayload::CastActions(actions)) => {
                     add_cast_actions(
                         &mut *framed_updates,
@@ -200,6 +251,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
                         game_time_service.game_frame_number(),
                     );
                 }
+
                 NetEvent::Message(ClientMessagePayload::LookActions(actions)) => {
                     add_look_actions(
                         &mut *framed_updates,
@@ -207,24 +259,18 @@ impl<'s> System<'s> for ServerNetworkSystem {
                         game_time_service.game_frame_number(),
                     );
                 }
+
                 NetEvent::Message(ClientMessagePayload::AcknowledgeWorldUpdate(frame_number)) => {
-                    let mut connection_model = (&mut net_connection_models)
-                        .join()
-                        .find(|model| model.id == connection_id)
-                        .unwrap_or_else(|| {
-                            panic!(
-                                "Expected to find a connection model with id {}",
-                                connection_id
-                            )
-                        });
                     connection_model.last_acknowledged_update =
                         Some(frame_number).max(connection_model.last_acknowledged_update);
                 }
+
                 NetEvent::Disconnected => {
                     multiplayer_game_state
                         .update_players()
                         .retain(|player| player.connection_id == connection_id);
                 }
+
                 _ => {}
             }
         }
@@ -347,6 +393,13 @@ fn add_walk_actions(
     let mut discarded_actions = Vec::new();
 
     let added_actions_frame_number = actions.frame_number;
+
+    // Just ignore these updates, most probably these are lost packages from the previous game,
+    // or the client is just bonkers.
+    if added_actions_frame_number.saturating_sub(frame_number) > PAUSE_FRAME_THRESHOLD {
+        return Vec::new();
+    }
+
     let oldest_possible_frame = frame_number.saturating_sub(LAG_COMPENSATION_FRAMES_LIMIT as u64);
     let are_lag_compensated = added_actions_frame_number > oldest_possible_frame;
     let actual_frame = if are_lag_compensated {
@@ -446,6 +499,15 @@ fn add_look_actions(
         .filter(|(_, updates)| !updates.is_empty())
         .map(|(frame_number, _)| frame_number)
         .max_by(|prev_frame_number, next_frame_number| prev_frame_number.cmp(next_frame_number));
+
+    // Just ignore these updates, most probably these are lost packages from the previous game,
+    // or the client is just bonkers.
+    if frame_to_reserve.map_or(true, |frame_to_reserve| {
+        frame_to_reserve.saturating_sub(frame_number) > PAUSE_FRAME_THRESHOLD
+    }) {
+        return;
+    }
+
     if let Some(frame_to_reserve) = frame_to_reserve {
         framed_updates.reserve_updates(*frame_to_reserve);
     }
@@ -510,6 +572,13 @@ fn add_cast_actions(
     frame_number: u64,
 ) {
     let added_actions_frame_number = actions.frame_number;
+
+    // Just ignore these updates, most probably these are lost packages from the previous game,
+    // or the client is just bonkers.
+    if added_actions_frame_number.saturating_sub(frame_number) > PAUSE_FRAME_THRESHOLD {
+        return;
+    }
+
     let oldest_possible_frame = frame_number.saturating_sub(LAG_COMPENSATION_FRAMES_LIMIT as u64);
     let are_lag_compensated = added_actions_frame_number > oldest_possible_frame;
     let actual_frame = if are_lag_compensated {

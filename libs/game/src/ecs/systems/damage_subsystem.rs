@@ -157,9 +157,15 @@ impl<'s> DamageSubsystem<'s> {
             incoming_net_updates.expect("Expected net updates on client side");
         for net_update in incoming_net_updates {
             assert_eq!(net_update.data.frame_number, frame_number);
-            let entity = entity_net_metadata_storage
-                .get_entity(net_update.entity_net_id)
-                .expect("Expected an updated entity");
+            let entity = entity_net_metadata_storage.get_entity(net_update.entity_net_id);
+            if entity.is_none() {
+                log::error!(
+                    "Couldn't find an entity (net id: {}) to apply damage entries",
+                    net_update.entity_net_id
+                );
+                return;
+            }
+            let entity = entity.unwrap();
             let damage_history = damage_histories
                 .get_mut(entity)
                 .expect("Expected DamageHistory component");

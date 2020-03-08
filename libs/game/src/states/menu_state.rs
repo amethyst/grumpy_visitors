@@ -4,10 +4,19 @@ use amethyst::{
     renderer::Camera,
 };
 
-use gv_core::ecs::{
-    components::{missile::Missile, Monster, Player},
-    resources::{GameEngineState, GameLevelState},
+use gv_core::{
+    actions::monster_spawn::SpawnActions,
+    ecs::{
+        components::{missile::Missile, EntityNetMetadata, Monster, Player},
+        resources::{
+            net::{CastActionsToExecute, EntityNetMetadataStorage},
+            world::{FramedUpdates, WorldStates},
+            GameEngineState, GameLevelState,
+        },
+    },
 };
+
+use crate::ecs::systems::{ClientFrameUpdate, FrameUpdate};
 
 pub struct MenuState;
 
@@ -21,14 +30,28 @@ impl SimpleState for MenuState {
         if game_level_state.is_over {
             game_level_state.is_over = false;
             drop(game_level_state);
+
+            world.insert(FramedUpdates::<ClientFrameUpdate>::default());
+            world.insert(FramedUpdates::<FrameUpdate>::default());
+            world.insert(FramedUpdates::<SpawnActions>::default());
+            world.insert(WorldStates::default());
+            world.insert(CastActionsToExecute::default());
+            world.insert(EntityNetMetadataStorage::new());
+
             world.exec(
-                |(entities, players, monsters, missiles, cameras): (
+                |(entities, entity_net_metadata, players, monsters, missiles, cameras): (
                     Entities,
+                    ReadStorage<EntityNetMetadata>,
                     ReadStorage<Player>,
                     ReadStorage<Monster>,
                     ReadStorage<Missile>,
                     ReadStorage<Camera>,
                 )| {
+                    for (entity_net_metadata, _) in (&entities, &entity_net_metadata).join() {
+                        entities
+                            .delete(entity_net_metadata)
+                            .expect("Expected to clean up an entity");
+                    }
                     for (player_entity, _) in (&entities, &players).join() {
                         entities
                             .delete(player_entity)

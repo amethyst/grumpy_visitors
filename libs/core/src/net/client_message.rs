@@ -25,6 +25,7 @@ pub enum ClientMessagePayload {
         ping_id: NetIdentifier,
         frame_number: u64,
     },
+    Disconnect,
 }
 
 impl ClientMessagePayload {

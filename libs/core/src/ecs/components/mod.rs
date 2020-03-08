@@ -149,6 +149,7 @@ pub struct NetConnectionModel {
     pub created_at: Instant,
     pub last_acknowledged_update: Option<u64>,
     pub ping_pong_data: PingPongData,
+    pub disconnected: bool,
 }
 
 impl NetConnectionModel {
@@ -159,6 +160,7 @@ impl NetConnectionModel {
             created_at: Instant::now(),
             last_acknowledged_update: None,
             ping_pong_data: PingPongData::new(),
+            disconnected: false,
         }
     }
 }

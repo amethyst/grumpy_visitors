@@ -96,6 +96,7 @@ impl MenuScreen for MultiplayerRoomMenuScreen {
             (Some(UI_MP_ROOM_LOBBY_BUTTON), _) => {
                 system_data.multiplayer_room_state.reset();
                 system_data.multiplayer_game_state.reset();
+                system_data.server_command.kill();
                 StateUpdate::new_menu_screen(GameMenuScreen::LobbyMenu)
             }
             (Some(UI_MP_ROOM_START_BUTTON), _) => {

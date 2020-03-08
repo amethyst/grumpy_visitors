@@ -3,11 +3,12 @@ use amethyst::{
     shred::{ResourceId, SystemData},
 };
 
-use gv_core::ecs::resources::{net::MultiplayerGameState, GameEngineState};
+use gv_core::ecs::resources::{net::MultiplayerGameState, GameEngineState, NewGameEngineState};
 
 #[derive(SystemData)]
 pub struct GameStateHelper<'s> {
     game_engine_state: ReadExpect<'s, GameEngineState>,
+    new_game_engine_state: ReadExpect<'s, NewGameEngineState>,
     multiplayer_game_state: ReadExpect<'s, MultiplayerGameState>,
 }
 
@@ -18,7 +19,9 @@ impl<'s> GameStateHelper<'s> {
             || (!self.multiplayer_game_state.waiting_network
                 && !self.multiplayer_game_state.waiting_for_players);
 
-        *self.game_engine_state == GameEngineState::Playing && multiplayer_is_unpaused
+        *self.game_engine_state == GameEngineState::Playing
+            && self.new_game_engine_state.0 == GameEngineState::Playing
+            && multiplayer_is_unpaused
     }
 
     pub fn is_multiplayer(&self) -> bool {
@@ -36,12 +39,15 @@ impl<'s> GameStateHelper<'s> {
     }
 
     pub fn multiplayer_is_running(&self) -> bool {
-        *self.game_engine_state == GameEngineState::Playing && self.multiplayer_is_unpaused()
+        *self.game_engine_state == GameEngineState::Playing
+            && self.new_game_engine_state.0 == GameEngineState::Playing
+            && self.multiplayer_is_unpaused()
     }
 
     pub fn multiplayer_is_unpaused(&self) -> bool {
         self.multiplayer_game_state.is_playing
             && !self.multiplayer_game_state.waiting_network
             && !self.multiplayer_game_state.waiting_for_players
+            && !self.multiplayer_game_state.is_disconnected
     }
 }

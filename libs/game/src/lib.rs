@@ -40,14 +40,16 @@ pub fn build_game_logic_systems<'a, 'b>(
     world: &mut World,
     is_server: bool,
 ) -> Result<GameDataBuilder<'a, 'b>, Error> {
+    world.insert(ConnectionEvents(Vec::new()));
+    world.insert(MultiplayerGameState::new());
+    world.insert(ActionUpdateIdProvider::default());
+
+    // The resources which we need to remember to reset on starting a game.
     world.insert(FramedUpdates::<PlayerActionUpdates>::default());
     world.insert(FramedUpdates::<SpawnActions>::default());
     world.insert(WorldStates::default());
-    world.insert(ConnectionEvents(Vec::new()));
-    world.insert(MultiplayerGameState::new());
-    world.insert(EntityNetMetadataStorage::new());
-    world.insert(ActionUpdateIdProvider::default());
     world.insert(CastActionsToExecute::default());
+    world.insert(EntityNetMetadataStorage::new());
 
     let game_data_builder = game_data_builder
         .with(PauseSystem, "pause_system", &["game_network_system"])

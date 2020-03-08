@@ -18,6 +18,7 @@ impl<'a> GameTimeService<'a> {
     pub fn set_game_start_time(&mut self) {
         self.game_time.level_started_at = self.engine_time.absolute_time();
         self.game_time.started_at_frame_number = self.engine_time.frame_number();
+        self.game_time.frames_skipped = 0;
     }
 
     pub fn engine_time(&self) -> &Time {

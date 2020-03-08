@@ -25,7 +25,6 @@ impl ServerCommand {
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub fn kill(&mut self) {
         self.process = None;
     }

@@ -63,14 +63,14 @@ pub type OutcomingNetUpdates = ClientWorldUpdates;
 pub type OutcomingNetUpdates = ServerWorldUpdate;
 
 #[cfg(feature = "client")]
-type ClientFrameUpdate = PlayerActionUpdates;
+pub type ClientFrameUpdate = PlayerActionUpdates;
 #[cfg(not(feature = "client"))]
-type ClientFrameUpdate = DummyFramedUpdate;
+pub type ClientFrameUpdate = DummyFramedUpdate;
 
 #[cfg(feature = "client")]
-type FrameUpdate = ReceivedServerWorldUpdate;
+pub type FrameUpdate = ReceivedServerWorldUpdate;
 #[cfg(not(feature = "client"))]
-type FrameUpdate = ReceivedClientActionUpdates;
+pub type FrameUpdate = ReceivedClientActionUpdates;
 
 type WriteStorageCell<'s, T> = Rc<RefCell<WriteStorage<'s, T>>>;
 type WriteExpectCell<'s, T> = Rc<RefCell<WriteExpect<'s, T>>>;

@@ -181,45 +181,26 @@ impl NetConnectionManagerSystem {
         let peer_addr = peer_addr.unwrap();
 
         if let NetworkSimulationEvent::Connect(socket_addr) = event {
-            let existing_connection = (net_connection_models)
-                .join()
-                .find(|connection_model| connection_model.addr == *socket_addr);
-            if let Some(connection_model) = existing_connection {
-                log::warn!(
-                    "Duplicate Connect event for an existing connection ({})",
-                    connection_model.id
-                );
-                return (None, None);
-            }
-
-            let connection_id = self.next_connection_id();
-            log::info!("New connection ({}): {}", connection_id, peer_addr);
-            let net_connection_model = NetConnectionModel::new(connection_id, peer_addr);
-            entities
-                .build_entity()
-                .with(net_connection_model, net_connection_models)
-                .build();
-            return (
-                Some(ConnectionNetEvent {
-                    connection_id,
-                    event: NetEvent::Connected,
-                }),
-                None,
-            );
+            log::info!("Detected a new UDP connection: {}", socket_addr);
+            return (None, None);
         }
 
-        let connection = (entities, net_connection_models)
+        let mut connection = (entities, &mut *net_connection_models)
             .join()
             .find(|(_, connection_model)| connection_model.addr == peer_addr);
         if connection.is_none() {
-            if let NetworkSimulationEvent::Disconnect(_) = event {
-                log::warn!("Duplicate Disconnect event for {}, skipping", peer_addr);
-                return (None, None);
-            }
-            panic!(
-                "Expected a NetConnectionModel for {}, event: {:?}",
-                peer_addr, event
-            )
+            let connection_id = self.next_connection_id();
+            log::info!(
+                "Creating a new NewConnectionModel ({}) for {}",
+                connection_id,
+                peer_addr
+            );
+            let net_connection_model = NetConnectionModel::new(connection_id, peer_addr);
+            let entity = entities
+                .build_entity()
+                .with(net_connection_model, net_connection_models)
+                .build();
+            connection = Some((entity, net_connection_models.get_mut(entity).unwrap()))
         }
         let (connection_model_entity, connection_model) = connection.unwrap();
 

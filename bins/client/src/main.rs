@@ -86,6 +86,8 @@ fn main() -> amethyst::Result<()> {
     let mut builder = Application::build("./", LoadingState::default())?;
     builder.world.insert(settings);
     builder.world.insert(ServerCommand::new());
+
+    // The resources which we need to remember to reset on starting a game.
     builder.world.insert(MultiplayerRoomState::new());
     builder.world.insert(ClientWorldUpdates::default());
     builder.world.insert(LastAcknowledgedUpdate {

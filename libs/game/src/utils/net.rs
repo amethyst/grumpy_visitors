@@ -6,9 +6,6 @@ use gv_core::net::client_message::ClientMessagePayload;
 #[cfg(not(feature = "client"))]
 use gv_core::net::server_message::ServerMessagePayload;
 
-// TODO - jstnlef: I made all of the UrgencyRequirements immediate because I wasn't sure if you wanted
-// to use the NetworkSimulationTime resource to handle rate of send.
-
 #[cfg(not(feature = "client"))]
 pub fn broadcast_message_reliable<'a>(
     transport: &mut TransportResource,

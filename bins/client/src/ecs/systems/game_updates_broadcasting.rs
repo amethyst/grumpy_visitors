@@ -43,6 +43,10 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
             mut net_connection_models,
         ): Self::SystemData,
     ) {
+        if !game_state_helper.is_multiplayer() {
+            client_world_updates.clear();
+            return;
+        }
         if !game_state_helper.multiplayer_is_running() {
             return;
         }

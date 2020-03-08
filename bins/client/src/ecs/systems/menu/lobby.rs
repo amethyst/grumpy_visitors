@@ -1,4 +1,7 @@
-use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr};
+use std::{
+    net::{Ipv4Addr, Ipv6Addr, SocketAddr},
+    time::Instant,
+};
 
 use gv_client_shared::ecs::resources::ConnectionStatus;
 
@@ -92,6 +95,10 @@ impl MenuScreen for LobbyMenuScreen {
                 system_data.multiplayer_room_state.is_active = true;
                 system_data.multiplayer_room_state.server_addr = server_addr;
                 system_data.multiplayer_room_state.is_host = is_host;
+                system_data.multiplayer_room_state.connection_status =
+                    ConnectionStatus::Connecting(Instant::now());
+
+                log::info!("Joining {}...", server_addr);
 
                 StateUpdate::ShowModalWindow {
                     id: CONNECTING_PROGRESS.to_owned(),
@@ -99,10 +106,16 @@ impl MenuScreen for LobbyMenuScreen {
                     show_confirmation: false,
                 }
             }
+            (Some(UI_MODAL_CONFIRM_BUTTON), Some(CONNECTING_FAILED)) => {
+                system_data.multiplayer_room_state.reset();
+                system_data.multiplayer_game_state.reset();
+                StateUpdate::None
+            }
             (None, _) => {
                 let (new_connection_status, state_update) =
                     match &system_data.multiplayer_room_state.connection_status {
                         ConnectionStatus::NotConnected => (None, StateUpdate::None),
+                        ConnectionStatus::Connecting(_) => (None, StateUpdate::None),
                         ConnectionStatus::Connected(_) => (
                             None,
                             StateUpdate::new_menu_screen(GameMenuScreen::MultiplayerRoomMenu),

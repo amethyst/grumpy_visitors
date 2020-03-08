@@ -32,6 +32,13 @@ pub enum ServerMessagePayload {
         players: Vec<NetIdentifier>,
     },
     UnpauseWaitingForPlayers(NetIdentifier),
+    Disconnect(DisconnectReason),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum DisconnectReason {
+    GameIsAlreadyStarted,
+    Kick,
 }
 
 impl ServerMessagePayload {

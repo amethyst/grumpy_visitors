@@ -8,6 +8,7 @@ use amethyst::{
 use std::{
     io,
     net::{Ipv4Addr, SocketAddr, SocketAddrV4},
+    time::Instant,
 };
 
 use gv_animation_prefabs::GameSpriteAnimationPrefab;
@@ -103,13 +104,30 @@ impl Default for MultiplayerRoomState {
     }
 }
 
+#[derive(Debug)]
 pub enum ConnectionStatus {
     NotConnected,
+    Connecting(Instant),
     Connected(NetIdentifier),
     ConnectionFailed(Option<io::Error>),
 }
 
 impl ConnectionStatus {
+    pub fn is_not_connected(&self) -> bool {
+        match self {
+            ConnectionStatus::NotConnected | ConnectionStatus::ConnectionFailed(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_connecting(&self) -> bool {
+        if let ConnectionStatus::Connecting(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn is_connected(&self) -> bool {
         if let ConnectionStatus::Connected(_) = self {
             true
