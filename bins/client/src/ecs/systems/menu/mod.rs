@@ -302,17 +302,30 @@ enum TransitionState {
 }
 
 #[derive(Clone, Copy)]
-enum NewAlpha {
-    FadeIn(f32),
-    FadeOut(f32),
+struct AlphaTransition {
+    normal_alpha: f32,
+    current_step: f32,
+    is_fade_in: bool,
 }
 
-impl NewAlpha {
-    fn modify(self, current_alpha: &mut [f32; 4]) {
-        current_alpha[3] = match self {
-            Self::FadeIn(new_alpha) => num::Float::max(new_alpha, current_alpha[3]),
-            Self::FadeOut(new_alpha) => num::Float::min(new_alpha, current_alpha[3]),
+impl AlphaTransition {
+    fn modify(self, current_alpha: &mut [f32; 4]) -> bool {
+        let goal = if self.is_fade_in {
+            self.normal_alpha
+        } else {
+            0.0
         };
+        if (current_alpha[3] - goal).abs() < 0.0001 {
+            return false;
+        }
+        current_alpha[3] = if self.is_fade_in {
+            let new_alpha = self.normal_alpha * self.current_step;
+            num::Float::max(new_alpha, current_alpha[3])
+        } else {
+            let new_alpha = self.normal_alpha * (1.0 - self.current_step);
+            num::Float::min(new_alpha, current_alpha[3])
+        };
+        true
     }
 }
 
@@ -515,17 +528,28 @@ impl MenuSystem {
 
         match self.transition_state {
             TransitionState::FadeOut => {
-                let new_alpha = num::Float::max(0.0, 1.0 - transition_completed);
-
+                let mut modified = 0;
                 for element_to_hide in &menu_screen_animation.elements_to_hide {
-                    let new_alpha = if element_to_hide.contains(MODAL_TAG) {
+                    let alpha_transition = if element_to_hide.contains(MODAL_TAG) {
                         if *element_to_hide == UI_MODAL_BACKDROP_CONTAINER {
-                            new_alpha * 0.7
+                            AlphaTransition {
+                                normal_alpha: 0.7,
+                                current_step: transition_completed,
+                                is_fade_in: false,
+                            }
                         } else {
-                            0.0
+                            AlphaTransition {
+                                normal_alpha: 1.0,
+                                current_step: 1.0,
+                                is_fade_in: false,
+                            }
                         }
                     } else {
-                        new_alpha
+                        AlphaTransition {
+                            normal_alpha: 1.0,
+                            current_step: transition_completed,
+                            is_fade_in: false,
+                        }
                     };
                     let ui_entity = system_data
                         .ui_finder
@@ -561,8 +585,8 @@ impl MenuSystem {
                             .insert(ui_entity, HiddenPropagate::new())
                             .expect("Expected to insert HiddenPropagate component");
                     } else {
-                        Self::set_alpha_for(
-                            NewAlpha::FadeOut(new_alpha),
+                        modified += Self::set_alpha_for(
+                            alpha_transition,
                             ui_entity,
                             &mut system_data.ui_texts,
                             &mut system_data.ui_images,
@@ -571,7 +595,7 @@ impl MenuSystem {
                     }
                 }
 
-                if transition_completed > 1.0 {
+                if transition_completed > 1.0 || (modified == 0 && transition_completed != 0.0) {
                     menu_screen_animation.elements_to_hide.clear();
                     self.transition_state = TransitionState::FadeIn;
                     menu_screen_animation.started_at = Some(now);
@@ -583,17 +607,28 @@ impl MenuSystem {
                 }
             }
             TransitionState::FadeIn => {
-                let new_alpha = num::Float::min(1.0, transition_completed);
-
+                let mut modified = 0;
                 for element_to_show in &menu_screen_animation.elements_to_show {
-                    let new_alpha = if element_to_show.contains(MODAL_TAG) {
+                    let alpha_transition = if element_to_show.contains(MODAL_TAG) {
                         if *element_to_show == UI_MODAL_BACKDROP_CONTAINER {
-                            new_alpha * 0.7
+                            AlphaTransition {
+                                normal_alpha: 0.7,
+                                current_step: transition_completed,
+                                is_fade_in: true,
+                            }
                         } else {
-                            1.0
+                            AlphaTransition {
+                                normal_alpha: 1.0,
+                                current_step: 1.0,
+                                is_fade_in: true,
+                            }
                         }
                     } else {
-                        new_alpha
+                        AlphaTransition {
+                            normal_alpha: 1.0,
+                            current_step: transition_completed,
+                            is_fade_in: true,
+                        }
                     };
                     let ui_entity = system_data
                         .ui_finder
@@ -612,8 +647,8 @@ impl MenuSystem {
                     } else {
                         Some(&system_data.hierarchy)
                     };
-                    Self::set_alpha_for(
-                        NewAlpha::FadeIn(new_alpha),
+                    modified += Self::set_alpha_for(
+                        alpha_transition,
                         ui_entity,
                         &mut system_data.ui_texts,
                         &mut system_data.ui_images,
@@ -622,7 +657,8 @@ impl MenuSystem {
                     if *element_to_show == UI_MODAL_BACKDROP_CONTAINER {
                         ui_transform.local_z = 150.0;
                     }
-                    if transition_completed > 1.0 {
+                    if transition_completed > 1.0 || (modified == 0 && transition_completed != 0.0)
+                    {
                         if !is_container && !element_to_show.contains(BACKGROUND_TAG) {
                             ui_transform.local_z = 1.0;
                         }
@@ -653,23 +689,32 @@ impl MenuSystem {
     }
 
     fn set_alpha_for(
-        new_alpha: NewAlpha,
+        new_alpha: AlphaTransition,
         ui_entity: Entity,
         ui_texts: &mut WriteStorage<UiText>,
         ui_images: &mut WriteStorage<UiImage>,
         hierarchy: Option<&ReadExpect<ParentHierarchy>>,
-    ) {
+    ) -> u16 {
+        let mut modified = 0;
         if let Some(ui_text) = ui_texts.get_mut(ui_entity) {
-            new_alpha.modify(&mut ui_text.color);
+            modified += new_alpha.modify(&mut ui_text.color) as u16;
         } else if let Some(UiImage::SolidColor(ref mut color)) = ui_images.get_mut(ui_entity) {
-            new_alpha.modify(color);
+            modified += new_alpha.modify(color) as u16;
         }
 
         if let Some(hierarchy) = hierarchy {
             for ui_entity in hierarchy.children(ui_entity) {
-                Self::set_alpha_for(new_alpha, *ui_entity, ui_texts, ui_images, Some(hierarchy))
+                modified += Self::set_alpha_for(
+                    new_alpha,
+                    *ui_entity,
+                    ui_texts,
+                    ui_images,
+                    Some(hierarchy),
+                );
             }
         }
+
+        modified
     }
 }
 
