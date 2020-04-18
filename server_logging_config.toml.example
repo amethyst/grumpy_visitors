@@ -1,0 +1,10 @@
+stdout = "Colored"
+level_filter = "Info"
+allow_env_override = true
+module_levels = [
+    ["amethyst_assets", "Info"],
+    ["gv_game::ecs::systems", "Debug"],
+    ["gv_game::ecs::systems::net_connection_manager", "Info"],
+    ["gv_game::utils::net", "Info"],
+    ["gv_server", "Debug"],
+]

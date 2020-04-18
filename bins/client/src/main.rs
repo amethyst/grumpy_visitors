@@ -21,10 +21,10 @@ use amethyst::{
         RenderingBundle, SpriteRender,
     },
     ui::{RenderUi, UiBundle},
-    LogLevelFilter, Logger,
+    Logger, LoggerConfig,
 };
 
-use std::{env, time::Duration};
+use std::env;
 
 use gv_animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
 use gv_client_shared::{ecs::resources::MultiplayerRoomState, settings::Settings};
@@ -65,17 +65,23 @@ fn main() -> amethyst::Result<()> {
 
     let socket_addr = "0.0.0.0:0";
 
-    Logger::from_config(Default::default())
-        .level_for("amethyst_assets", LogLevelFilter::Info)
-        .level_for("gfx_backend_vulkan", LogLevelFilter::Warn)
-        .level_for("gv_game::ecs::systems", LogLevelFilter::Debug)
-        .level_for(
-            "gv_game::ecs::systems::net_connection_manager",
-            LogLevelFilter::Info,
-        )
-        .level_for("gv_game::utils::net", LogLevelFilter::Info)
-        .level_for("gv_client", LogLevelFilter::Debug)
-        .start();
+    let logging_config: LoggerConfig = ::std::fs::read_to_string("client_logging_config.toml")
+        .map_err(|err| {
+            println!(
+                "Failed to read client_logging_config.toml, using the defaults: {:?}",
+                err
+            )
+        })
+        .and_then(|config_contents| {
+            toml::from_str(&config_contents).map_err(|err| {
+                println!(
+                    "Failed to read client_logging_config.toml, using the defaults: {:?}",
+                    err
+                );
+            })
+        })
+        .unwrap_or_default();
+    Logger::from_config(logging_config).start();
 
     let settings = Settings::new()?;
     let display_config = settings.display().clone();
@@ -179,10 +185,7 @@ fn main() -> amethyst::Result<()> {
         )?;
 
     let mut game = builder
-        .with_frame_limit(
-            FrameRateLimitStrategy::SleepAndYield(Duration::from_millis(2)),
-            60,
-        )
+        .with_frame_limit(FrameRateLimitStrategy::Yield, 60)
         .build(game_data_builder)?;
 
     game.run();
