@@ -192,7 +192,9 @@ pub struct MenuSystem {
     transition_state: TransitionState,
 }
 
+#[derive(Debug)]
 struct MenuScreenAnimation {
+    change_modal_title: Option<String>,
     started_at: Option<Duration>,
     elements_to_hide: Vec<&'static str>,
     elements_to_show: Vec<&'static str>,
@@ -424,7 +426,7 @@ impl<'s> System<'s> for MenuSystem {
             _ => StateUpdate::None,
         };
 
-        let (mut elements_to_hide, elements_to_show) = match state_update {
+        let (change_modal_title, mut elements_to_hide, elements_to_show) = match state_update {
             StateUpdate::GameMenuUpdate {
                 game_engine_state,
                 menu_screen,
@@ -465,9 +467,9 @@ impl<'s> System<'s> for MenuSystem {
                     self.menu_screen = new_menu_screen;
                     self.modal_window_id = None;
                     elements_to_hide.append(&mut modal_window_with_confirmation());
-                    (elements_to_hide, elements_to_show)
+                    (None, elements_to_hide, elements_to_show)
                 } else {
-                    (vec![], vec![])
+                    (None, vec![], vec![])
                 }
             }
             StateUpdate::ShowModalWindow {
@@ -481,21 +483,17 @@ impl<'s> System<'s> for MenuSystem {
                     show_confirmation
                 );
                 self.modal_window_id = Some(id);
-                *system_data
-                    .ui_finder
-                    .get_ui_text_mut(&mut system_data.ui_texts, UI_MODAL_TITLE)
-                    .unwrap() = title;
                 if show_confirmation {
-                    (vec![], modal_window_with_confirmation())
+                    (Some(title), vec![], modal_window_with_confirmation())
                 } else {
-                    (vec![UI_MODAL_CONFIRM_BUTTON], modal_window())
+                    (Some(title), vec![UI_MODAL_CONFIRM_BUTTON], modal_window())
                 }
             }
             StateUpdate::CustomAnimation {
                 elements_to_hide,
                 elements_to_show,
-            } => (elements_to_hide, elements_to_show),
-            StateUpdate::None => (vec![], vec![]),
+            } => (None, elements_to_hide, elements_to_show),
+            StateUpdate::None => (None, vec![], vec![]),
         };
 
         if self.modal_window_id.is_some() {
@@ -508,7 +506,7 @@ impl<'s> System<'s> for MenuSystem {
         }
 
         if !elements_to_show.is_empty() || !elements_to_hide.is_empty() {
-            self.add_fade_animation(elements_to_hide, elements_to_show);
+            self.add_fade_animation(change_modal_title, elements_to_hide, elements_to_show);
         }
     }
 }
@@ -516,10 +514,12 @@ impl<'s> System<'s> for MenuSystem {
 impl MenuSystem {
     fn add_fade_animation(
         &mut self,
+        change_modal_title: Option<String>,
         elements_to_hide: Vec<&'static str>,
         elements_to_show: Vec<&'static str>,
     ) {
         self.menu_screen_animations.push_back(MenuScreenAnimation {
+            change_modal_title,
             started_at: None,
             elements_to_hide,
             elements_to_show,
@@ -537,6 +537,14 @@ impl MenuSystem {
             return;
         }
         let menu_screen_animation = menu_screen_animation.unwrap();
+
+        if let Some(change_modal_title) = menu_screen_animation.change_modal_title.clone() {
+            *system_data
+                .ui_finder
+                .get_ui_text_mut(&mut system_data.ui_texts, UI_MODAL_TITLE)
+                .unwrap() = change_modal_title;
+        }
+
         if menu_screen_animation.started_at.is_none() {
             if let TransitionState::Still = self.transition_state {
             } else {
@@ -549,10 +557,11 @@ impl MenuSystem {
             } else {
                 panic!("There's no elements to show or hide");
             }
-            log::trace!(
-                "Starting a new menu screen animation at {}s ({:?})",
+            log::debug!(
+                "Starting a new menu screen animation at {}s ({:?}): {:?}",
                 now.as_secs_f32(),
-                self.transition_state
+                self.transition_state,
+                menu_screen_animation
             );
             menu_screen_animation.started_at = Some(now);
         }
@@ -600,7 +609,7 @@ impl MenuSystem {
                     if !is_container && !element_to_hide.contains(BACKGROUND_TAG) {
                         ui_transform.local_z = 0.5;
                     } else if *element_to_hide == UI_MODAL_BACKDROP_CONTAINER
-                        && transition_completed > 1.0
+                        && transition_completed >= 1.0
                     {
                         ui_transform.local_z = 100.0;
                     }
@@ -611,7 +620,7 @@ impl MenuSystem {
                     } else {
                         Some(&system_data.hierarchy)
                     };
-                    if transition_completed > 1.0
+                    if transition_completed >= 1.0
                         || (element_to_hide.contains(MODAL_TAG)
                             && *element_to_hide != UI_MODAL_BACKDROP_CONTAINER)
                     {
@@ -630,14 +639,15 @@ impl MenuSystem {
                     }
                 }
 
-                if transition_completed > 1.0 || (modified == 0 && transition_completed != 0.0) {
+                if transition_completed >= 1.0 || (modified == 0 && transition_completed != 0.0) {
                     menu_screen_animation.elements_to_hide.clear();
                     self.transition_state = TransitionState::FadeIn;
                     menu_screen_animation.started_at = Some(now);
-                    log::trace!(
-                        "Starting a new menu screen animation at {}s ({:?})",
+                    log::debug!(
+                        "Starting a new menu screen animation at {}s ({:?}): {:?}",
                         now.as_secs_f32(),
-                        self.transition_state
+                        self.transition_state,
+                        menu_screen_animation
                     );
                 }
             }
@@ -692,8 +702,7 @@ impl MenuSystem {
                     if *element_to_show == UI_MODAL_BACKDROP_CONTAINER {
                         ui_transform.local_z = 150.0;
                     }
-                    if transition_completed > 1.0 || (modified == 0 && transition_completed != 0.0)
-                    {
+                    if transition_completed >= 1.0 {
                         if !is_container && !element_to_show.contains(BACKGROUND_TAG) {
                             ui_transform.local_z = 1.0;
                         }
@@ -706,7 +715,7 @@ impl MenuSystem {
                     }
                 }
 
-                if transition_completed > 1.0 {
+                if transition_completed >= 1.0 || (modified == 0 && transition_completed != 0.0) {
                     menu_screen_animation.elements_to_show.clear();
                     self.transition_state = TransitionState::Still;
                 }
@@ -714,8 +723,7 @@ impl MenuSystem {
             TransitionState::Still => {}
         }
 
-        if transition_completed > 1.0
-            && menu_screen_animation.elements_to_hide.is_empty()
+        if menu_screen_animation.elements_to_hide.is_empty()
             && menu_screen_animation.elements_to_show.is_empty()
         {
             self.transition_state = TransitionState::Still;
