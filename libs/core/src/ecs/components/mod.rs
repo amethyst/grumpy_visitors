@@ -5,7 +5,11 @@ use amethyst::ecs::{Component, DenseVecStorage, Entity, VecStorage};
 use serde_derive::{Deserialize, Serialize};
 use shrinkwraprs::Shrinkwrap;
 
-use std::{collections::VecDeque, net::SocketAddr, time::Instant};
+use std::{
+    collections::VecDeque,
+    net::SocketAddr,
+    time::{Duration, Instant},
+};
 
 use crate::{
     actions::{
@@ -150,10 +154,12 @@ pub struct NetConnectionModel {
     pub last_acknowledged_update: Option<u64>,
     pub ping_pong_data: PingPongData,
     pub disconnected: bool,
+    pub session_created_at: Duration,
+    pub session_id: NetIdentifier,
 }
 
 impl NetConnectionModel {
-    pub fn new(id: NetIdentifier, addr: SocketAddr) -> Self {
+    pub fn new(id: NetIdentifier, session_id: NetIdentifier, addr: SocketAddr) -> Self {
         Self {
             id,
             addr,
@@ -161,6 +167,8 @@ impl NetConnectionModel {
             last_acknowledged_update: None,
             ping_pong_data: PingPongData::new(),
             disconnected: false,
+            session_created_at: Duration::new(0, 0),
+            session_id,
         }
     }
 }

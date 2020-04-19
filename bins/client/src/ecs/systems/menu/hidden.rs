@@ -1,6 +1,7 @@
 use gv_client_shared::ecs::resources::ConnectionStatus;
 
 use super::*;
+use crate::utils::ui::disconnect_reason_title;
 
 const DISCONNECTED: &str = "MP_GAME_DISCONNECTED";
 
@@ -11,7 +12,7 @@ impl MenuScreen for HiddenMenuScreen {
         vec![]
     }
 
-    fn process_events(
+    fn update(
         &mut self,
         system_data: &mut MenuSystemData,
         button_pressed: Option<&str>,
@@ -24,19 +25,23 @@ impl MenuScreen for HiddenMenuScreen {
             };
         }
 
-        let state_update = if let ConnectionStatus::ConnectionFailed(ref error) =
-            system_data.multiplayer_room_state.connection_status
-        {
-            Some(StateUpdate::ShowModalWindow {
+        let state_update = match system_data.multiplayer_room_state.connection_status {
+            ConnectionStatus::ConnectionFailed(ref error) => Some(StateUpdate::ShowModalWindow {
                 id: DISCONNECTED.to_owned(),
                 title: error
                     .as_ref()
                     .map(|error| format!("Disconnected: {:?}", error))
                     .unwrap_or_else(|| "Disconnected".to_owned()),
                 show_confirmation: true,
-            })
-        } else {
-            None
+            }),
+            ConnectionStatus::Disconnected(disconnect_reason) => {
+                Some(StateUpdate::ShowModalWindow {
+                    id: DISCONNECTED.to_owned(),
+                    title: disconnect_reason_title(disconnect_reason),
+                    show_confirmation: true,
+                })
+            }
+            _ => None,
         };
         if let Some(state_update) = state_update {
             system_data.multiplayer_room_state.connection_status = ConnectionStatus::NotConnected;

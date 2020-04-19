@@ -163,7 +163,7 @@ fn initialize_players(world: &mut World) {
             broadcast_message_reliable(
                 &mut transport,
                 (&net_connections).join(),
-                &ServerMessagePayload::StartGame(player_net_identifiers),
+                ServerMessagePayload::StartGame(player_net_identifiers),
             );
         },
     );

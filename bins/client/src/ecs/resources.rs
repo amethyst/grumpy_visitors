@@ -3,12 +3,31 @@ use amethyst::Error;
 use std::{
     env::current_exe,
     net::SocketAddr,
-    process::{Child, Command},
+    process::{Child, Command, ExitStatus},
 };
 
 pub struct LastAcknowledgedUpdate {
     pub id: u64,
     pub frame_number: u64,
+}
+
+#[derive(Default)]
+pub struct UiNetworkCommandResource {
+    pub command: Option<UiNetworkCommand>,
+}
+
+pub enum UiNetworkCommand {
+    #[allow(dead_code)]
+    Host,
+    #[allow(dead_code)]
+    Connect,
+    Kick { player_number: usize },
+    #[allow(dead_code)]
+    Start,
+    #[allow(dead_code)]
+    Leave,
+    #[allow(dead_code)]
+    Reset,
 }
 
 pub struct ServerCommand {
@@ -25,8 +44,21 @@ impl ServerCommand {
         Ok(())
     }
 
-    pub fn kill(&mut self) {
+    pub fn is_started(&self) -> bool {
+        self.process.is_some()
+    }
+
+    pub fn stop(&mut self) {
         self.process = None;
+    }
+
+    pub fn exit_status(&mut self) -> Option<ExitStatus> {
+        self.process.as_mut().and_then(|process| {
+            process
+                .cmd
+                .try_wait()
+                .expect("Expected to get a process status")
+        })
     }
 }
 

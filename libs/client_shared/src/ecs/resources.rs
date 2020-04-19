@@ -12,7 +12,10 @@ use std::{
 };
 
 use gv_animation_prefabs::GameSpriteAnimationPrefab;
-use gv_core::{math::Vector3, net::NetIdentifier};
+use gv_core::{
+    math::Vector3,
+    net::{server_message::DisconnectReason, NetIdentifier},
+};
 
 use crate::utils::graphic_helpers::generate_rectangle_vertices;
 
@@ -70,6 +73,10 @@ pub struct MultiplayerRoomState {
     pub has_sent_start_message: bool,
     pub server_addr: SocketAddr,
     pub is_host: bool,
+    /// The flag is controlled by MultiplayerRoomMenuScreen and ClientNetworkSystem.
+    /// It is set to true when a user presses the button to leave the room and is set to false
+    /// when ClientNetworkSystem sends a Disconnect message.
+    pub pending_disconnecting: bool,
     pub connection_status: ConnectionStatus,
     pub player_net_id: NetIdentifier,
 }
@@ -84,6 +91,7 @@ impl MultiplayerRoomState {
             has_sent_start_message: false,
             server_addr: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 0), 3455)),
             is_host: false,
+            pending_disconnecting: false,
             connection_status: ConnectionStatus::NotConnected,
             player_net_id: 0,
         }
@@ -109,13 +117,17 @@ pub enum ConnectionStatus {
     NotConnected,
     Connecting(Instant),
     Connected(NetIdentifier),
+    Disconnecting,
+    Disconnected(DisconnectReason),
     ConnectionFailed(Option<io::Error>),
 }
 
 impl ConnectionStatus {
     pub fn is_not_connected(&self) -> bool {
         match self {
-            ConnectionStatus::NotConnected | ConnectionStatus::ConnectionFailed(_) => true,
+            ConnectionStatus::NotConnected
+            | ConnectionStatus::Disconnected(_)
+            | ConnectionStatus::ConnectionFailed(_) => true,
             _ => false,
         }
     }

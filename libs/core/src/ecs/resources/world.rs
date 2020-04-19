@@ -150,7 +150,7 @@ impl SavedWorldState {
             let is_the_same_generation = storage.contains(*entity);
             if is_the_same_generation {
                 storage
-                    .insert(entity.clone(), component.clone())
+                    .insert(*entity, component.clone())
                     .expect("Expected to insert a saved component");
             }
         }

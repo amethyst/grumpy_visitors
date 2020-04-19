@@ -60,7 +60,7 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
             send_message_reliable(
                 &mut transport,
                 net_connection,
-                &ClientMessagePayload::WalkActions(ImmediatePlayerActionsUpdates {
+                ClientMessagePayload::WalkActions(ImmediatePlayerActionsUpdates {
                     frame_number: game_time_service.game_frame_number() + INTERPOLATION_FRAME_DELAY,
                     updates: client_world_updates.walk_action_updates.clone(),
                 }),
@@ -72,7 +72,7 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
             send_message_reliable(
                 &mut transport,
                 net_connection,
-                &ClientMessagePayload::CastActions(ImmediatePlayerActionsUpdates {
+                ClientMessagePayload::CastActions(ImmediatePlayerActionsUpdates {
                     frame_number: game_time_service.game_frame_number() + INTERPOLATION_FRAME_DELAY,
                     updates: client_world_updates.cast_action_updates.clone(),
                 }),
@@ -92,7 +92,7 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
         send_message_reliable(
             &mut transport,
             net_connection,
-            &ClientMessagePayload::LookActions(PlayerLookActionUpdates {
+            ClientMessagePayload::LookActions(PlayerLookActionUpdates {
                 updates: Vec::from_iter(client_world_updates.look_actions_updates.drain(..).map(
                     |(frame_number, update)| (frame_number + INTERPOLATION_FRAME_DELAY, update),
                 )),

@@ -10,9 +10,9 @@ use gv_client_shared::{
     utils::graphic_helpers::{create_color_material, create_mesh, generate_circle_vertices},
 };
 #[cfg(not(feature = "client"))]
-use gv_core::net::client_message::ClientMessagePayload;
+use gv_core::net::client_message::ClientMessage;
 #[cfg(feature = "client")]
-use gv_core::net::server_message::ServerMessagePayload;
+use gv_core::net::server_message::ServerMessage;
 use gv_core::{actions::mob::MobAttackType, net::ConnectionNetEvent};
 
 #[derive(Clone)]
@@ -73,6 +73,6 @@ impl MonsterDefinitions {
 }
 
 #[cfg(feature = "client")]
-pub struct ConnectionEvents(pub Vec<ConnectionNetEvent<ServerMessagePayload>>);
+pub struct ConnectionEvents(pub Vec<ConnectionNetEvent<ServerMessage>>);
 #[cfg(not(feature = "client"))]
-pub struct ConnectionEvents(pub Vec<ConnectionNetEvent<ClientMessagePayload>>);
+pub struct ConnectionEvents(pub Vec<ConnectionNetEvent<ClientMessage>>);

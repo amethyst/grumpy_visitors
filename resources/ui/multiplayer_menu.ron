@@ -82,6 +82,7 @@ Container(
                         height: 58.0,
                         anchor: Middle,
                         stretch: XY(x_margin: 0.0, y_margin: 7.0, keep_aspect_ratio: false),
+                        opaque: false,
                         hidden: true,
                     ),
                     text: (
@@ -102,6 +103,7 @@ Container(
                         height: 58.0,
                         anchor: Middle,
                         stretch: XY(x_margin: 0.0, y_margin: 9.0, keep_aspect_ratio: false),
+                        opaque: false,
                         hidden: true,
                     ),
                     text: (
@@ -110,6 +112,26 @@ Container(
                         font_size: 58.0,
                         color: (0.9, 0.9, 0.9, 0.0),
                         align: MiddleLeft,
+                    )
+                ),
+                Button(
+                    transform: (
+                        id: "ui_mp_room_player1_kick",
+                        anchor: MiddleRight,
+                        pivot: MiddleRight,
+                        x: 0.0,
+                        y: 0.0,
+                        z: 0.5,
+                        width: 100.0,
+                        height: 36.0,
+                        hidden: true,
+                    ),
+                    button: (
+                        text: "Kick",
+                        font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                        font_size: 36.,
+                        normal_text_color: (0.972, 0.917, 0.827, 0.0),
+                        hover_text_color: (0.841, 0.670, 0.556, 1.0),
                     )
                 ),
             ]
@@ -146,6 +168,7 @@ Container(
                         height: 58.0,
                         anchor: Middle,
                         stretch: XY(x_margin: 0.0, y_margin: 7.0, keep_aspect_ratio: false),
+                        opaque: false,
                         hidden: true,
                     ),
                     text: (
@@ -166,6 +189,7 @@ Container(
                         height: 58.0,
                         anchor: Middle,
                         stretch: XY(x_margin: 0.0, y_margin: 9.0, keep_aspect_ratio: false),
+                        opaque: false,
                         hidden: true,
                     ),
                     text: (
@@ -230,6 +254,7 @@ Container(
                         height: 58.0,
                         anchor: Middle,
                         stretch: XY(x_margin: 0.0, y_margin: 7.0, keep_aspect_ratio: false),
+                        opaque: false,
                         hidden: true,
                     ),
                     text: (
@@ -250,6 +275,7 @@ Container(
                         height: 58.0,
                         anchor: Middle,
                         stretch: XY(x_margin: 0.0, y_margin: 9.0, keep_aspect_ratio: false),
+                        opaque: false,
                         hidden: true,
                     ),
                     text: (
@@ -314,6 +340,7 @@ Container(
                         height: 58.0,
                         anchor: Middle,
                         stretch: XY(x_margin: 0.0, y_margin: 7.0, keep_aspect_ratio: false),
+                        opaque: false,
                         hidden: true,
                     ),
                     text: (
@@ -334,6 +361,7 @@ Container(
                         height: 58.0,
                         anchor: Middle,
                         stretch: XY(x_margin: 0.0, y_margin: 9.0, keep_aspect_ratio: false),
+                        opaque: false,
                         hidden: true,
                     ),
                     text: (

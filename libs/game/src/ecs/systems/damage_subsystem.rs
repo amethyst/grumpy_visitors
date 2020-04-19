@@ -132,7 +132,7 @@ impl<'s> DamageSubsystem<'s> {
                 }
             } else {
                 // If an entity has Dead component for whatever reason, but it has positive health,
-                // remove it's Dead component.
+                // remove its Dead component.
                 // TODO: do we really need this code?
                 let will_be_killed = dead
                     .get(entity)

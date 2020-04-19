@@ -39,7 +39,7 @@ use gv_game::{
 
 use crate::{
     ecs::{
-        resources::{LastAcknowledgedUpdate, ServerCommand},
+        resources::{LastAcknowledgedUpdate, ServerCommand, UiNetworkCommandResource},
         systems::*,
     },
     rendering::*,
@@ -94,6 +94,7 @@ fn main() -> amethyst::Result<()> {
     builder.world.insert(ServerCommand::new());
 
     // The resources which we need to remember to reset on starting a game.
+    builder.world.insert(UiNetworkCommandResource::default());
     builder.world.insert(MultiplayerRoomState::new());
     builder.world.insert(ClientWorldUpdates::default());
     builder.world.insert(LastAcknowledgedUpdate {

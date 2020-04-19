@@ -1,7 +1,7 @@
 pub mod net;
 pub mod world;
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crate::math::Vector2;
 
@@ -57,5 +57,14 @@ pub enum GameEngineState {
     Loading,
     Menu,
     Playing,
+    ShuttingDown { shutdown_at: Instant },
     Quit,
+}
+
+impl NewGameEngineState {
+    pub fn shutdown() -> Self {
+        NewGameEngineState(GameEngineState::ShuttingDown {
+            shutdown_at: Instant::now() + Duration::from_secs(1),
+        })
+    }
 }

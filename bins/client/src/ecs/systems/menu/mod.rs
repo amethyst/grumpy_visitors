@@ -23,7 +23,7 @@ use gv_core::ecs::{
 };
 
 use crate::ecs::{
-    resources::ServerCommand,
+    resources::{ServerCommand, UiNetworkCommandResource},
     system_data::ui::UiFinderMut,
     systems::menu::{
         hidden::HiddenMenuScreen, lobby::LobbyMenuScreen, main::MainMenuScreen,
@@ -63,6 +63,7 @@ const UI_MP_ROOM_PLAYER1_CONTAINER: &str = "ui_mp_room_player1_container";
 const UI_MP_ROOM_PLAYER1_BG: &str = "ui_mp_room_player1_bg";
 const UI_MP_ROOM_PLAYER1_NUMBER: &str = "ui_mp_room_player1_number";
 const UI_MP_ROOM_PLAYER1_NICKNAME: &str = "ui_mp_room_player1_nickname";
+const UI_MP_ROOM_PLAYER1_KICK: &str = "ui_mp_room_player1_kick";
 const UI_MP_ROOM_PLAYER2_CONTAINER: &str = "ui_mp_room_player2_container";
 const UI_MP_ROOM_PLAYER2_BG: &str = "ui_mp_room_player2_bg";
 const UI_MP_ROOM_PLAYER2_NUMBER: &str = "ui_mp_room_player2_number";
@@ -92,7 +93,15 @@ trait MenuScreen {
         self.elements_to_show(system_data)
     }
 
-    fn process_events(
+    fn value_changed(
+        &mut self,
+        _system_data: &mut MenuSystemData,
+        _text_field_id: &str,
+        _new_value: &str,
+    ) {
+    }
+
+    fn update(
         &mut self,
         system_data: &mut MenuSystemData,
         button_pressed: Option<&str>,
@@ -128,21 +137,22 @@ lazy_static! {
         UI_MP_ROOM_PLAYER1_BG,
         UI_MP_ROOM_PLAYER1_NUMBER,
         UI_MP_ROOM_PLAYER1_NICKNAME,
+        UI_MP_ROOM_PLAYER1_KICK,
         UI_MP_ROOM_PLAYER2_CONTAINER,
         UI_MP_ROOM_PLAYER2_BG,
         UI_MP_ROOM_PLAYER2_NUMBER,
         UI_MP_ROOM_PLAYER2_NICKNAME,
-        // UI_MP_ROOM_PLAYER2_KICK,
+        UI_MP_ROOM_PLAYER2_KICK,
         UI_MP_ROOM_PLAYER3_CONTAINER,
         UI_MP_ROOM_PLAYER3_BG,
         UI_MP_ROOM_PLAYER3_NUMBER,
         UI_MP_ROOM_PLAYER3_NICKNAME,
-        // UI_MP_ROOM_PLAYER3_KICK,
+        UI_MP_ROOM_PLAYER3_KICK,
         UI_MP_ROOM_PLAYER4_CONTAINER,
         UI_MP_ROOM_PLAYER4_BG,
         UI_MP_ROOM_PLAYER4_NUMBER,
         UI_MP_ROOM_PLAYER4_NICKNAME,
-        // UI_MP_ROOM_PLAYER4_KICK,
+        UI_MP_ROOM_PLAYER4_KICK,
     ];
     static ref MODAL_WINDOW_ELEMENTS: &'static [&'static str] = &[
         UI_MODAL_BACKDROP_CONTAINER,
@@ -161,6 +171,7 @@ pub struct MenuSystemData<'s> {
     new_game_engine_state: WriteExpect<'s, NewGameEngineState>,
     game_level_state: WriteExpect<'s, GameLevelState>,
     server_command: WriteExpect<'s, ServerCommand>,
+    ui_network_command: WriteExpect<'s, UiNetworkCommandResource>,
     multiplayer_room_state: WriteExpect<'s, MultiplayerRoomState>,
     multiplayer_game_state: WriteExpect<'s, MultiplayerGameState>,
     laminar_socket: WriteExpect<'s, LaminarSocketResource>,
@@ -247,7 +258,7 @@ impl MenuSystem {
             menu_screens: MenuScreens {
                 lobby_menu_screen: LobbyMenuScreen,
                 main_menu_screen: MainMenuScreen,
-                multiplayer_room_menu_screen: MultiplayerRoomMenuScreen,
+                multiplayer_room_menu_screen: MultiplayerRoomMenuScreen::new(),
                 restart_menu_screen: RestartMenuScreen,
                 hidden_menu_screen: HiddenMenuScreen,
             },
@@ -265,6 +276,7 @@ impl MenuSystem {
                 UI_LOBBY_JOIN_BUTTON,
                 UI_MP_ROOM_START_BUTTON,
                 UI_MP_ROOM_LOBBY_BUTTON,
+                UI_MP_ROOM_PLAYER1_KICK,
                 UI_MP_ROOM_PLAYER2_KICK,
                 UI_MP_ROOM_PLAYER3_KICK,
                 UI_MP_ROOM_PLAYER4_KICK,
@@ -343,11 +355,30 @@ impl<'s> System<'s> for MenuSystem {
             .get_or_insert_with(|| system_data.ui_events.register_reader());
 
         let mut button_pressed = None;
+        let mut value_changed = None;
         for event in system_data.ui_events.read(event_readers) {
-            if let UiEventType::Click = event.event_type {
-                button_pressed = system_data.ui_finder.get_id_by_entity(event.target);
-                system_data.ui_interactables.remove(event.target);
-            }
+            let target_id = system_data.ui_finder.get_id_by_entity(event.target);
+            log::trace!("{:?}: {:?}", target_id, event);
+
+            match &event.event_type {
+                UiEventType::Click => {
+                    button_pressed = target_id;
+                    // Prevent double-clicking.
+                    system_data.ui_interactables.remove(event.target);
+                }
+                UiEventType::ValueChange => {
+                    let text_field_id = system_data
+                        .ui_finder
+                        .get_id_by_entity(event.target)
+                        .expect("Expected an edited text field");
+                    let new_value = system_data
+                        .ui_finder
+                        .get_ui_text(&system_data.ui_texts, &text_field_id)
+                        .expect("Expected an edited text field");
+                    value_changed = Some((text_field_id, new_value.clone()));
+                }
+                _ => {}
+            };
         }
 
         if let Some(ui_loading) = system_data.ui_finder.find(UI_LOADING_LABEL) {
@@ -359,6 +390,7 @@ impl<'s> System<'s> for MenuSystem {
 
         self.run_fade_animation(&mut system_data, now);
 
+        // Pass the events to the active menu screen handler.
         let state_update = match (&*system_data.game_engine_state, self.menu_screen) {
             (GameEngineState::Menu, GameMenuScreen::Loading) => {
                 StateUpdate::new_menu_screen(GameMenuScreen::LobbyMenu)
@@ -368,7 +400,10 @@ impl<'s> System<'s> for MenuSystem {
                     .menu_screens
                     .menu_screen(menu_screen)
                     .expect("Expected a menu screen for GameEngineState::Menu");
-                menu_screen.process_events(
+                if let Some((text_field_id, value_changed)) = value_changed {
+                    menu_screen.value_changed(&mut system_data, &text_field_id, &value_changed);
+                }
+                menu_screen.update(
                     &mut system_data,
                     button_pressed.as_ref().map(std::string::String::as_str),
                     self.modal_window_id
@@ -379,7 +414,7 @@ impl<'s> System<'s> for MenuSystem {
             (GameEngineState::Playing, menu_screen) if menu_screen != GameMenuScreen::Hidden => {
                 StateUpdate::new_menu_screen(GameMenuScreen::Hidden)
             }
-            (GameEngineState::Playing, _) => self.menu_screens.hidden_menu_screen.process_events(
+            (GameEngineState::Playing, _) => self.menu_screens.hidden_menu_screen.update(
                 &mut system_data,
                 button_pressed.as_ref().map(std::string::String::as_str),
                 self.modal_window_id

@@ -22,7 +22,7 @@ use gv_core::{
         system_data::time::GameTimeService,
     },
     net::{
-        client_message::ClientMessagePayload,
+        client_message::{ClientMessage, ClientMessagePayload},
         server_message::{DisconnectReason, ServerMessagePayload},
         NetEvent, NetIdentifier, NetUpdate, INTERPOLATION_FRAME_DELAY,
     },
@@ -33,21 +33,29 @@ use gv_game::{
     PLAYER_COLORS,
 };
 
+use std::collections::HashSet;
+
 use crate::ecs::resources::{HostClientAddress, LastBroadcastedFrame};
 
 const HEARTBEAT_FRAME_INTERVAL: u64 = 2;
 
 pub struct ServerNetworkSystem {
-    host_connection_id: NetIdentifier,
+    host_connection_id: Option<NetIdentifier>,
     last_heartbeat_frame: u64,
 }
 
 impl ServerNetworkSystem {
     pub fn new() -> Self {
         Self {
-            host_connection_id: 0,
+            host_connection_id: None,
             last_heartbeat_frame: 0,
         }
+    }
+
+    fn is_host(&self, connection_id: NetIdentifier) -> bool {
+        self.host_connection_id.map_or(false, |host_connection_id| {
+            host_connection_id == connection_id
+        })
     }
 }
 
@@ -88,13 +96,13 @@ impl<'s> System<'s> for ServerNetworkSystem {
         ): Self::SystemData,
     ) {
         if let Some(host_client_address) = host_client_address.0.take() {
-            let net_connection_model = NetConnectionModel::new(0, host_client_address);
-            self.host_connection_id = 0;
+            let net_connection_model = NetConnectionModel::new(0, 0, host_client_address);
+            self.host_connection_id = Some(0);
             log::info!("Sending a Handshake message to a hosting client");
             send_message_reliable(
                 &mut transport,
                 &net_connection_model,
-                &ServerMessagePayload::Handshake {
+                ServerMessagePayload::Handshake {
                     net_id: 0,
                     is_host: true,
                 },
@@ -105,181 +113,342 @@ impl<'s> System<'s> for ServerNetworkSystem {
                 .build();
         }
 
+        let mut host_disconnected = false;
+        let mut kicked_players = HashSet::new();
+
         for connection_event in connection_events.0.drain(..) {
             let connection_id = connection_event.connection_id;
-            let mut connection_model = (&mut net_connection_models)
+            let net_connection_model = (&mut net_connection_models)
                 .join()
                 .find(|net_connection_model| net_connection_model.id == connection_id)
                 .expect("Expected to find a NetConnection");
 
-            // Handle ignored events if the game is already started.
-            if multiplayer_game_state.is_playing {
-                let is_ignored = match connection_event.event {
-                    NetEvent::Message(ClientMessagePayload::JoinRoom { .. }) => {
-                        let player_is_in_game = multiplayer_game_state
-                            .players
-                            .iter()
-                            .any(|player| player.connection_id == connection_id);
-                        if !player_is_in_game {
-                            log::info!(
-                                "A new client ({}) {} tried to connect while the game has already started",
-                                connection_id,
-                                connection_model.addr
-                            );
-                            send_message_reliable(
-                                &mut transport,
-                                connection_model,
-                                &ServerMessagePayload::Disconnect(
-                                    DisconnectReason::GameIsAlreadyStarted,
-                                ),
-                            );
-                        }
-                        true
-                    }
-                    NetEvent::Message(ClientMessagePayload::StartHostedGame) => {
-                        log::info!(
-                            "A client ({}) {} tried to start the game while it's already started",
-                            connection_id,
-                            connection_model.addr
-                        );
-                        true
-                    }
-                    _ => false,
-                };
-
-                if is_ignored {
+            // Handle ignoring outdated messages or setting a new session_id.
+            if let NetEvent::Message(ClientMessage {
+                session_id,
+                payload,
+            }) = &connection_event.event
+            {
+                if *session_id < net_connection_model.session_id {
+                    log::warn!("Ignoring a message with session id {} from a connection {} with session id {}", session_id, net_connection_model.id, net_connection_model.session_id);
                     continue;
+                } else if let ClientMessagePayload::JoinRoom { sent_at, .. } = payload {
+                    if net_connection_model.session_created_at < *sent_at {
+                        net_connection_model.session_id = *session_id;
+                        net_connection_model.session_created_at = *sent_at;
+                        // It might be the case that a player reconnects before the connection model
+                        // entity is dropped, so we need to change this flag manually for previously
+                        // existed connections.
+                        net_connection_model.disconnected = false;
+                    }
                 }
             }
 
-            if !multiplayer_game_state.is_playing {
-                let is_ignored = match connection_event.event {
-                    NetEvent::Message(ClientMessagePayload::AcknowledgeWorldUpdate(_)) => true,
-                    NetEvent::Message(ClientMessagePayload::WalkActions(_)) => true,
-                    NetEvent::Message(ClientMessagePayload::CastActions(_)) => true,
-                    NetEvent::Message(ClientMessagePayload::LookActions(_)) => true,
-                    _ => false,
-                };
+            // Handle ignoring messages if the game is already started.
+            if multiplayer_game_state.is_playing {
+                if let NetEvent::Message(ClientMessage {
+                    session_id: _,
+                    payload,
+                }) = &connection_event.event
+                {
+                    let is_ignored = match payload {
+                        ClientMessagePayload::JoinRoom { .. } => {
+                            let player_is_in_game = multiplayer_game_state
+                                .players
+                                .iter()
+                                .any(|player| player.connection_id == connection_id);
+                            if !player_is_in_game {
+                                log::warn!(
+                                "A new client ({}) {} tried to connect while the game has already started",
+                                connection_id,
+                                net_connection_model.addr
+                            );
+                                send_message_reliable(
+                                    &mut transport,
+                                    net_connection_model,
+                                    ServerMessagePayload::Disconnect(
+                                        DisconnectReason::GameIsStarted,
+                                    ),
+                                );
+                            }
+                            true
+                        }
 
-                if is_ignored {
-                    continue;
+                        ClientMessagePayload::StartHostedGame => {
+                            log::warn!(
+                                "A client ({}) {} tried to start the game while it's already started",
+                                connection_id,
+                                net_connection_model.addr
+                            );
+                            true
+                        }
+
+                        _ => false,
+                    };
+
+                    if is_ignored {
+                        continue;
+                    }
+                }
+            }
+
+            // Handle ignoring messages if the game is not started.
+            if !multiplayer_game_state.is_playing {
+                if let NetEvent::Message(ClientMessage {
+                    session_id: _,
+                    payload,
+                }) = &connection_event.event
+                {
+                    let is_ignored = match payload {
+                        ClientMessagePayload::AcknowledgeWorldUpdate(_) => true,
+                        ClientMessagePayload::WalkActions(_) => true,
+                        ClientMessagePayload::CastActions(_) => true,
+                        ClientMessagePayload::LookActions(_) => true,
+                        _ => false,
+                    };
+
+                    if is_ignored {
+                        continue;
+                    }
                 }
             }
 
             match connection_event.event {
-                NetEvent::Message(ClientMessagePayload::JoinRoom { nickname }) => {
-                    // TODO: we'll need a more reliable way to determine the host in future.
-                    let is_host = multiplayer_game_state.players.is_empty();
-                    if is_host {
-                        self.host_connection_id = connection_id;
-                    }
+                NetEvent::Message(ClientMessage {
+                    session_id: _,
+                    payload,
+                }) => match payload {
+                    ClientMessagePayload::JoinRoom {
+                        nickname,
+                        sent_at: _,
+                    } => {
+                        let is_host = if multiplayer_game_state.players.is_empty() {
+                            if let Some(host_connection_id) = self.host_connection_id {
+                                if host_connection_id != connection_id {
+                                    send_message_reliable(
+                                        &mut transport,
+                                        net_connection_model,
+                                        ServerMessagePayload::Disconnect(
+                                            DisconnectReason::Uninitialized,
+                                        ),
+                                    );
+                                    net_connection_model.disconnected = true;
+                                    continue;
+                                }
+                                true
+                            } else {
+                                self.host_connection_id = Some(connection_id);
+                                true
+                            }
+                        } else {
+                            false
+                        };
 
-                    log::info!("Sending a Handshake message: {}", connection_id);
-                    send_message_reliable(
-                        &mut transport,
-                        connection_model,
-                        &ServerMessagePayload::Handshake {
-                            net_id: connection_id,
-                            is_host,
-                        },
-                    );
-
-                    log::info!(
-                        "A client ({}) has joined the room: {}",
-                        connection_id,
-                        nickname
-                    );
-                    if let Some(player) = multiplayer_game_state
-                        .update_players()
-                        .iter_mut()
-                        .find(|player| player.connection_id == connection_id)
-                    {
-                        log::info!("The player already existed, updating the nickname only");
-                        player.nickname = nickname;
-                    } else {
-                        let color_index = multiplayer_game_state.players.len();
-                        multiplayer_game_state
-                            .update_players()
-                            .push(MultiplayerRoomPlayer {
-                                connection_id,
-                                entity_net_id: 0,
-                                nickname,
-                                is_host: self.host_connection_id == connection_id,
-                                color: PLAYER_COLORS[color_index],
-                            });
-                    }
-                }
-
-                NetEvent::Message(ClientMessagePayload::StartHostedGame)
-                    if connection_id == self.host_connection_id
-                        && !multiplayer_game_state.is_playing =>
-                {
-                    multiplayer_game_state.is_playing = true;
-                    new_game_engine_state.0 = GameEngineState::Playing;
-                }
-
-                NetEvent::Message(ClientMessagePayload::WalkActions(actions)) => {
-                    log::trace!(
-                        "Received WalkAction updates (frame {}): {:?}",
-                        game_time_service.game_frame_number(),
-                        actions
-                    );
-                    let discarded_actions = add_walk_actions(
-                        &mut *framed_updates,
-                        actions,
-                        game_time_service.game_frame_number(),
-                    );
-
-                    if !discarded_actions.is_empty() {
-                        log::trace!(
-                            "{} walk actions have been discarded",
-                            discarded_actions.len()
+                        log::info!(
+                            "A client ({}) has joined the room: {}",
+                            connection_id,
+                            nickname
                         );
+                        if let Some(player) = multiplayer_game_state
+                            .update_players()
+                            .iter_mut()
+                            .find(|player| player.connection_id == connection_id)
+                        {
+                            log::info!("The player already existed, updating the nickname only");
+                            player.nickname = nickname;
+                        } else {
+                            let new_player_count = multiplayer_game_state.players.len();
+                            if new_player_count >= 4 {
+                                send_message_reliable(
+                                    &mut transport,
+                                    net_connection_model,
+                                    ServerMessagePayload::Disconnect(DisconnectReason::RoomIsFull),
+                                );
+                                net_connection_model.disconnected = true;
+                                continue;
+                            }
+
+                            multiplayer_game_state
+                                .update_players()
+                                .push(MultiplayerRoomPlayer {
+                                    connection_id,
+                                    entity_net_id: 0,
+                                    nickname,
+                                    is_host: self.is_host(connection_id),
+                                    color: PLAYER_COLORS[new_player_count],
+                                });
+                        }
+
+                        log::info!("Sending a Handshake message: {}", connection_id);
                         send_message_reliable(
                             &mut transport,
-                            connection_model,
-                            &ServerMessagePayload::DiscardWalkActions(discarded_actions),
+                            net_connection_model,
+                            ServerMessagePayload::Handshake {
+                                net_id: connection_id,
+                                is_host,
+                            },
                         );
                     }
-                }
 
-                NetEvent::Message(ClientMessagePayload::CastActions(actions)) => {
-                    add_cast_actions(
-                        &mut *framed_updates,
-                        actions,
-                        &mut *action_update_id_provider,
-                        game_time_service.game_frame_number(),
-                    );
-                }
+                    ClientMessagePayload::StartHostedGame
+                        if self.is_host(connection_id) && !multiplayer_game_state.is_playing =>
+                    {
+                        multiplayer_game_state.is_playing = true;
+                        new_game_engine_state.0 = GameEngineState::Playing;
+                    }
+                    ClientMessagePayload::StartHostedGame => {
+                        log::warn!(
+                            "Received an unexpected StartHostedGame message (connection id: {})",
+                            connection_id,
+                        );
+                    }
 
-                NetEvent::Message(ClientMessagePayload::LookActions(actions)) => {
-                    add_look_actions(
-                        &mut *framed_updates,
-                        actions,
-                        game_time_service.game_frame_number(),
-                    );
-                }
+                    ClientMessagePayload::WalkActions(actions) => {
+                        log::trace!(
+                            "Received WalkAction updates (frame {}): {:?}",
+                            game_time_service.game_frame_number(),
+                            actions
+                        );
+                        let discarded_actions = add_walk_actions(
+                            &mut *framed_updates,
+                            actions,
+                            game_time_service.game_frame_number(),
+                        );
 
-                NetEvent::Message(ClientMessagePayload::AcknowledgeWorldUpdate(frame_number)) => {
-                    connection_model.last_acknowledged_update =
-                        Some(frame_number).max(connection_model.last_acknowledged_update);
-                }
+                        if !discarded_actions.is_empty() {
+                            log::trace!(
+                                "{} walk actions have been discarded",
+                                discarded_actions.len()
+                            );
+                            send_message_reliable(
+                                &mut transport,
+                                net_connection_model,
+                                ServerMessagePayload::DiscardWalkActions(discarded_actions),
+                            );
+                        }
+                    }
+
+                    ClientMessagePayload::CastActions(actions) => {
+                        add_cast_actions(
+                            &mut *framed_updates,
+                            actions,
+                            &mut *action_update_id_provider,
+                            game_time_service.game_frame_number(),
+                        );
+                    }
+
+                    ClientMessagePayload::LookActions(actions) => {
+                        add_look_actions(
+                            &mut *framed_updates,
+                            actions,
+                            game_time_service.game_frame_number(),
+                        );
+                    }
+
+                    ClientMessagePayload::AcknowledgeWorldUpdate(frame_number) => {
+                        net_connection_model.last_acknowledged_update =
+                            Some(frame_number).max(net_connection_model.last_acknowledged_update);
+                    }
+
+                    ClientMessagePayload::Kick {
+                        kicked_connection_id,
+                    } if self.is_host(connection_id) && !multiplayer_game_state.is_playing => {
+                        if self.is_host(kicked_connection_id) {
+                            log::warn!(
+                                "Tried to kick the host (connection id: {})",
+                                kicked_connection_id
+                            );
+                            continue;
+                        }
+
+                        let kicked_player_index = multiplayer_game_state
+                            .players
+                            .iter()
+                            .position(|player| player.connection_id == kicked_connection_id);
+                        if let Some(kicked_player_index) = kicked_player_index {
+                            kicked_players.insert(kicked_player_index);
+                        } else {
+                            log::warn!(
+                                "Tried to kick a player with an unknown connection id: {}",
+                                kicked_connection_id
+                            );
+                        }
+                    }
+                    ClientMessagePayload::Kick { .. } => {
+                        log::warn!(
+                            "Received an unexpected Kick message (connection id: {})",
+                            connection_id
+                        );
+                    }
+
+                    ClientMessagePayload::Disconnect => {
+                        net_connection_model.disconnected = true;
+                        if self.is_host(connection_id) {
+                            host_disconnected = true;
+                        }
+                    }
+
+                    ClientMessagePayload::Heartbeat
+                    | ClientMessagePayload::Ping(_)
+                    | ClientMessagePayload::Pong { .. } => {}
+                },
 
                 NetEvent::Disconnected => {
-                    multiplayer_game_state
-                        .update_players()
-                        .retain(|player| player.connection_id == connection_id);
+                    // We don't mark the net_connection_model as disconnected here,
+                    // because it should already be done by NetConnectionManagerSystem.
+                    if self.is_host(connection_id) {
+                        host_disconnected = true;
+                    }
                 }
 
                 _ => {}
             }
+
+            if net_connection_model.disconnected && !host_disconnected {
+                let old_len = multiplayer_game_state.players.len();
+                multiplayer_game_state
+                    .players
+                    .retain(|player| player.connection_id != connection_id);
+                if old_len != multiplayer_game_state.players.len() {
+                    multiplayer_game_state.update_players();
+                }
+            }
+        }
+
+        for kicked_player_index in kicked_players.iter().cloned() {
+            let player_connection_id =
+                multiplayer_game_state.players[kicked_player_index].connection_id;
+            multiplayer_game_state
+                .update_players()
+                .remove(kicked_player_index);
+            let net_connection_model = (&mut net_connection_models)
+                .join()
+                .find(|net_connection_model| net_connection_model.id == player_connection_id)
+                .expect("Expected a connection model of a kicked player");
+            send_message_reliable(
+                &mut transport,
+                net_connection_model,
+                ServerMessagePayload::Disconnect(DisconnectReason::Kick),
+            );
+            net_connection_model.disconnected = true;
+        }
+
+        if host_disconnected {
+            log::info!("The host has disconnected. Shutting down the server...");
+            broadcast_message_reliable(
+                &mut transport,
+                (&net_connection_models).join(),
+                ServerMessagePayload::Disconnect(DisconnectReason::Closed),
+            );
+            *new_game_engine_state = NewGameEngineState::shutdown();
+            return;
         }
 
         if let Some(players) = multiplayer_game_state.read_updated_players() {
             broadcast_message_reliable(
                 &mut transport,
                 (&net_connection_models).join(),
-                &ServerMessagePayload::UpdateRoomPlayers(players.to_owned()),
+                ServerMessagePayload::UpdateRoomPlayers(players.to_owned()),
             );
         }
 
@@ -290,7 +459,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
             broadcast_message_reliable(
                 &mut transport,
                 (&net_connection_models).join(),
-                &ServerMessagePayload::Heartbeat,
+                ServerMessagePayload::Heartbeat,
             );
         }
 
@@ -349,7 +518,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
                 broadcast_message_reliable(
                     &mut transport,
                     (&net_connection_models).join(),
-                    &ServerMessagePayload::PauseWaitingForPlayers {
+                    ServerMessagePayload::PauseWaitingForPlayers {
                         id: multiplayer_game_state.waiting_for_players_pause_id,
                         players: lagging_players,
                     },
@@ -359,7 +528,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
                 broadcast_message_reliable(
                     &mut transport,
                     (&net_connection_models).join(),
-                    &ServerMessagePayload::UnpauseWaitingForPlayers(
+                    ServerMessagePayload::UnpauseWaitingForPlayers(
                         multiplayer_game_state.waiting_for_players_pause_id,
                     ),
                 );
@@ -502,9 +671,10 @@ fn add_look_actions(
 
     // Just ignore these updates, most probably these are lost packages from the previous game,
     // or the client is just bonkers.
-    if frame_to_reserve.map_or(true, |frame_to_reserve| {
+    let is_outdated_update = frame_to_reserve.map_or(true, |frame_to_reserve| {
         frame_to_reserve.saturating_sub(frame_number) > PAUSE_FRAME_THRESHOLD
-    }) {
+    });
+    if is_outdated_update {
         return;
     }
 

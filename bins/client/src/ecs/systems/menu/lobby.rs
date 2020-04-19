@@ -6,6 +6,7 @@ use std::{
 use gv_client_shared::ecs::resources::ConnectionStatus;
 
 use super::*;
+use crate::utils::ui::disconnect_reason_title;
 
 pub struct LobbyMenuScreen;
 
@@ -30,7 +31,18 @@ impl MenuScreen for LobbyMenuScreen {
         ]
     }
 
-    fn process_events(
+    fn value_changed(
+        &mut self,
+        system_data: &mut MenuSystemData,
+        text_field_id: &str,
+        new_value: &str,
+    ) {
+        if text_field_id == UI_LOBBY_NICKNAME_EDITABLE {
+            system_data.multiplayer_room_state.nickname = new_value.to_owned();
+        }
+    }
+
+    fn update(
         &mut self,
         system_data: &mut MenuSystemData,
         button_pressed: Option<&str>,
@@ -116,6 +128,7 @@ impl MenuScreen for LobbyMenuScreen {
                     match &system_data.multiplayer_room_state.connection_status {
                         ConnectionStatus::NotConnected => (None, StateUpdate::None),
                         ConnectionStatus::Connecting(_) => (None, StateUpdate::None),
+                        ConnectionStatus::Disconnecting => (None, StateUpdate::None),
                         ConnectionStatus::Connected(_) => (
                             None,
                             StateUpdate::new_menu_screen(GameMenuScreen::MultiplayerRoomMenu),
@@ -128,6 +141,14 @@ impl MenuScreen for LobbyMenuScreen {
                                     .as_ref()
                                     .map(|error| format!("Disconnected: {:?}", error))
                                     .unwrap_or_else(|| "Disconnected".to_owned()),
+                                show_confirmation: true,
+                            },
+                        ),
+                        ConnectionStatus::Disconnected(disconnect_reason) => (
+                            Some(ConnectionStatus::NotConnected),
+                            StateUpdate::ShowModalWindow {
+                                id: CONNECTING_FAILED.to_owned(),
+                                title: disconnect_reason_title(*disconnect_reason),
                                 show_confirmation: true,
                             },
                         ),

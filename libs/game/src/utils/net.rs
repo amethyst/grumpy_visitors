@@ -2,25 +2,30 @@ use amethyst::network::simulation::{DeliveryRequirement, TransportResource, Urge
 
 use gv_core::ecs::components::NetConnectionModel;
 #[cfg(feature = "client")]
-use gv_core::net::client_message::ClientMessagePayload;
+use gv_core::net::client_message::{ClientMessage, ClientMessagePayload};
 #[cfg(not(feature = "client"))]
-use gv_core::net::server_message::ServerMessagePayload;
+use gv_core::net::server_message::{ServerMessage, ServerMessagePayload};
 
 #[cfg(not(feature = "client"))]
 pub fn broadcast_message_reliable<'a>(
     transport: &mut TransportResource,
     net_connections: impl Iterator<Item = &'a NetConnectionModel>,
-    message: &ServerMessagePayload,
+    payload: ServerMessagePayload,
 ) {
-    let send_message =
-        bincode::serialize(message).expect("Expected to serialize a broadcasted message");
     for connection in net_connections {
-        transport.send_with_requirements(
-            connection.addr,
-            &send_message,
-            DeliveryRequirement::Reliable,
-            UrgencyRequirement::Immediate,
-        );
+        let sent_message = bincode::serialize(&ServerMessage {
+            session_id: connection.session_id,
+            payload: payload.clone(),
+        })
+        .expect("Expected to serialize a broadcasted message");
+        if !connection.disconnected {
+            transport.send_with_requirements(
+                connection.addr,
+                &sent_message,
+                DeliveryRequirement::Reliable,
+                UrgencyRequirement::Immediate,
+            );
+        }
     }
 }
 
@@ -28,12 +33,19 @@ pub fn broadcast_message_reliable<'a>(
 pub fn send_message_reliable(
     transport: &mut TransportResource,
     net_connection: &NetConnectionModel,
-    message: &ClientMessagePayload,
+    payload: ClientMessagePayload,
 ) {
-    let send_message = bincode::serialize(message).expect("Expected to serialize a client message");
+    if net_connection.disconnected {
+        return;
+    }
+    let sent_message = bincode::serialize(&ClientMessage {
+        session_id: net_connection.session_id,
+        payload,
+    })
+    .expect("Expected to serialize a client message");
     transport.send_with_requirements(
         net_connection.addr,
-        &send_message,
+        &sent_message,
         DeliveryRequirement::Reliable,
         UrgencyRequirement::Immediate,
     );
@@ -43,12 +55,19 @@ pub fn send_message_reliable(
 pub fn send_message_reliable(
     transport: &mut TransportResource,
     net_connection: &NetConnectionModel,
-    message: &ServerMessagePayload,
+    payload: ServerMessagePayload,
 ) {
-    let send_message = bincode::serialize(message).expect("Expected to serialize a server message");
+    if net_connection.disconnected {
+        return;
+    }
+    let sent_message = bincode::serialize(&ServerMessage {
+        session_id: net_connection.session_id,
+        payload,
+    })
+    .expect("Expected to serialize a server message");
     transport.send_with_requirements(
         net_connection.addr,
-        &send_message,
+        &sent_message,
         DeliveryRequirement::Reliable,
         UrgencyRequirement::Immediate,
     );
@@ -58,13 +77,21 @@ pub fn send_message_reliable(
 pub fn send_message_unreliable(
     transport: &mut TransportResource,
     net_connection: &NetConnectionModel,
-    message: &ClientMessagePayload,
+    payload: ClientMessagePayload,
 ) {
+    if net_connection.disconnected {
+        return;
+    }
+    let message = ClientMessage {
+        session_id: net_connection.session_id,
+        payload,
+    };
     log::trace!("Sending: {:#?}", message);
-    let send_message = bincode::serialize(message).expect("Expected to serialize a client message");
+    let sent_message =
+        bincode::serialize(&message).expect("Expected to serialize a client message");
     transport.send_with_requirements(
         net_connection.addr,
-        &send_message,
+        &sent_message,
         DeliveryRequirement::Unreliable,
         UrgencyRequirement::Immediate,
     );
@@ -74,14 +101,22 @@ pub fn send_message_unreliable(
 pub fn send_message_unreliable(
     transport: &mut TransportResource,
     net_connection: &NetConnectionModel,
-    message: &ServerMessagePayload,
+    payload: ServerMessagePayload,
 ) {
+    if net_connection.disconnected {
+        return;
+    }
+    let message = ServerMessage {
+        session_id: net_connection.session_id,
+        payload,
+    };
     log::trace!("Sending: {:#?}", message);
-    let send_message = bincode::serialize(message).expect("Expected to serialize a server message");
-    log::trace!("Packet len: {}", send_message.len());
+    let sent_message =
+        bincode::serialize(&message).expect("Expected to serialize a server message");
+    log::trace!("Packet len: {}", sent_message.len());
     transport.send_with_requirements(
         net_connection.addr,
-        &send_message,
+        &sent_message,
         DeliveryRequirement::Unreliable,
         UrgencyRequirement::Immediate,
     );

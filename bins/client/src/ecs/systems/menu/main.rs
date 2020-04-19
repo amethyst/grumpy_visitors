@@ -11,7 +11,7 @@ impl MenuScreen for MainMenuScreen {
         ]
     }
 
-    fn process_events(
+    fn update(
         &mut self,
         _system_data: &mut MenuSystemData,
         button_pressed: Option<&str>,

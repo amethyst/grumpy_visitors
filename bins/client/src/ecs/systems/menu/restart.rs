@@ -7,7 +7,7 @@ impl MenuScreen for RestartMenuScreen {
         vec![UI_RESTART_BUTTON, UI_MAIN_MENU_BUTTON]
     }
 
-    fn process_events(
+    fn update(
         &mut self,
         _system_data: &mut MenuSystemData,
         button_pressed: Option<&str>,

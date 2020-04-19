@@ -17,7 +17,8 @@ use std::{
 use gv_core::{
     ecs::{components::NetConnectionModel, system_data::time::GameTimeService},
     net::{
-        client_message::ClientMessagePayload, server_message::ServerMessagePayload,
+        client_message::{ClientMessage, ClientMessagePayload},
+        server_message::{ServerMessage, ServerMessagePayload},
         ConnectionNetEvent, EncodedMessage, NetEvent, NetIdentifier,
     },
 };
@@ -27,13 +28,22 @@ use crate::ecs::resources::ConnectionEvents;
 const PING_INTERVAL_MILLIS: u64 = 500;
 
 #[cfg(feature = "client")]
-type IncomingMessage = ServerMessagePayload;
+type IncomingMessage = ServerMessage;
 #[cfg(not(feature = "client"))]
-type IncomingMessage = ClientMessagePayload;
+type IncomingMessage = ClientMessage;
 #[cfg(feature = "client")]
-type OutcomingMessage = ClientMessagePayload;
+type OutcomingMessage = ClientMessage;
 #[cfg(not(feature = "client"))]
-type OutcomingMessage = ServerMessagePayload;
+type OutcomingMessage = ServerMessage;
+
+#[cfg(feature = "client")]
+type IncomingMessagePayload = ServerMessagePayload;
+#[cfg(not(feature = "client"))]
+type IncomingMessagePayload = ClientMessagePayload;
+#[cfg(feature = "client")]
+type OutcomingMessagePayload = ClientMessagePayload;
+#[cfg(not(feature = "client"))]
+type OutcomingMessagePayload = ServerMessagePayload;
 
 #[derive(Default)]
 pub struct NetConnectionManagerDesc;
@@ -92,13 +102,12 @@ impl<'s> System<'s> for NetConnectionManagerSystem {
             game_time_service,
             mut transport,
             net_events,
-            mut incoming_messages,
+            mut connection_events,
             mut net_connection_models,
             entities,
         ): Self::SystemData,
     ) {
         let ping_id = self.next_ping_id();
-        let send_ping_packet = ping_message(ping_id);
 
         // A hacky way to update connection_id_autoinc if some connections have been already created
         // (like we do it in ServerNetworkSystem).
@@ -115,7 +124,7 @@ impl<'s> System<'s> for NetConnectionManagerSystem {
             );
 
             if let Some(event) = event {
-                incoming_messages.0.push(event);
+                connection_events.0.push(event);
             }
             if let Some(response) = response {
                 let addr = event_peer_addr(&net_event)
@@ -130,6 +139,10 @@ impl<'s> System<'s> for NetConnectionManagerSystem {
         }
 
         for connection_model in (&mut net_connection_models).join() {
+            if connection_model.disconnected {
+                continue;
+            }
+
             if connection_model.ping_pong_data.last_pinged_at
                 + Duration::from_millis(PING_INTERVAL_MILLIS)
                 < Instant::now()
@@ -139,7 +152,7 @@ impl<'s> System<'s> for NetConnectionManagerSystem {
                     .add_ping(ping_id, game_time_service.engine_time().frame_number());
                 transport.send_with_requirements(
                     connection_model.addr,
-                    &send_ping_packet,
+                    &ping_message(connection_model.session_id, ping_id),
                     DeliveryRequirement::Unreliable,
                     UrgencyRequirement::Immediate,
                 );
@@ -148,16 +161,26 @@ impl<'s> System<'s> for NetConnectionManagerSystem {
     }
 }
 
-fn ping_message(ping_id: NetIdentifier) -> EncodedMessage {
-    bincode::serialize(&OutcomingMessage::Ping(ping_id))
-        .expect("Expected to serialize Ping message")
-        .into()
+fn ping_message(session_id: NetIdentifier, ping_id: NetIdentifier) -> EncodedMessage {
+    bincode::serialize(&OutcomingMessage {
+        session_id,
+        payload: OutcomingMessagePayload::Ping(ping_id),
+    })
+    .expect("Expected to serialize Ping message")
+    .into()
 }
 
-fn pong_message(ping_id: NetIdentifier, frame_number: u64) -> EncodedMessage {
-    bincode::serialize(&OutcomingMessage::Pong {
-        ping_id,
-        frame_number,
+fn pong_message(
+    session_id: NetIdentifier,
+    ping_id: NetIdentifier,
+    frame_number: u64,
+) -> EncodedMessage {
+    bincode::serialize(&OutcomingMessage {
+        session_id,
+        payload: OutcomingMessagePayload::Pong {
+            ping_id,
+            frame_number,
+        },
     })
     .expect("Expected to serialize Pong message")
     .into()
@@ -189,13 +212,18 @@ impl NetConnectionManagerSystem {
             .join()
             .find(|(_, connection_model)| connection_model.addr == peer_addr);
         if connection.is_none() {
+            if let NetworkSimulationEvent::Disconnect(_) = event {
+                log::trace!("Ignoring Disconnect event for an already dropped connection");
+                return (None, None);
+            }
+
             let connection_id = self.next_connection_id();
             log::info!(
                 "Creating a new NewConnectionModel ({}) for {}",
                 connection_id,
                 peer_addr
             );
-            let net_connection_model = NetConnectionModel::new(connection_id, peer_addr);
+            let net_connection_model = NetConnectionModel::new(connection_id, 0, peer_addr);
             let entity = entities
                 .build_entity()
                 .with(net_connection_model, net_connection_models)
@@ -212,6 +240,7 @@ impl NetConnectionManagerSystem {
                     connection_model.id,
                     connection_model.addr,
                 );
+                connection_model.disconnected = true;
                 entities
                     .delete(connection_model_entity)
                     .expect("Expected to delete a NetConnectionModel");
@@ -224,20 +253,31 @@ impl NetConnectionManagerSystem {
                 )
             }
             NetworkSimulationEvent::Message(_, bytes) => {
-                if let Ok(message) = bincode::deserialize::<IncomingMessage>(bytes.as_ref()) {
-                    match message {
-                        IncomingMessage::Ping(ping_id) => {
-                            log::trace!("Received a new ping message: {:?}", &message);
+                if let Ok(IncomingMessage {
+                    session_id,
+                    payload,
+                }) = bincode::deserialize::<IncomingMessage>(bytes.as_ref())
+                {
+                    match payload {
+                        IncomingMessagePayload::Ping(ping_id) => {
+                            log::trace!("Received a new ping message: {:?}", &payload);
+                            if connection_model.disconnected {
+                                return (None, None);
+                            }
                             (
                                 None,
-                                Some(pong_message(ping_id, game_time_service.game_frame_number())),
+                                Some(pong_message(
+                                    session_id,
+                                    ping_id,
+                                    game_time_service.game_frame_number(),
+                                )),
                             )
                         }
-                        IncomingMessage::Pong {
+                        IncomingMessagePayload::Pong {
                             ping_id,
                             frame_number: peer_frame_number,
                         } => {
-                            log::trace!("Received a new pong message: {:?}", &message);
+                            log::trace!("Received a new pong message: {:?}", &payload);
                             connection_model.ping_pong_data.add_pong(
                                 ping_id,
                                 peer_frame_number,
@@ -247,15 +287,25 @@ impl NetConnectionManagerSystem {
                             (None, None)
                         }
                         message if message.is_heartbeat() => {
-                            log::trace!("Received a new Heartbeat message");
+                            log::trace!(
+                                "Received a new Heartbeat message (connection_id: {})",
+                                connection_id
+                            );
                             (None, None)
                         }
                         _ => {
-                            log::debug!("Received a new message: {:?}", &message);
+                            log::debug!(
+                                "Received a new message (connection_id: {}): {:?}",
+                                connection_id,
+                                &payload
+                            );
                             (
                                 Some(ConnectionNetEvent {
                                     connection_id,
-                                    event: NetEvent::Message(message),
+                                    event: NetEvent::Message(IncomingMessage {
+                                        session_id,
+                                        payload,
+                                    }),
                                 }),
                                 None,
                             )
@@ -266,11 +316,15 @@ impl NetConnectionManagerSystem {
                 }
             }
             NetworkSimulationEvent::SendError(err, _) => {
-                log::error!("{:?}", err);
+                log::error!("(SendError) {:?}", err);
                 (None, None)
             }
             NetworkSimulationEvent::RecvError(err) => {
-                log::error!("{:?}", err);
+                log::error!("(RecvError) {:?}", err);
+                (None, None)
+            }
+            NetworkSimulationEvent::ConnectionError(err, _) => {
+                log::error!("(ConnectionError) {:?}", err);
                 (None, None)
             }
             _ => (None, None),
