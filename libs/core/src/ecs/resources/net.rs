@@ -6,6 +6,7 @@ use std::{collections::HashMap, ops::Range};
 use crate::{
     actions::{player::PlayerCastAction, IdentifiableAction},
     net::NetIdentifier,
+    PLAYER_COLORS,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -60,6 +61,29 @@ impl MultiplayerGameState {
     pub fn update_players(&mut self) -> &mut Vec<MultiplayerRoomPlayer> {
         self.players_updated = true;
         &mut self.players
+    }
+
+    pub fn drop_player_by_connection_id(&mut self, player_connection_id: NetIdentifier) {
+        let player_index = self
+            .players
+            .iter()
+            .position(|player| player.connection_id == player_connection_id);
+        if let Some(player_index) = player_index {
+            self.drop_player_by_index(player_index);
+        } else {
+            log::warn!(
+                "Couldn't find a player with connection id {} to drop",
+                player_connection_id
+            );
+        }
+    }
+
+    pub fn drop_player_by_index(&mut self, player_index: usize) {
+        self.players_updated = true;
+        self.players.remove(player_index);
+        for (player_index, player) in self.players.iter_mut().enumerate().skip(player_index) {
+            player.color = PLAYER_COLORS[player_index];
+        }
     }
 }
 

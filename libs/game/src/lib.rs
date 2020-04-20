@@ -27,14 +27,6 @@ use crate::ecs::{
     systems::{missile::MissileDyingSystem, monster::*, *},
 };
 
-pub static PLAYER_COLORS: [[f32; 3]; 5] = [
-    [0.64, 0.12, 0.11],
-    [0.04, 0.45, 0.69],
-    [0.0, 0.49, 0.26],
-    [0.40, 0.3, 0.55],
-    [0.57, 0.57, 0.57],
-];
-
 pub fn build_game_logic_systems<'a, 'b>(
     game_data_builder: GameDataBuilder<'a, 'b>,
     world: &mut World,

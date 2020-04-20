@@ -26,11 +26,11 @@ use gv_core::{
         server_message::{DisconnectReason, ServerMessagePayload},
         NetEvent, NetIdentifier, NetUpdate, INTERPOLATION_FRAME_DELAY,
     },
+    PLAYER_COLORS,
 };
 use gv_game::{
     ecs::resources::ConnectionEvents,
     utils::net::{broadcast_message_reliable, send_message_reliable},
-    PLAYER_COLORS,
 };
 
 use std::collections::HashSet;
@@ -405,22 +405,14 @@ impl<'s> System<'s> for ServerNetworkSystem {
             }
 
             if net_connection_model.disconnected && !host_disconnected {
-                let old_len = multiplayer_game_state.players.len();
-                multiplayer_game_state
-                    .players
-                    .retain(|player| player.connection_id != connection_id);
-                if old_len != multiplayer_game_state.players.len() {
-                    multiplayer_game_state.update_players();
-                }
+                multiplayer_game_state.drop_player_by_connection_id(connection_id);
             }
         }
 
         for kicked_player_index in kicked_players.iter().cloned() {
             let player_connection_id =
                 multiplayer_game_state.players[kicked_player_index].connection_id;
-            multiplayer_game_state
-                .update_players()
-                .remove(kicked_player_index);
+            multiplayer_game_state.drop_player_by_index(kicked_player_index);
             let net_connection_model = (&mut net_connection_models)
                 .join()
                 .find(|net_connection_model| net_connection_model.id == player_connection_id)
