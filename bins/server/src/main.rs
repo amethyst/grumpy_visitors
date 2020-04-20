@@ -6,10 +6,8 @@ use amethyst::{
     core::{frame_limiter::FrameRateLimitStrategy, transform::TransformBundle},
     network::simulation::laminar::{LaminarConfig, LaminarNetworkBundle, LaminarSocket},
     prelude::{Application, GameDataBuilder, SystemDesc},
-    LogLevelFilter, Logger,
+    Logger, LoggerConfig,
 };
-
-use std::time::Duration;
 
 use gv_core::ecs::resources::world::{
     DummyFramedUpdate, FramedUpdates, ReceivedClientActionUpdates, ServerWorldUpdates,
@@ -59,7 +57,23 @@ fn main() -> amethyst::Result<()> {
         HostClientAddress(None)
     };
 
-    Logger::from_config_formatter(Default::default(), |out, message, record| {
+    let logging_config: LoggerConfig = ::std::fs::read_to_string("server_logging_config.toml")
+        .map_err(|err| {
+            log::warn!(
+                "Failed to read server_logging_config.toml, using the defaults: {:?}",
+                err
+            )
+        })
+        .and_then(|config_contents| {
+            toml::from_str(&config_contents).map_err(|err| {
+                log::warn!(
+                    "Failed to read server_logging_config.toml, using the defaults: {:?}",
+                    err
+                )
+            })
+        })
+        .unwrap_or_default();
+    Logger::from_config_formatter(logging_config, |out, message, record| {
         out.finish(format_args!(
             "[{level}][SERVER][{target}] {message}",
             level = record.level(),
@@ -67,14 +81,6 @@ fn main() -> amethyst::Result<()> {
             message = message,
         ))
     })
-    .level_for("gfx_backend_vulkan", LogLevelFilter::Warn)
-    .level_for("gv_game::ecs::systems", LogLevelFilter::Debug)
-    .level_for(
-        "gv_game::ecs::systems::net_connection_manager",
-        LogLevelFilter::Info,
-    )
-    .level_for("gv_game::utils::net", LogLevelFilter::Info)
-    .level_for("gv_server", LogLevelFilter::Debug)
     .start();
 
     let mut builder = Application::build("./", LoadingState::default())?;
@@ -117,12 +123,8 @@ fn main() -> amethyst::Result<()> {
         .with_bundle(TransformBundle::new().with_dep(&["world_position_transform_system"]))?;
 
     let mut game = builder
-        .with_frame_limit(
-            FrameRateLimitStrategy::SleepAndYield(Duration::from_millis(2)),
-            60,
-        )
+        .with_frame_limit(FrameRateLimitStrategy::Yield, 60)
         .build(game_data_builder)?;
     game.run();
-
     Ok(())
 }

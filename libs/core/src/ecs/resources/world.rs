@@ -19,6 +19,8 @@ use crate::{
 
 pub const SAVED_WORLD_STATES_LIMIT: usize = 600;
 pub const LAG_COMPENSATION_FRAMES_LIMIT: usize = 20;
+pub const PAUSE_FRAME_THRESHOLD: u64 =
+    (LAG_COMPENSATION_FRAMES_LIMIT + LAG_COMPENSATION_FRAMES_LIMIT / 2) as u64;
 
 #[derive(Debug)]
 pub struct OldFrameError {
@@ -148,7 +150,7 @@ impl SavedWorldState {
             let is_the_same_generation = storage.contains(*entity);
             if is_the_same_generation {
                 storage
-                    .insert(entity.clone(), component.clone())
+                    .insert(*entity, component.clone())
                     .expect("Expected to insert a saved component");
             }
         }
@@ -342,6 +344,14 @@ pub struct ClientWorldUpdates {
     pub cast_action_updates: Vec<NetUpdate<ClientActionUpdate<PlayerCastAction>>>,
     /// Batched update.
     pub look_actions_updates: VecDeque<(u64, Vec<NetUpdate<ClientActionUpdate<PlayerLookAction>>>)>,
+}
+
+impl ClientWorldUpdates {
+    pub fn clear(&mut self) {
+        self.walk_action_updates.clear();
+        self.cast_action_updates.clear();
+        self.look_actions_updates.clear();
+    }
 }
 
 /// Client uses it to store the updates until it receives their confirmations from a server.

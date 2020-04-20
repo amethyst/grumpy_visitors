@@ -1,0 +1,13 @@
+stdout = "Colored"
+level_filter = "Info"
+allow_env_override = true
+log_gfx_backend_level = "Warn"
+log_gfx_rendy_level = "Warn"
+module_levels = [
+    ["amethyst_assets", "Info"],
+    ["gfx_backend_vulkan", "Warn"],
+    ["gv_game::ecs::systems", "Debug"],
+    ["gv_game::ecs::systems::net_connection_manager", "Info"],
+    ["gv_game::utils::net", "Info"],
+    ["gv_client", "Debug"],
+]

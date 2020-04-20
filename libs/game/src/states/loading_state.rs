@@ -128,6 +128,7 @@ impl LoadingState {
                         creator.create("resources/ui/lobby_menu.ron", ()),
                         creator.create("resources/ui/multiplayer_menu.ron", ()),
                         creator.create("resources/ui/restart_menu.ron", ()),
+                        creator.create("resources/ui/modal.ron", ()),
                     )
                 });
 

@@ -1,0 +1,83 @@
+#![enable(implicit_some)]
+Container(
+    transform: (
+        id: "ui_modal_backdrop_container",
+        x: 0.0,
+        y: 0.0,
+        z: 100.0,
+        stretch: XY(x_margin: 0.0, y_margin: 0.0, keep_aspect_ratio: false),
+        hidden: true,
+    ),
+    background: SolidColor(0.02, 0.02, 0.02, 0.7),
+    children: [
+        Container(
+            transform: (
+                id: "ui_modal_window_border_container",
+                anchor: Middle,
+                pivot: Middle,
+                width: 400.0,
+                height: 250.0,
+                z: 0.5,
+                hidden: true,
+            ),
+            background: SolidColor(0.7, 0.7, 0.7, 1.0),
+            children: [
+                Container(
+                    transform: (
+                        id: "ui_modal_window_container",
+                        anchor: Middle,
+                        pivot: Middle,
+                        z: 0.5,
+                        stretch: XY(x_margin: 1.0, y_margin: 1.0, keep_aspect_ratio: false),
+                        hidden: true,
+                    ),
+                    background: SolidColor(0.05, 0.05, 0.05, 1.0),
+                    children: [
+                        Label(
+                            transform: (
+                                id: "ui_modal_title",
+                                anchor: Middle,
+                                pivot: Middle,
+                                x: 0.0,
+                                y: 0.0,
+                                z: 0.5,
+                                width: 350.0,
+                                height: 100.0,
+                                hidden: true,
+                            ),
+                            text: (
+                                text: "Default modal window text",
+                                color: (0.9, 0.9, 0.9, 1.0),
+                                font_size: 28.0,
+                                font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                                align: Middle,
+                                line_mode: Wrap,
+                            ),
+                        ),
+
+                        Button(
+                            transform: (
+                                id: "ui_modal_confirm_button",
+                                anchor: BottomMiddle,
+                                pivot: Middle,
+                                x: 0.0,
+                                y: 35.0,
+                                z: 0.5,
+                                width: 100.0,
+                                height: 75.0,
+                                hidden: true,
+                            ),
+                            button: (
+                                text: "OK",
+                                font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                                font_size: 30.,
+                                normal_text_color: (0.972, 0.917, 0.827, 0.0),
+                                hover_text_color: (0.841, 0.670, 0.556, 1.0),
+                            )
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    ],
+)

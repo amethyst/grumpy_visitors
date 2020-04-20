@@ -5,12 +5,18 @@ use crate::{
     net::NetIdentifier,
 };
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ServerMessage {
+    pub session_id: NetIdentifier,
+    pub payload: ServerMessagePayload,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ServerMessagePayload {
     Heartbeat,
     UpdateRoomPlayers(Vec<MultiplayerRoomPlayer>),
     /// Must have the same length as a last sent UpdateRoomPlayers,
-    /// contains server ids for corresponding players.
+    /// contains server (entity) ids for corresponding players.
     StartGame(Vec<NetIdentifier>),
     Handshake {
         net_id: NetIdentifier,
@@ -32,6 +38,19 @@ pub enum ServerMessagePayload {
         players: Vec<NetIdentifier>,
     },
     UnpauseWaitingForPlayers(NetIdentifier),
+    Disconnect(DisconnectReason),
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub enum DisconnectReason {
+    /// For rejecting any connections while the server
+    /// isn't connected to a host (in case of self-hosting).
+    Uninitialized,
+    GameIsStarted,
+    RoomIsFull,
+    Kick,
+    Closed,
+    ServerCrashed(i32),
 }
 
 impl ServerMessagePayload {

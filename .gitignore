@@ -5,6 +5,10 @@ target
 output
 assets_packer/input
 
+# Local config files
+client_logging_config.toml
+server_logging_config.toml
+
 # RenderDoc
 *.cap
 

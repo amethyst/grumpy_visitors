@@ -27,27 +27,21 @@ use crate::ecs::{
     systems::{missile::MissileDyingSystem, monster::*, *},
 };
 
-pub static PLAYER_COLORS: [[f32; 3]; 5] = [
-    [0.64, 0.12, 0.11],
-    [0.04, 0.45, 0.69],
-    [0.0, 0.49, 0.26],
-    [0.40, 0.3, 0.55],
-    [0.57, 0.57, 0.57],
-];
-
 pub fn build_game_logic_systems<'a, 'b>(
     game_data_builder: GameDataBuilder<'a, 'b>,
     world: &mut World,
     is_server: bool,
 ) -> Result<GameDataBuilder<'a, 'b>, Error> {
+    world.insert(ConnectionEvents(Vec::new()));
+    world.insert(MultiplayerGameState::new());
+    world.insert(ActionUpdateIdProvider::default());
+
+    // The resources which we need to remember to reset on starting a game.
     world.insert(FramedUpdates::<PlayerActionUpdates>::default());
     world.insert(FramedUpdates::<SpawnActions>::default());
     world.insert(WorldStates::default());
-    world.insert(ConnectionEvents(Vec::new()));
-    world.insert(MultiplayerGameState::new());
-    world.insert(EntityNetMetadataStorage::new());
-    world.insert(ActionUpdateIdProvider::default());
     world.insert(CastActionsToExecute::default());
+    world.insert(EntityNetMetadataStorage::new());
 
     let game_data_builder = game_data_builder
         .with(PauseSystem, "pause_system", &["game_network_system"])

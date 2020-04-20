@@ -1,4 +1,5 @@
 use amethyst::ecs::Entity;
+use derivative::Derivative;
 use serde_derive::{Deserialize, Serialize};
 
 use std::{collections::HashMap, ops::Range};
@@ -6,14 +7,17 @@ use std::{collections::HashMap, ops::Range};
 use crate::{
     actions::{player::PlayerCastAction, IdentifiableAction},
     net::NetIdentifier,
+    PLAYER_COLORS,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Derivative, Debug, Clone, Serialize, Deserialize)]
+#[derivative(PartialEq)]
 pub struct MultiplayerRoomPlayer {
     pub connection_id: NetIdentifier,
     pub entity_net_id: NetIdentifier,
     pub nickname: String,
     pub is_host: bool,
+    #[derivative(PartialEq = "ignore")]
     pub color: [f32; 3],
 }
 
@@ -26,6 +30,7 @@ pub struct MultiplayerGameState {
     /// This is used on client to make sure that we do not unpause before pausing.
     pub waiting_for_players_pause_id: u64,
     pub lagging_players: Vec<NetIdentifier>,
+    pub is_disconnected: bool,
     players_updated: bool,
 }
 
@@ -38,8 +43,13 @@ impl MultiplayerGameState {
             waiting_for_players: false,
             waiting_for_players_pause_id: 0,
             lagging_players: Vec::new(),
+            is_disconnected: false,
             players_updated: false,
         }
+    }
+
+    pub fn reset(&mut self) {
+        *self = MultiplayerGameState::new();
     }
 
     pub fn read_updated_players(&mut self) -> Option<&[MultiplayerRoomPlayer]> {
@@ -54,6 +64,29 @@ impl MultiplayerGameState {
     pub fn update_players(&mut self) -> &mut Vec<MultiplayerRoomPlayer> {
         self.players_updated = true;
         &mut self.players
+    }
+
+    pub fn drop_player_by_connection_id(&mut self, player_connection_id: NetIdentifier) {
+        let player_index = self
+            .players
+            .iter()
+            .position(|player| player.connection_id == player_connection_id);
+        if let Some(player_index) = player_index {
+            self.drop_player_by_index(player_index);
+        } else {
+            log::warn!(
+                "Couldn't find a player with connection id {} to drop",
+                player_connection_id
+            );
+        }
+    }
+
+    pub fn drop_player_by_index(&mut self, player_index: usize) {
+        self.players_updated = true;
+        self.players.remove(player_index);
+        for (player_index, player) in self.players.iter_mut().enumerate().skip(player_index) {
+            player.color = PLAYER_COLORS[player_index];
+        }
     }
 }
 

@@ -100,7 +100,7 @@ impl<'s> System<'s> for GameUpdatesBroadcastingSystem {
             send_message_unreliable(
                 &mut transport,
                 &net_connection_model,
-                &ServerMessagePayload::UpdateWorld {
+                ServerMessagePayload::UpdateWorld {
                     id: latest_update_number,
                     updates,
                 },

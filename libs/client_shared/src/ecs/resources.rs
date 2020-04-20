@@ -5,10 +5,13 @@ use amethyst::{
     ui::FontHandle,
 };
 
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::{io, time::Instant};
 
 use gv_animation_prefabs::GameSpriteAnimationPrefab;
-use gv_core::{math::Vector3, net::NetIdentifier};
+use gv_core::{
+    math::Vector3,
+    net::{server_message::DisconnectReason, NetIdentifier},
+};
 
 use crate::utils::graphic_helpers::generate_rectangle_vertices;
 
@@ -59,35 +62,76 @@ pub struct EntityGraphics {
 }
 
 pub struct MultiplayerRoomState {
-    pub nickname: String,
     pub is_active: bool,
-    pub has_started: bool,
-    pub has_sent_join_message: bool,
-    pub has_sent_start_message: bool,
-    pub server_addr: SocketAddr,
     pub is_host: bool,
-    pub connection_id: Option<NetIdentifier>,
+    pub connection_status: ConnectionStatus,
     pub player_net_id: NetIdentifier,
 }
 
 impl MultiplayerRoomState {
     pub fn new() -> Self {
         Self {
-            nickname: "Player".to_owned(),
             is_active: false,
-            has_started: false,
-            has_sent_join_message: false,
-            has_sent_start_message: false,
-            server_addr: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 0), 3455)),
             is_host: false,
-            connection_id: None,
+            connection_status: ConnectionStatus::NotConnected,
             player_net_id: 0,
         }
+    }
+
+    pub fn reset(&mut self) {
+        *self = MultiplayerRoomState::new();
     }
 }
 
 impl Default for MultiplayerRoomState {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[derive(Debug)]
+pub enum ConnectionStatus {
+    NotConnected,
+    Connecting(Instant),
+    Connected(NetIdentifier),
+    Disconnecting,
+    Disconnected(DisconnectReason),
+    ServerStartFailed,
+    ConnectionFailed(Option<io::Error>),
+}
+
+impl ConnectionStatus {
+    pub fn is_not_connected(&self) -> bool {
+        match self {
+            ConnectionStatus::NotConnected
+            | ConnectionStatus::Disconnected(_)
+            | ConnectionStatus::ConnectionFailed(_)
+            | ConnectionStatus::ServerStartFailed => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_connecting(&self) -> bool {
+        if let ConnectionStatus::Connecting(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn is_connected(&self) -> bool {
+        if let ConnectionStatus::Connected(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn connection_id(&self) -> Option<NetIdentifier> {
+        if let ConnectionStatus::Connected(connection_id) = self {
+            Some(*connection_id)
+        } else {
+            None
+        }
     }
 }

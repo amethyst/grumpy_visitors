@@ -1,16 +1,16 @@
 use amethyst::{
-    ecs::{Entities, Entity, Join, World, WriteStorage},
+    ecs::{storage::GenericReadStorage, Entities, Entity, Join, World, WriteStorage},
     shred::{ResourceId, SystemData},
-    ui::UiTransform,
+    ui::{UiText, UiTransform},
 };
 
 #[derive(SystemData)]
-pub struct UiFinderMut<'a> {
-    entities: Entities<'a>,
-    storage: WriteStorage<'a, UiTransform>,
+pub struct UiFinderMut<'s> {
+    entities: Entities<'s>,
+    storage: WriteStorage<'s, UiTransform>,
 }
 
-impl<'a> UiFinderMut<'a> {
+impl<'s> UiFinderMut<'s> {
     pub fn find(&self, id: &str) -> Option<Entity> {
         (&*self.entities, &self.storage)
             .join()
@@ -30,5 +30,25 @@ impl<'a> UiFinderMut<'a> {
             .join()
             .find(|(_, transform)| transform.id == id)
             .map(|(entity, transform)| (entity, transform))
+    }
+
+    pub fn get_ui_text<'a>(
+        &mut self,
+        ui_texts: &'a impl GenericReadStorage<Component = UiText>,
+        id: &str,
+    ) -> Option<&'a String> {
+        self.find(id)
+            .and_then(move |entity| ui_texts.get(entity))
+            .map(|ui_text| &ui_text.text)
+    }
+
+    pub fn get_ui_text_mut<'a>(
+        &mut self,
+        ui_texts: &'a mut WriteStorage<UiText>,
+        id: &str,
+    ) -> Option<&'a mut String> {
+        self.find(id)
+            .and_then(move |entity| ui_texts.get_mut(entity))
+            .map(|ui_text| &mut ui_text.text)
     }
 }

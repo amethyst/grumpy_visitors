@@ -4,6 +4,8 @@ use amethyst::{
     shrev::EventChannel,
 };
 
+use std::time::Instant;
+
 use gv_core::ecs::resources::{GameEngineState, NewGameEngineState};
 
 use crate::states::*;
@@ -27,6 +29,10 @@ impl<'s> System<'s> for StateSwitcherSystem {
                 GameEngineState::Loading => unreachable!(),
                 GameEngineState::Menu => Trans::Switch(Box::new(MenuState)),
                 GameEngineState::Playing => Trans::Switch(Box::new(PlayingState)),
+                GameEngineState::ShuttingDown { shutdown_at } if Instant::now() > shutdown_at => {
+                    Trans::Quit
+                }
+                GameEngineState::ShuttingDown { .. } => Trans::None,
                 GameEngineState::Quit => Trans::Quit,
             });
             trans_events.single_write(trans);

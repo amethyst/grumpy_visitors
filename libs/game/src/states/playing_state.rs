@@ -28,14 +28,14 @@ use gv_core::ecs::{
     },
     system_data::time::GameTimeService,
 };
+#[cfg(feature = "client")]
+use gv_core::PLAYER_COLORS;
 #[cfg(not(feature = "client"))]
 use gv_core::{ecs::components::NetConnectionModel, net::server_message::ServerMessagePayload};
 
 use crate::ecs::factories::{LandscapeFactory, PlayerFactory};
 #[cfg(not(feature = "client"))]
 use crate::utils::net::broadcast_message_reliable;
-#[cfg(feature = "client")]
-use crate::PLAYER_COLORS;
 
 #[derive(Default)]
 pub struct PlayingState;
@@ -163,7 +163,7 @@ fn initialize_players(world: &mut World) {
             broadcast_message_reliable(
                 &mut transport,
                 (&net_connections).join(),
-                &ServerMessagePayload::StartGame(player_net_identifiers),
+                ServerMessagePayload::StartGame(player_net_identifiers),
             );
         },
     );
