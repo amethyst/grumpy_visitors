@@ -159,10 +159,10 @@ impl<'s> System<'s> for ServerNetworkSystem {
                                 .any(|player| player.connection_id == connection_id);
                             if !player_is_in_game {
                                 log::warn!(
-                                "A new client ({}) {} tried to connect while the game has already started",
-                                connection_id,
-                                net_connection_model.addr
-                            );
+                                    "A new client ({}) {} tried to connect while the game has already started",
+                                    connection_id,
+                                    net_connection_model.addr
+                                );
                                 send_message_reliable(
                                     &mut transport,
                                     net_connection_model,
@@ -170,6 +170,7 @@ impl<'s> System<'s> for ServerNetworkSystem {
                                         DisconnectReason::GameIsStarted,
                                     ),
                                 );
+                                net_connection_model.disconnected = true;
                             }
                             true
                         }
@@ -432,6 +433,9 @@ impl<'s> System<'s> for ServerNetworkSystem {
                 (&net_connection_models).join(),
                 ServerMessagePayload::Disconnect(DisconnectReason::Closed),
             );
+            for net_connection_model in (&mut net_connection_models).join() {
+                net_connection_model.disconnected = true;
+            }
             *new_game_engine_state = NewGameEngineState::shutdown();
             return;
         }
@@ -459,6 +463,10 @@ impl<'s> System<'s> for ServerNetworkSystem {
         if *game_engine_state == GameEngineState::Playing && multiplayer_game_state.is_playing {
             let mut lagging_players = Vec::new();
             for net_connection_model in (&net_connection_models).join() {
+                if net_connection_model.disconnected {
+                    continue;
+                }
+
                 let frames_since_last_pong = game_time_service
                     .engine_time()
                     .frame_number()
