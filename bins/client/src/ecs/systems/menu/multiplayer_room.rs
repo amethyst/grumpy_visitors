@@ -2,6 +2,7 @@ use gv_client_shared::ecs::resources::ConnectionStatus;
 
 use super::*;
 use crate::{ecs::resources::UiNetworkCommand, utils::ui::disconnect_reason_title};
+use gv_core::ecs::resources::net::MultiplayerRoomPlayer;
 
 const DISCONNECTED: &str = "MP_DISCONNECTED";
 const DISCONNECTING: &str = "MP_DISCONNECTING";
@@ -34,12 +35,14 @@ lazy_static! {
 
 pub struct MultiplayerRoomMenuScreen {
     initiated_disconnecting: bool,
+    players: Vec<MultiplayerRoomPlayer>,
 }
 
 impl MultiplayerRoomMenuScreen {
     pub fn new() -> Self {
         Self {
             initiated_disconnecting: false,
+            players: Vec::new(),
         }
     }
 }
@@ -80,40 +83,45 @@ impl MenuScreen for MultiplayerRoomMenuScreen {
         ]
     }
 
+    fn show(&mut self, _system_data: &mut MenuSystemData) {
+        *self = Self::new();
+    }
+
     fn update(
         &mut self,
         system_data: &mut MenuSystemData,
         button_pressed: Option<&str>,
         modal_window_id: Option<&str>,
     ) -> StateUpdate {
-        let state_update = match system_data.multiplayer_room_state.connection_status {
-            ConnectionStatus::ConnectionFailed(ref error) => Some(StateUpdate::ShowModalWindow {
-                id: DISCONNECTED.to_owned(),
-                title: error
-                    .as_ref()
-                    .map(|error| format!("Disconnected: {:?}", error))
-                    .unwrap_or_else(|| "Disconnected".to_owned()),
-                show_confirmation: true,
-            }),
-            ConnectionStatus::Disconnected(disconnect_reason) => {
-                if self.initiated_disconnecting {
-                    self.initiated_disconnecting = false;
-                    system_data.multiplayer_room_state.reset();
-                    system_data.multiplayer_game_state.reset();
-                    Some(StateUpdate::new_menu_screen(GameMenuScreen::LobbyMenu))
-                } else {
-                    Some(StateUpdate::ShowModalWindow {
+        let disconnected_modal_window_is_shown =
+            modal_window_id.map_or(false, |modal_window_id| modal_window_id == DISCONNECTED);
+        if !disconnected_modal_window_is_shown {
+            match system_data.multiplayer_room_state.connection_status {
+                ConnectionStatus::ConnectionFailed(ref error) => {
+                    return StateUpdate::ShowModalWindow {
                         id: DISCONNECTED.to_owned(),
-                        title: disconnect_reason_title(disconnect_reason),
+                        title: error
+                            .as_ref()
+                            .map(|error| format!("Disconnected: {:?}", error))
+                            .unwrap_or_else(|| "Disconnected".to_owned()),
                         show_confirmation: true,
-                    })
+                    }
                 }
-            }
-            _ => None,
-        };
-        if let Some(state_update) = state_update {
-            system_data.multiplayer_room_state.connection_status = ConnectionStatus::NotConnected;
-            return state_update;
+                ConnectionStatus::Disconnected(disconnect_reason) => {
+                    if self.initiated_disconnecting {
+                        self.initiated_disconnecting = false;
+                        system_data.ui_network_command.command = Some(UiNetworkCommand::Reset);
+                        return StateUpdate::new_menu_screen(GameMenuScreen::LobbyMenu);
+                    } else {
+                        return StateUpdate::ShowModalWindow {
+                            id: DISCONNECTED.to_owned(),
+                            title: disconnect_reason_title(disconnect_reason),
+                            show_confirmation: true,
+                        };
+                    }
+                }
+                _ => {}
+            };
         }
 
         match (button_pressed, modal_window_id) {
@@ -139,9 +147,7 @@ impl MenuScreen for MultiplayerRoomMenuScreen {
             }
             (Some(UI_MP_ROOM_LOBBY_BUTTON), _) => {
                 self.initiated_disconnecting = true;
-                system_data.multiplayer_room_state.pending_disconnecting = true;
-                system_data.multiplayer_room_state.connection_status =
-                    ConnectionStatus::Disconnecting;
+                system_data.ui_network_command.command = Some(UiNetworkCommand::Leave);
 
                 if system_data.multiplayer_room_state.is_host {
                     StateUpdate::ShowModalWindow {
@@ -158,25 +164,25 @@ impl MenuScreen for MultiplayerRoomMenuScreen {
                 }
             }
             (Some(UI_MP_ROOM_START_BUTTON), _) => {
-                system_data.multiplayer_room_state.has_started = true;
+                system_data.ui_network_command.command = Some(UiNetworkCommand::Start);
                 StateUpdate::None
             }
             (Some(UI_MODAL_CONFIRM_BUTTON), Some(DISCONNECTED)) => {
-                system_data.multiplayer_room_state.reset();
-                system_data.multiplayer_game_state.reset();
+                system_data.ui_network_command.command = Some(UiNetworkCommand::Reset);
                 StateUpdate::new_menu_screen(GameMenuScreen::LobbyMenu)
             }
-            _ => Self::update_players(system_data),
+            _ => self.update_players(system_data),
         }
     }
 }
 
 impl MultiplayerRoomMenuScreen {
-    fn update_players(system_data: &mut MenuSystemData) -> StateUpdate {
+    fn update_players(&mut self, system_data: &mut MenuSystemData) -> StateUpdate {
         let mut elements_to_hide = Vec::new();
         let mut elements_to_show = Vec::new();
 
-        if let Some(players) = system_data.multiplayer_game_state.read_updated_players() {
+        if self.players != system_data.multiplayer_game_state.players {
+            self.players = system_data.multiplayer_game_state.players.clone();
             #[rustfmt::skip]
             let rows = [
                 (UI_MP_ROOM_PLAYER1_NUMBER, UI_MP_ROOM_PLAYER1_NICKNAME, UI_MP_ROOM_PLAYER1_KICK),
@@ -186,7 +192,7 @@ impl MultiplayerRoomMenuScreen {
             ];
             for (i, row) in rows.iter().enumerate() {
                 {
-                    if let Some(player) = players.get(i) {
+                    if let Some(player) = self.players.get(i) {
                         let player_nickname_text = system_data
                             .ui_finder
                             .get_ui_text_mut(&mut system_data.ui_texts, row.1)

@@ -5,11 +5,7 @@ use amethyst::{
     ui::FontHandle,
 };
 
-use std::{
-    io,
-    net::{Ipv4Addr, SocketAddr, SocketAddrV4},
-    time::Instant,
-};
+use std::{io, time::Instant};
 
 use gv_animation_prefabs::GameSpriteAnimationPrefab;
 use gv_core::{
@@ -66,17 +62,8 @@ pub struct EntityGraphics {
 }
 
 pub struct MultiplayerRoomState {
-    pub nickname: String,
     pub is_active: bool,
-    pub has_started: bool,
-    pub has_sent_join_message: bool,
-    pub has_sent_start_message: bool,
-    pub server_addr: SocketAddr,
     pub is_host: bool,
-    /// The flag is controlled by MultiplayerRoomMenuScreen and ClientNetworkSystem.
-    /// It is set to true when a user presses the button to leave the room and is set to false
-    /// when ClientNetworkSystem sends a Disconnect message.
-    pub pending_disconnecting: bool,
     pub connection_status: ConnectionStatus,
     pub player_net_id: NetIdentifier,
 }
@@ -84,25 +71,15 @@ pub struct MultiplayerRoomState {
 impl MultiplayerRoomState {
     pub fn new() -> Self {
         Self {
-            nickname: "Player".to_owned(),
             is_active: false,
-            has_started: false,
-            has_sent_join_message: false,
-            has_sent_start_message: false,
-            server_addr: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 0), 3455)),
             is_host: false,
-            pending_disconnecting: false,
             connection_status: ConnectionStatus::NotConnected,
             player_net_id: 0,
         }
     }
 
     pub fn reset(&mut self) {
-        *self = MultiplayerRoomState {
-            nickname: self.nickname.clone(),
-            server_addr: self.server_addr,
-            ..MultiplayerRoomState::new()
-        }
+        *self = MultiplayerRoomState::new();
     }
 }
 
@@ -119,6 +96,7 @@ pub enum ConnectionStatus {
     Connected(NetIdentifier),
     Disconnecting,
     Disconnected(DisconnectReason),
+    ServerStartFailed,
     ConnectionFailed(Option<io::Error>),
 }
 
@@ -127,7 +105,8 @@ impl ConnectionStatus {
         match self {
             ConnectionStatus::NotConnected
             | ConnectionStatus::Disconnected(_)
-            | ConnectionStatus::ConnectionFailed(_) => true,
+            | ConnectionStatus::ConnectionFailed(_)
+            | ConnectionStatus::ServerStartFailed => true,
             _ => false,
         }
     }

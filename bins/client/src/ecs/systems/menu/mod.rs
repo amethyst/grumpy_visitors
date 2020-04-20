@@ -7,7 +7,6 @@ mod restart;
 use amethyst::{
     core::{HiddenPropagate, ParentHierarchy},
     ecs::{Entity, ReadExpect, System, SystemData, World, Write, WriteExpect, WriteStorage},
-    network::simulation::laminar::LaminarSocketResource,
     shred::ResourceId,
     shrev::{EventChannel, ReaderId},
     ui::{Interactable, UiEvent, UiEventType, UiImage, UiText},
@@ -23,7 +22,7 @@ use gv_core::ecs::{
 };
 
 use crate::ecs::{
-    resources::{ServerCommand, UiNetworkCommandResource},
+    resources::UiNetworkCommandResource,
     system_data::ui::UiFinderMut,
     systems::menu::{
         hidden::HiddenMenuScreen, lobby::LobbyMenuScreen, main::MainMenuScreen,
@@ -92,6 +91,8 @@ trait MenuScreen {
     fn elements_to_hide(&self, system_data: &MenuSystemData) -> Vec<MenuElement> {
         self.elements_to_show(system_data)
     }
+
+    fn show(&mut self, _system_data: &mut MenuSystemData) {}
 
     fn value_changed(
         &mut self,
@@ -170,11 +171,9 @@ pub struct MenuSystemData<'s> {
     game_engine_state: ReadExpect<'s, GameEngineState>,
     new_game_engine_state: WriteExpect<'s, NewGameEngineState>,
     game_level_state: WriteExpect<'s, GameLevelState>,
-    server_command: WriteExpect<'s, ServerCommand>,
     ui_network_command: WriteExpect<'s, UiNetworkCommandResource>,
-    multiplayer_room_state: WriteExpect<'s, MultiplayerRoomState>,
-    multiplayer_game_state: WriteExpect<'s, MultiplayerGameState>,
-    laminar_socket: WriteExpect<'s, LaminarSocketResource>,
+    multiplayer_room_state: ReadExpect<'s, MultiplayerRoomState>,
+    multiplayer_game_state: ReadExpect<'s, MultiplayerGameState>,
     ui_events: Write<'s, EventChannel<UiEvent>>,
     ui_texts: WriteStorage<'s, UiText>,
     ui_images: WriteStorage<'s, UiImage>,
@@ -465,6 +464,9 @@ impl<'s> System<'s> for MenuSystem {
                         })
                         .unwrap_or_default();
                     self.menu_screen = new_menu_screen;
+                    if let Some(menu_screen) = self.menu_screens.menu_screen(new_menu_screen) {
+                        menu_screen.show(&mut system_data);
+                    }
                     self.modal_window_id = None;
                     elements_to_hide.append(&mut modal_window_with_confirmation());
                     (None, elements_to_hide, elements_to_show)

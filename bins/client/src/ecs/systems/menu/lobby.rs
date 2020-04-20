@@ -1,12 +1,7 @@
-use std::{
-    net::{Ipv4Addr, Ipv6Addr, SocketAddr},
-    time::Instant,
-};
-
 use gv_client_shared::ecs::resources::ConnectionStatus;
 
 use super::*;
-use crate::utils::ui::disconnect_reason_title;
+use crate::{ecs::resources::UiNetworkCommand, utils::ui::disconnect_reason_title};
 
 pub struct LobbyMenuScreen;
 
@@ -29,17 +24,6 @@ impl MenuScreen for LobbyMenuScreen {
             UI_LOBBY_JOIN_BUTTON,
             UI_MAIN_MENU_BUTTON,
         ]
-    }
-
-    fn value_changed(
-        &mut self,
-        system_data: &mut MenuSystemData,
-        text_field_id: &str,
-        new_value: &str,
-    ) {
-        if text_field_id == UI_LOBBY_NICKNAME_EDITABLE {
-            system_data.multiplayer_room_state.nickname = new_value.to_owned();
-        }
     }
 
     fn update(
@@ -80,38 +64,18 @@ impl MenuScreen for LobbyMenuScreen {
                 }
                 let server_addr = server_addr.unwrap();
 
-                if is_host {
-                    let mut host_client_addr = system_data
-                        .laminar_socket
-                        .get_mut()
-                        .expect("Expected a LaminarSocket")
-                        .local_addr()
-                        .expect("Expected a local address for a Laminar socket");
-                    match &mut host_client_addr {
-                        SocketAddr::V4(addr) => addr.set_ip(Ipv4Addr::new(127, 0, 0, 1)),
-                        SocketAddr::V6(addr) => addr.set_ip(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)),
-                    };
-                    if let Err(err) = system_data
-                        .server_command
-                        .start(server_addr, host_client_addr)
-                    {
-                        log::error!("Couldn't start the server: {:?}", err);
-                        return StateUpdate::ShowModalWindow {
-                            id: SERVER_START_FAILED.to_owned(),
-                            title: "Couldn't start the server, make sure that gv_server is in the same working directory".to_owned(),
-                            show_confirmation: true,
-                        };
-                    }
-                }
-                system_data.multiplayer_room_state.nickname = nickname;
-                system_data.multiplayer_room_state.is_active = true;
-                system_data.multiplayer_room_state.server_addr = server_addr;
-                system_data.multiplayer_room_state.is_host = is_host;
-                system_data.multiplayer_room_state.connection_status =
-                    ConnectionStatus::Connecting(Instant::now());
-
                 log::info!("Joining {}...", server_addr);
-
+                if is_host {
+                    system_data.ui_network_command.command = Some(UiNetworkCommand::Host {
+                        nickname,
+                        server_addr,
+                    });
+                } else {
+                    system_data.ui_network_command.command = Some(UiNetworkCommand::Connect {
+                        nickname,
+                        server_addr,
+                    });
+                }
                 StateUpdate::ShowModalWindow {
                     id: CONNECTING_PROGRESS.to_owned(),
                     title: "Connecting...".to_owned(),
@@ -119,22 +83,25 @@ impl MenuScreen for LobbyMenuScreen {
                 }
             }
             (Some(UI_MODAL_CONFIRM_BUTTON), Some(CONNECTING_FAILED)) => {
-                system_data.multiplayer_room_state.reset();
-                system_data.multiplayer_game_state.reset();
+                system_data.ui_network_command.command = Some(UiNetworkCommand::Reset);
                 StateUpdate::None
             }
-            (None, _) => {
-                let (new_connection_status, state_update) =
-                    match &system_data.multiplayer_room_state.connection_status {
-                        ConnectionStatus::NotConnected => (None, StateUpdate::None),
-                        ConnectionStatus::Connecting(_) => (None, StateUpdate::None),
-                        ConnectionStatus::Disconnecting => (None, StateUpdate::None),
-                        ConnectionStatus::Connected(_) => (
-                            None,
-                            StateUpdate::new_menu_screen(GameMenuScreen::MultiplayerRoomMenu),
-                        ),
-                        ConnectionStatus::ConnectionFailed(error) => (
-                            Some(ConnectionStatus::NotConnected),
+            (Some(UI_MODAL_CONFIRM_BUTTON), Some(SERVER_START_FAILED)) => {
+                system_data.ui_network_command.command = Some(UiNetworkCommand::Reset);
+                StateUpdate::None
+            }
+            (None, modal_window_id) => {
+                match &system_data.multiplayer_room_state.connection_status {
+                    ConnectionStatus::NotConnected => StateUpdate::None,
+                    ConnectionStatus::Connecting(_) => StateUpdate::None,
+                    ConnectionStatus::Disconnecting => StateUpdate::None,
+                    ConnectionStatus::Connected(_) => {
+                        StateUpdate::new_menu_screen(GameMenuScreen::MultiplayerRoomMenu)
+                    }
+                    ConnectionStatus::ConnectionFailed(error) => {
+                        if is_failed_modal_window(modal_window_id) {
+                            StateUpdate::None
+                        } else {
                             StateUpdate::ShowModalWindow {
                                 id: CONNECTING_FAILED.to_owned(),
                                 title: error
@@ -142,24 +109,40 @@ impl MenuScreen for LobbyMenuScreen {
                                     .map(|error| format!("Disconnected: {:?}", error))
                                     .unwrap_or_else(|| "Disconnected".to_owned()),
                                 show_confirmation: true,
-                            },
-                        ),
-                        ConnectionStatus::Disconnected(disconnect_reason) => (
-                            Some(ConnectionStatus::NotConnected),
+                            }
+                        }
+                    }
+                    ConnectionStatus::Disconnected(disconnect_reason) => {
+                        if is_failed_modal_window(modal_window_id) {
+                            StateUpdate::None
+                        } else {
                             StateUpdate::ShowModalWindow {
                                 id: CONNECTING_FAILED.to_owned(),
                                 title: disconnect_reason_title(*disconnect_reason),
                                 show_confirmation: true,
-                            },
-                        ),
-                    };
-
-                if let Some(new_connection_status) = new_connection_status {
-                    system_data.multiplayer_room_state.connection_status = new_connection_status;
+                            }
+                        }
+                    }
+                    ConnectionStatus::ServerStartFailed => {
+                        if is_failed_modal_window(modal_window_id) {
+                            StateUpdate::None
+                        } else {
+                            StateUpdate::ShowModalWindow {
+                                id: SERVER_START_FAILED.to_owned(),
+                                title: "Couldn't start the server, make sure that gv_server is in the same working directory".to_owned(),
+                                show_confirmation: true,
+                            }
+                        }
+                    }
                 }
-                state_update
             }
             _ => StateUpdate::None,
         }
     }
+}
+
+fn is_failed_modal_window(modal_window_id: Option<&str>) -> bool {
+    modal_window_id.map_or(true, |modal_window_id| {
+        modal_window_id == CONNECTING_FAILED || modal_window_id == SERVER_START_FAILED
+    })
 }

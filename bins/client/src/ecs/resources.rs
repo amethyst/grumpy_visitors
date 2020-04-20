@@ -17,16 +17,19 @@ pub struct UiNetworkCommandResource {
 }
 
 pub enum UiNetworkCommand {
-    #[allow(dead_code)]
-    Host,
-    #[allow(dead_code)]
-    Connect,
-    Kick { player_number: usize },
-    #[allow(dead_code)]
+    Host {
+        nickname: String,
+        server_addr: SocketAddr,
+    },
+    Connect {
+        nickname: String,
+        server_addr: SocketAddr,
+    },
+    Kick {
+        player_number: usize,
+    },
     Start,
-    #[allow(dead_code)]
     Leave,
-    #[allow(dead_code)]
     Reset,
 }
 

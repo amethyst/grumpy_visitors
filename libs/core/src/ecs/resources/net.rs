@@ -1,4 +1,5 @@
 use amethyst::ecs::Entity;
+use derivative::Derivative;
 use serde_derive::{Deserialize, Serialize};
 
 use std::{collections::HashMap, ops::Range};
@@ -9,12 +10,14 @@ use crate::{
     PLAYER_COLORS,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Derivative, Debug, Clone, Serialize, Deserialize)]
+#[derivative(PartialEq)]
 pub struct MultiplayerRoomPlayer {
     pub connection_id: NetIdentifier,
     pub entity_net_id: NetIdentifier,
     pub nickname: String,
     pub is_host: bool,
+    #[derivative(PartialEq = "ignore")]
     pub color: [f32; 3],
 }
 

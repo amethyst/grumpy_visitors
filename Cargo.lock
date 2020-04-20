@@ -1563,6 +1563,7 @@ version = "0.1.0"
 dependencies = [
  "amethyst",
  "bincode",
+ "derivative 2.1.1",
  "log",
  "nalgebra 0.18.1",
  "num",

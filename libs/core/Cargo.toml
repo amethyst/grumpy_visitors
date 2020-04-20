@@ -4,9 +4,6 @@ version = "0.1.0"
 authors = []
 edition = "2018"
 
-[dependencies.amethyst]
-git = "https://github.com/amethyst/amethyst"
-
 [dependencies]
 bincode = "1.1.4"
 nalgebra = { version = "0.18.0", features = ["serde-serialize"] }
@@ -16,3 +13,7 @@ rand = "0.6.5"
 serde = "1.0.101"
 serde_derive = "1.0.101"
 shrinkwraprs = "0.2.1"
+derivative = "2.1.1"
+
+[dependencies.amethyst]
+git = "https://github.com/amethyst/amethyst"
