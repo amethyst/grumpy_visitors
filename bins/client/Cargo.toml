@@ -37,11 +37,9 @@ features = ["client"]
 git = "https://github.com/amethyst/amethyst"
 features = ["shader-compiler"]
 
-# Bad news: https://github.com/rust-lang/cargo/issues/1197
-
-#[target.'cfg(target_os = "macos")'.dependencies.amethyst]
-#git = "https://github.com/amethyst/amethyst"
-#features = ["metal"]
+[target.'cfg(target_os = "macos")'.dependencies.amethyst]
+git = "https://github.com/amethyst/amethyst"
+features = ["metal"]
 
 [target.'cfg(not(target_os = "macos"))'.dependencies.amethyst]
 git = "https://github.com/amethyst/amethyst"

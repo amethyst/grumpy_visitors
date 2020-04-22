@@ -9,5 +9,5 @@ members = [
 opt-level = 3
 
 #amethyst = { path = "../amethyst" }
-[patch.'https://github.com/amethyst/amethyst']
-amethyst = { git = "https://github.com/mvlabat/amethyst.git", rev = "49dc5b6" }
+#[patch.'https://github.com/amethyst/amethyst']
+#amethyst = { git = "https://github.com/mvlabat/amethyst.git", rev = "49dc5b6" }
