@@ -3,5 +3,8 @@
         "vertical": Emulated(pos: Key(W), neg: Key(S)),
         "horizontal": Emulated(pos: Key(D), neg: Key(A)),
     },
-    actions: {},
+    actions: {
+        // Shortcuts for debug info settings.
+        "toggle_healthbars": [[Key(Slash)]],
+    },
 )
