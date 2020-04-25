@@ -6,6 +6,11 @@ use std::{
     process::{Child, Command, ExitStatus},
 };
 
+#[derive(Default)]
+pub struct DisplayDebugInfoSettings {
+    pub display_health: bool,
+}
+
 pub struct LastAcknowledgedUpdate {
     pub id: u64,
     pub frame_number: u64,
