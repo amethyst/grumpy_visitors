@@ -144,7 +144,7 @@ impl<'s> MonsterFactory<'s> {
             base_health: health,
             base_speed: _base_speed,
             base_attack_damage: attack_damage,
-            radius,
+            collision_radius: radius,
             ..
         } = definition;
         let beetle_prefab = self.asset_handles.as_ref().unwrap().beetle_prefab.clone();
@@ -198,7 +198,7 @@ impl<'s> MonsterFactory<'s> {
             base_health: health,
             base_speed: _base_speed,
             base_attack_damage: attack_damage,
-            radius,
+            collision_radius: radius,
             ..
         } = definition;
 
