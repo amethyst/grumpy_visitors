@@ -50,8 +50,6 @@ Supported platforms:
   - though I myself failed to build it on my system because of
   [(shaderc-rs#61)](https://github.com/google/shaderc-rs/issues/61)
 - MacOS (Metal)
-  - you'll need to comment out Vulkan support and uncomment Metal in `bins/client/Cargo.toml`
-  [(cargo#1197)](https://github.com/rust-lang/cargo/issues/1197) 
 
 ## Current state
 This project is in its early stage of development. There are only some very basic features implemented:
