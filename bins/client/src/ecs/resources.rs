@@ -9,6 +9,7 @@ use std::{
 #[derive(Default)]
 pub struct DisplayDebugInfoSettings {
     pub display_health: bool,
+    pub display_network_debug_info: bool,
 }
 
 pub struct LastAcknowledgedUpdate {

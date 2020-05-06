@@ -23,6 +23,7 @@ use amethyst::{
     ui::{RenderUi, UiBundle},
     Logger, LoggerConfig,
 };
+use amethyst_imgui::RenderImgui;
 
 use std::env;
 
@@ -170,6 +171,11 @@ fn main() -> amethyst::Result<()> {
             "animation_system",
             &["world_position_transform_system"],
         )
+        .with(
+            ImguiNetworkDebugInfoSystem,
+            "imgui_network_debug_info_system",
+            &["game_network_system"],
+        )
         .with_bundle(
             AnimationBundle::<AnimationId, SpriteRender>::new(
                 "animation_control_system",
@@ -187,7 +193,8 @@ fn main() -> amethyst::Result<()> {
                 .with_plugin(SpellParticlePlugin::default())
                 .with_plugin(MobHealthPlugin::default())
                 .with_plugin(HealthUiPlugin::default())
-                .with_plugin(RenderUi::default()),
+                .with_plugin(RenderUi::default())
+                .with_plugin(RenderImgui::<amethyst::input::StringBindings>::default()),
         )?;
 
     let mut game = builder

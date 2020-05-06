@@ -150,6 +150,13 @@ impl InputSystem {
             *display_health = !*display_health;
         });
 
+        let display_network_debug_info = &mut system_data
+            .display_debug_info_settings
+            .display_network_debug_info;
+        self.process_toggle_action(&system_data.input, "toggle_network_debug_info", || {
+            *display_network_debug_info = !*display_network_debug_info;
+        });
+
         let action = direction
             .map(|direction| PlayerWalkAction::Walk { direction })
             .unwrap_or(PlayerWalkAction::Stop);

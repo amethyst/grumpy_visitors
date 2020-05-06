@@ -19,4 +19,4 @@ path = "../../libs/animation_prefabs"
 path = "../core"
 
 [dependencies.amethyst]
-git = "https://github.com/amethyst/amethyst"
+version = "0.15"

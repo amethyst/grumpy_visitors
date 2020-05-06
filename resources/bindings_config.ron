@@ -6,5 +6,6 @@
     actions: {
         // Shortcuts for debug info settings.
         "toggle_healthbars": [[Key(Slash)]],
+        "toggle_network_debug_info": [[Key(Period)]],
     },
 )
