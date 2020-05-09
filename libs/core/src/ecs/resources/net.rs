@@ -6,7 +6,7 @@ use std::{collections::HashMap, ops::Range};
 
 use crate::{
     actions::{player::PlayerCastAction, IdentifiableAction},
-    net::NetIdentifier,
+    net::{server_message::PlayerNetStatus, NetIdentifier},
     PLAYER_COLORS,
 };
 
@@ -29,6 +29,8 @@ pub struct MultiplayerGameState {
     pub waiting_for_players: bool,
     /// This is used on client to make sure that we do not unpause before pausing.
     pub waiting_for_players_pause_id: u64,
+    /// To help keep the track of outdated status reports (they use unreliable channel).
+    pub players_status_id: u64,
     pub lagging_players: Vec<NetIdentifier>,
     pub is_disconnected: bool,
     players_updated: bool,
@@ -42,6 +44,7 @@ impl MultiplayerGameState {
             waiting_network: false,
             waiting_for_players: false,
             waiting_for_players_pause_id: 0,
+            players_status_id: 0,
             lagging_players: Vec::new(),
             is_disconnected: false,
             players_updated: false,
@@ -154,4 +157,10 @@ impl ActionUpdateIdProvider {
 #[derive(Default)]
 pub struct CastActionsToExecute {
     pub actions: Vec<IdentifiableAction<PlayerCastAction>>,
+}
+
+#[derive(Default)]
+pub struct PlayersNetStatus {
+    pub frame_received: u64,
+    pub players: Vec<PlayerNetStatus>,
 }

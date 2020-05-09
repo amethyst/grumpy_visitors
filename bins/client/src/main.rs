@@ -48,6 +48,7 @@ use crate::{
     },
     rendering::*,
 };
+use gv_core::ecs::resources::net::PlayersNetStatus;
 
 fn main() -> amethyst::Result<()> {
     let is_package_folder = env::current_dir()
@@ -99,6 +100,7 @@ fn main() -> amethyst::Result<()> {
 
     // The resources which we need to remember to reset on starting a game.
     builder.world.insert(DisplayDebugInfoSettings::default());
+    builder.world.insert(PlayersNetStatus::default());
     builder.world.insert(UiNetworkCommandResource::default());
     builder.world.insert(MultiplayerRoomState::new());
     builder.world.insert(ClientWorldUpdates::default());

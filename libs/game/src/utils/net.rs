@@ -29,6 +29,29 @@ pub fn broadcast_message_reliable<'a>(
     }
 }
 
+#[cfg(not(feature = "client"))]
+pub fn broadcast_message_unreliable<'a>(
+    transport: &mut TransportResource,
+    net_connections: impl Iterator<Item = &'a NetConnectionModel>,
+    payload: ServerMessagePayload,
+) {
+    for connection in net_connections {
+        let sent_message = bincode::serialize(&ServerMessage {
+            session_id: connection.session_id,
+            payload: payload.clone(),
+        })
+        .expect("Expected to serialize a broadcasted message");
+        if !connection.disconnected {
+            transport.send_with_requirements(
+                connection.addr,
+                &sent_message,
+                DeliveryRequirement::Unreliable,
+                UrgencyRequirement::Immediate,
+            );
+        }
+    }
+}
+
 #[cfg(feature = "client")]
 pub fn send_message_reliable(
     transport: &mut TransportResource,

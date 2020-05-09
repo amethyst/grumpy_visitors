@@ -16,7 +16,7 @@ use gv_core::{
     ecs::{
         components::NetConnectionModel,
         resources::{
-            net::MultiplayerGameState,
+            net::{MultiplayerGameState, PlayersNetStatus},
             world::{
                 FramedUpdates, PlayerActionUpdates, ReceivedPlayerUpdate,
                 ReceivedServerWorldUpdate, ServerWorldUpdate, PAUSE_FRAME_THRESHOLD,
@@ -57,6 +57,7 @@ pub struct ClientNetworkSystemData<'s> {
     spawn_actions: WriteExpect<'s, FramedUpdates<SpawnActions>>,
     server_command: WriteExpect<'s, ServerCommand>,
     ui_network_command: WriteExpect<'s, UiNetworkCommandResource>,
+    players_net_status: WriteExpect<'s, PlayersNetStatus>,
     net_connection_models: WriteStorage<'s, NetConnectionModel>,
     transport: Write<'s, TransportResource>,
     laminar_socket: WriteExpect<'s, LaminarSocketResource>,
@@ -406,6 +407,14 @@ impl<'s> System<'s> for ClientNetworkSystem {
                                 &mut system_data.player_actions_updates,
                                 discarded_actions,
                             );
+                        }
+                        ServerMessagePayload::ReportPlayersNetStatus { id, players } => {
+                            if system_data.multiplayer_game_state.players_status_id < id {
+                                system_data.multiplayer_game_state.players_status_id = id;
+                                system_data.players_net_status.frame_received =
+                                    system_data.game_time_service.game_frame_number();
+                                system_data.players_net_status.players = players;
+                            }
                         }
                         ServerMessagePayload::PauseWaitingForPlayers { id, players } => {
                             if system_data
