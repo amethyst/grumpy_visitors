@@ -91,6 +91,15 @@ impl MultiplayerGameState {
             player.color = PLAYER_COLORS[player_index];
         }
     }
+
+    pub fn find_player_by_connection_id(
+        &self,
+        player_connection_id: NetIdentifier,
+    ) -> Option<&MultiplayerRoomPlayer> {
+        self.players
+            .iter()
+            .find(|player| player.connection_id == player_connection_id)
+    }
 }
 
 pub struct EntityNetMetadataStorage {

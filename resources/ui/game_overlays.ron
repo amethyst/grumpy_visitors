@@ -1,0 +1,170 @@
+#![enable(implicit_some)]
+Container(
+    transform: (
+        id: "ui_game_overlays_container",
+        x: 0.0,
+        y: 0.0,
+        z: 95.0,
+        stretch: XY(x_margin: 0.0, y_margin: 0.0, keep_aspect_ratio: false),
+    ),
+    children: [
+        Container(
+            transform: (
+                id: "ui_waiting_for_players_border_container",
+                anchor: TopMiddle,
+                pivot: TopMiddle,
+                y: -20.0,
+                width: 300.0,
+                height: 140.0,
+                hidden: true,
+            ),
+            background: SolidColor(0.7, 0.7, 0.7, 1.0),
+            children: [
+                Container(
+                    transform: (
+                        id: "ui_waiting_for_players_container",
+                        anchor: Middle,
+                        pivot: Middle,
+                        stretch: XY(x_margin: 1.0, y_margin: 1.0, keep_aspect_ratio: false),
+                    ),
+                    background: SolidColor(0.05, 0.05, 0.05, 1.0),
+                    children: [
+                        Label(
+                            transform: (
+                                id: "ui_waiting_for_players_title",
+                                anchor: TopMiddle,
+                                pivot: TopMiddle,
+                                y: -12.0,
+                                width: 350.0,
+                                height: 20.0,
+                            ),
+                            text: (
+                                text: "Waiting for players...",
+                                color: (0.9, 0.9, 0.9, 1.0),
+                                font_size: 24.0,
+                                font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                                align: Middle,
+                                line_mode: Wrap,
+                            ),
+                        ),
+                        Label(
+                            transform: (
+                                id: "ui_waiting_for_players_row_1",
+                                anchor: TopMiddle,
+                                pivot: TopMiddle,
+                                y: -40.0,
+                                width: 350.0,
+                                height: 20.0,
+                            ),
+                            text: (
+                                text: "Player 1",
+                                color: (0.9, 0.9, 0.9, 1.0),
+                                font_size: 20.0,
+                                font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                                align: Middle,
+                                line_mode: Wrap,
+                            ),
+                        ),
+                        Label(
+                            transform: (
+                                id: "ui_waiting_for_players_row_2",
+                                anchor: TopMiddle,
+                                pivot: TopMiddle,
+                                y: -60.0,
+                                width: 350.0,
+                                height: 20.0,
+                            ),
+                            text: (
+                                text: "Player 2",
+                                color: (0.9, 0.9, 0.9, 1.0),
+                                font_size: 20.0,
+                                font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                                align: Middle,
+                                line_mode: Wrap,
+                            ),
+                        ),
+                        Label(
+                            transform: (
+                                id: "ui_waiting_for_players_row_3",
+                                anchor: TopMiddle,
+                                pivot: TopMiddle,
+                                y: -80.0,
+                                width: 350.0,
+                                height: 20.0,
+                            ),
+                            text: (
+                                text: "Player 3",
+                                color: (0.9, 0.9, 0.9, 1.0),
+                                font_size: 20.0,
+                                font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                                align: Middle,
+                                line_mode: Wrap,
+                            ),
+                        ),
+                        Label(
+                            transform: (
+                                id: "ui_waiting_for_players_row_4",
+                                anchor: TopMiddle,
+                                pivot: TopMiddle,
+                                y: -100.0,
+                                width: 350.0,
+                                height: 20.0,
+                            ),
+                            text: (
+                                text: "Player 4",
+                                color: (0.9, 0.9, 0.9, 1.0),
+                                font_size: 20.0,
+                                font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                                align: Middle,
+                                line_mode: Wrap,
+                            ),
+                        ),
+                    ],
+                )
+            ],
+        ),
+
+        Container(
+            transform: (
+                id: "ui_waiting_for_network_border_container",
+                anchor: TopMiddle,
+                pivot: TopMiddle,
+                y: -20.0,
+                width: 300.0,
+                height: 100.0,
+                hidden: true,
+            ),
+            background: SolidColor(0.7, 0.7, 0.7, 1.0),
+            children: [
+                Container(
+                    transform: (
+                        id: "ui_waiting_for_network_container",
+                        anchor: Middle,
+                        pivot: Middle,
+                        stretch: XY(x_margin: 1.0, y_margin: 1.0, keep_aspect_ratio: false),
+                    ),
+                    background: SolidColor(0.05, 0.05, 0.05, 1.0),
+                    children: [
+                        Label(
+                            transform: (
+                                id: "ui_waiting_for_network_title",
+                                anchor: Middle,
+                                pivot: Middle,
+                                width: 350.0,
+                                height: 30.0,
+                            ),
+                            text: (
+                                text: "Waiting for network...",
+                                color: (0.9, 0.9, 0.9, 1.0),
+                                font_size: 24.0,
+                                font: File("resources/PT_Sans-Web-Regular.ttf", ("TTF", ())),
+                                align: Middle,
+                                line_mode: Wrap,
+                            ),
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    ],
+)

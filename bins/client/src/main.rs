@@ -131,6 +131,7 @@ fn main() -> amethyst::Result<()> {
             "game_network_system",
             &["net_connection_manager_system"],
         )
+        .with(OverlaySystem, "overlay_system", &["game_network_system"])
         .with_bundle(input_bundle)?
         .with(InputSystem::default(), "mouse_system", &["input_system"])
         .with(MenuSystem::new(), "menu_system", &[]);

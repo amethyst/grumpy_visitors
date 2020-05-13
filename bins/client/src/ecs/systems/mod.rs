@@ -7,6 +7,7 @@ mod hud;
 mod imgui_network_debug_info;
 mod input;
 mod menu;
+mod overlay;
 mod particle;
 
 pub use self::{
@@ -19,5 +20,6 @@ pub use self::{
     imgui_network_debug_info::ImguiNetworkDebugInfoSystem,
     input::InputSystem,
     menu::MenuSystem,
+    overlay::OverlaySystem,
     particle::ParticleSystem,
 };
