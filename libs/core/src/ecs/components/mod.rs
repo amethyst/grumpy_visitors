@@ -173,6 +173,7 @@ impl NetConnectionModel {
     }
 }
 
+#[derive(Debug)]
 pub struct PingPongData {
     pub last_pinged_at: Instant,
     pub last_ponged_frame: u64,
@@ -195,7 +196,7 @@ impl PingPongData {
         }
         self.data.push_back(PingPong {
             ping_id,
-            sent_ping_frame: engine_frame_number,
+            sent_ping_engine_frame: engine_frame_number,
             pong: None,
         })
     }
@@ -216,10 +217,12 @@ impl PingPongData {
             .iter_mut()
             .find(|ping_pong| ping_pong.ping_id == ping_id)
         {
-            let oneway_latency = engine_frame_number.saturating_sub(ping_pong.sent_ping_frame) / 2;
+            let oneway_latency =
+                engine_frame_number.saturating_sub(ping_pong.sent_ping_engine_frame) / 2;
             let estimated_peer_frame_number = peer_frame_number + oneway_latency;
             ping_pong.pong = Some(Pong {
-                received_frame: frame_number,
+                received_engine_frame: engine_frame_number,
+                received_game_frame: frame_number,
                 estimated_peer_frame_number,
             })
         }
@@ -235,7 +238,7 @@ impl PingPongData {
                 if let Some(pong) = &ping_pong.pong {
                     pongs_count += 1;
                     lagging_behind_sum += pong
-                        .received_frame
+                        .received_game_frame
                         .saturating_sub(pong.estimated_peer_frame_number);
                 }
                 (pongs_count, lagging_behind_sum)
@@ -261,19 +264,39 @@ impl PingPongData {
             .unwrap_or(0)
     }
 
+    pub fn latency_ms(&self, delta_seconds: f32) -> u32 {
+        self.data
+            .iter()
+            .rev()
+            .find_map(|ping_pong_data| {
+                ping_pong_data.pong.as_ref().map(|pong_data| {
+                    let frame_diff = pong_data
+                        .received_engine_frame
+                        .checked_sub(ping_pong_data.sent_ping_engine_frame)
+                        .expect("Expected a positive result")
+                        as f32;
+                    (frame_diff / 2.0 * delta_seconds * 1000.0) as u32
+                })
+            })
+            .unwrap_or_default()
+    }
+
     pub fn reset(&mut self) {
         self.data.clear();
     }
 }
 
+#[derive(Debug)]
 struct PingPong {
     ping_id: NetIdentifier,
-    sent_ping_frame: u64,
+    sent_ping_engine_frame: u64,
     pong: Option<Pong>,
 }
 
+#[derive(Debug)]
 struct Pong {
-    received_frame: u64,
+    received_engine_frame: u64,
+    received_game_frame: u64,
     estimated_peer_frame_number: u64,
 }
 

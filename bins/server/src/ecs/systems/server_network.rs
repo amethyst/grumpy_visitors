@@ -30,18 +30,21 @@ use gv_core::{
 };
 use gv_game::{
     ecs::resources::ConnectionEvents,
-    utils::net::{broadcast_message_reliable, send_message_reliable},
+    utils::net::{broadcast_message_reliable, broadcast_message_unreliable, send_message_reliable},
 };
 
 use std::collections::HashSet;
 
 use crate::ecs::resources::{HostClientAddress, LastBroadcastedFrame};
+use gv_core::net::server_message::PlayerNetStatus;
 
 const HEARTBEAT_FRAME_INTERVAL: u64 = 2;
+const REPORT_PLAYERS_STATUS_FRAME_INTERVAL: u64 = 50;
 
 pub struct ServerNetworkSystem {
     host_connection_id: Option<NetIdentifier>,
     last_heartbeat_frame: u64,
+    last_report_players_status_frame: u64,
 }
 
 impl ServerNetworkSystem {
@@ -49,6 +52,7 @@ impl ServerNetworkSystem {
         Self {
             host_connection_id: None,
             last_heartbeat_frame: 0,
+            last_report_players_status_frame: 0,
         }
     }
 
@@ -457,6 +461,45 @@ impl<'s> System<'s> for ServerNetworkSystem {
                 (&net_connection_models).join(),
                 ServerMessagePayload::Heartbeat,
             );
+        }
+
+        if game_time_service.engine_time().frame_number() - self.last_report_players_status_frame
+            > REPORT_PLAYERS_STATUS_FRAME_INTERVAL
+        {
+            self.last_report_players_status_frame = game_time_service.engine_time().frame_number();
+            broadcast_message_unreliable(
+                &mut transport,
+                (&net_connection_models).join(),
+                ServerMessagePayload::ReportPlayersNetStatus {
+                    id: multiplayer_game_state.players_status_id,
+                    players: multiplayer_game_state
+                        .players
+                        .iter()
+                        .map(|player| {
+                            let player_connection_model = (&net_connection_models)
+                                .join()
+                                .find(|connection_model| {
+                                    connection_model.id == player.connection_id
+                                })
+                                .expect("Expected a connection for a player");
+
+                            PlayerNetStatus {
+                                connection_id: player.connection_id,
+                                frame_number: player_connection_model
+                                    .ping_pong_data
+                                    .last_stored_game_frame(),
+                                average_lagging_behind: player_connection_model
+                                    .ping_pong_data
+                                    .average_lagging_behind(),
+                                latency_ms: player_connection_model
+                                    .ping_pong_data
+                                    .latency_ms(game_time_service.engine_time().delta_seconds()),
+                            }
+                        })
+                        .collect(),
+                },
+            );
+            multiplayer_game_state.players_status_id += 1;
         }
 
         // Pause server if one of clients is lagging behind.

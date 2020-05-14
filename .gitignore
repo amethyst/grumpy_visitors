@@ -17,3 +17,6 @@ server_logging_config.toml
 
 # thread_profiler artifacts
 thread_profile.json
+
+# ImGUI
+imgui.ini

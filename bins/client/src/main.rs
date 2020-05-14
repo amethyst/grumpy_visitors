@@ -23,6 +23,7 @@ use amethyst::{
     ui::{RenderUi, UiBundle},
     Logger, LoggerConfig,
 };
+use amethyst_imgui::RenderImgui;
 
 use std::env;
 
@@ -39,11 +40,15 @@ use gv_game::{
 
 use crate::{
     ecs::{
-        resources::{LastAcknowledgedUpdate, ServerCommand, UiNetworkCommandResource},
+        resources::{
+            DisplayDebugInfoSettings, LastAcknowledgedUpdate, ServerCommand,
+            UiNetworkCommandResource,
+        },
         systems::*,
     },
     rendering::*,
 };
+use gv_core::ecs::resources::net::PlayersNetStatus;
 
 fn main() -> amethyst::Result<()> {
     let is_package_folder = env::current_dir()
@@ -94,6 +99,8 @@ fn main() -> amethyst::Result<()> {
     builder.world.insert(ServerCommand::new());
 
     // The resources which we need to remember to reset on starting a game.
+    builder.world.insert(DisplayDebugInfoSettings::default());
+    builder.world.insert(PlayersNetStatus::default());
     builder.world.insert(UiNetworkCommandResource::default());
     builder.world.insert(MultiplayerRoomState::new());
     builder.world.insert(ClientWorldUpdates::default());
@@ -124,6 +131,7 @@ fn main() -> amethyst::Result<()> {
             "game_network_system",
             &["net_connection_manager_system"],
         )
+        .with(OverlaySystem, "overlay_system", &["game_network_system"])
         .with_bundle(input_bundle)?
         .with(InputSystem::default(), "mouse_system", &["input_system"])
         .with(MenuSystem::new(), "menu_system", &[]);
@@ -166,6 +174,11 @@ fn main() -> amethyst::Result<()> {
             "animation_system",
             &["world_position_transform_system"],
         )
+        .with(
+            ImguiNetworkDebugInfoSystem,
+            "imgui_network_debug_info_system",
+            &["game_network_system"],
+        )
         .with_bundle(
             AnimationBundle::<AnimationId, SpriteRender>::new(
                 "animation_control_system",
@@ -181,8 +194,10 @@ fn main() -> amethyst::Result<()> {
                 .with_plugin(PaintMagePlugin::default())
                 .with_plugin(MissilePlugin::default())
                 .with_plugin(SpellParticlePlugin::default())
+                .with_plugin(MobHealthPlugin::default())
                 .with_plugin(HealthUiPlugin::default())
-                .with_plugin(RenderUi::default()),
+                .with_plugin(RenderUi::default())
+                .with_plugin(RenderImgui::<amethyst::input::StringBindings>::default()),
         )?;
 
     let mut game = builder

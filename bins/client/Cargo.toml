@@ -9,6 +9,7 @@ default = []
 profiler = ["gv_game/profiler"]
 
 [dependencies]
+amethyst-imgui = { git = "https://github.com/Hugal31/amethyst-imgui", branch = "amethyst-v0.15" }
 bincode = "1.1.4"
 clap = "2.33.0"
 derivative = "2.1.1"
@@ -34,13 +35,13 @@ path = "../../libs/game"
 features = ["client"]
 
 [dependencies.amethyst]
-git = "https://github.com/amethyst/amethyst"
+version = "0.15"
 features = ["shader-compiler"]
 
 [target.'cfg(target_os = "macos")'.dependencies.amethyst]
-git = "https://github.com/amethyst/amethyst"
+version = "0.15"
 features = ["metal"]
 
 [target.'cfg(not(target_os = "macos"))'.dependencies.amethyst]
-git = "https://github.com/amethyst/amethyst"
+version = "0.15"
 features = ["vulkan"]

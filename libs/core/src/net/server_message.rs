@@ -32,6 +32,10 @@ pub enum ServerMessagePayload {
         ping_id: NetIdentifier,
         frame_number: u64,
     },
+    ReportPlayersNetStatus {
+        id: NetIdentifier,
+        players: Vec<PlayerNetStatus>,
+    },
     /// Contains connection ids of players a server is waiting for.
     PauseWaitingForPlayers {
         id: NetIdentifier,
@@ -39,6 +43,14 @@ pub enum ServerMessagePayload {
     },
     UnpauseWaitingForPlayers(NetIdentifier),
     Disconnect(DisconnectReason),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+pub struct PlayerNetStatus {
+    pub connection_id: NetIdentifier,
+    pub frame_number: u64,
+    pub average_lagging_behind: u64,
+    pub latency_ms: u32,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]

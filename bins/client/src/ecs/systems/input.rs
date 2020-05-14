@@ -1,6 +1,8 @@
 use amethyst::{
     core::{math::Point3, Parent, Transform},
-    ecs::{Entities, Entity, Join, ReadExpect, ReadStorage, System, World, WriteStorage},
+    ecs::{
+        Entities, Entity, Join, ReadExpect, ReadStorage, System, World, WriteExpect, WriteStorage,
+    },
     input::{InputHandler, StringBindings},
     renderer::Camera,
     shred::{ResourceId, SystemData},
@@ -15,15 +17,22 @@ use gv_core::{
 };
 use gv_game::ecs::system_data::GameStateHelper;
 
+use std::collections::HashSet;
+
+use crate::ecs::resources::DisplayDebugInfoSettings;
+
 #[derive(SystemData)]
 pub struct InputSystemData<'s> {
     input: ReadExpect<'s, InputHandler<StringBindings>>,
     screen_dimensions: ReadExpect<'s, ScreenDimensions>,
     transforms: ReadStorage<'s, Transform>,
+    display_debug_info_settings: WriteExpect<'s, DisplayDebugInfoSettings>,
 }
 
 #[derive(Default)]
-pub struct InputSystem;
+pub struct InputSystem {
+    down_actions: HashSet<String>,
+}
 
 impl<'s> System<'s> for InputSystem {
     type SystemData = (
@@ -63,40 +72,42 @@ impl<'s> System<'s> for InputSystem {
         let player_position = world_positions
             .get(player_entity)
             .expect("Expected a WorldPosition");
-        input_system_data.process_mouse_input(
+        self.process_mouse_input(
+            &mut input_system_data,
             camera_entity,
             &cameras,
             &mut *client_player_actions,
             **player_position,
         );
-        input_system_data.process_keyboard_input(&mut *client_player_actions);
+        self.process_keyboard_input(&mut input_system_data, &mut *client_player_actions);
     }
 }
 
-impl<'s> InputSystemData<'s> {
-    pub fn process_mouse_input(
+impl InputSystem {
+    fn process_mouse_input(
         &mut self,
+        system_data: &mut InputSystemData,
         camera_entity: Entity,
         cameras: &ReadStorage<'_, Camera>,
         client_player_actions: &mut ClientPlayerActions,
         player_position: Vector2,
     ) {
         let mouse_world_position = {
-            let mouse_position = self.input.mouse_position();
+            let mouse_position = system_data.input.mouse_position();
             if mouse_position.is_none() {
                 return;
             }
             let (mouse_x, mouse_y) = mouse_position.unwrap();
 
             let camera = cameras.get(camera_entity).expect("Expected a Camera");
-            let camera_transform = self
+            let camera_transform = system_data
                 .transforms
                 .get(camera_entity)
                 .expect("Expected a Transform");
 
             let position = camera.projection().screen_to_world_point(
                 Point3::new(mouse_x as f32, mouse_y as f32, 0.0),
-                self.screen_dimensions.diagonal(),
+                system_data.screen_dimensions.diagonal(),
                 camera_transform,
             );
             Vector2::new(position.x, position.y)
@@ -106,7 +117,7 @@ impl<'s> InputSystemData<'s> {
             direction: mouse_world_position - player_position,
         };
 
-        if self.input.mouse_button_is_down(MouseButton::Left) {
+        if system_data.input.mouse_button_is_down(MouseButton::Left) {
             client_player_actions.cast_action = Some(PlayerCastAction {
                 cast_position: player_position,
                 target_position: mouse_world_position,
@@ -116,10 +127,14 @@ impl<'s> InputSystemData<'s> {
         }
     }
 
-    pub fn process_keyboard_input(&mut self, client_player_actions: &mut ClientPlayerActions) {
+    fn process_keyboard_input(
+        &mut self,
+        system_data: &mut InputSystemData,
+        client_player_actions: &mut ClientPlayerActions,
+    ) {
         let direction = if let (Some(x), Some(y)) = (
-            self.input.axis_value("horizontal"),
-            self.input.axis_value("vertical"),
+            system_data.input.axis_value("horizontal"),
+            system_data.input.axis_value("vertical"),
         ) {
             if x == 0.0 && y == 0.0 {
                 None
@@ -130,9 +145,37 @@ impl<'s> InputSystemData<'s> {
             None
         };
 
+        let display_health = &mut system_data.display_debug_info_settings.display_health;
+        self.process_toggle_action(&system_data.input, "toggle_healthbars", || {
+            *display_health = !*display_health;
+        });
+
+        let display_network_debug_info = &mut system_data
+            .display_debug_info_settings
+            .display_network_debug_info;
+        self.process_toggle_action(&system_data.input, "toggle_network_debug_info", || {
+            *display_network_debug_info = !*display_network_debug_info;
+        });
+
         let action = direction
             .map(|direction| PlayerWalkAction::Walk { direction })
             .unwrap_or(PlayerWalkAction::Stop);
         client_player_actions.walk_action = action;
+    }
+
+    fn process_toggle_action(
+        &mut self,
+        input: &InputHandler<StringBindings>,
+        action: &str,
+        handler: impl FnOnce(),
+    ) {
+        if input.action_is_down(action).unwrap_or_default() {
+            if !self.down_actions.contains(action) {
+                self.down_actions.insert(action.to_owned());
+                handler();
+            }
+        } else {
+            self.down_actions.remove(action);
+        }
     }
 }

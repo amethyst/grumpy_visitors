@@ -26,17 +26,62 @@ impl Settings {
             .expect("Failed to get the project directory");
         fs::create_dir_all(project_dirs.config_dir())?;
 
+        let default_bindings =
+            Bindings::<StringBindings>::load_bytes(DEFAULT_BINDINGS_CONFIG_BYTES)?;
+
         let bindings_config_path = bindings_config_path(&project_dirs);
-        let bindings = Bindings::load(bindings_config_path.as_path()).or_else(
-            move |_| -> amethyst::Result<Bindings<StringBindings>> {
-                let bindings = Bindings::load_bytes(DEFAULT_BINDINGS_CONFIG_BYTES)?;
+        let bindings = {
+            let mut needs_update = false;
+            let mut bindings = Bindings::load(bindings_config_path.as_path()).or_else(
+                |_| -> amethyst::Result<Bindings<StringBindings>> {
+                    needs_update = true;
+                    Ok(default_bindings.clone())
+                },
+            )?;
+
+            if needs_update {
                 fs::write(
                     bindings_config_path,
                     ron::ser::to_string_pretty(&bindings, PrettyConfig::default())?,
                 )?;
-                Ok(bindings)
-            },
-        )?;
+                bindings
+            } else {
+                // Updating possible missing actions.
+                for axis in default_bindings.axes() {
+                    if bindings.axis(axis).is_none() {
+                        log::warn!("Found missing axis bindings, updating the config");
+                        needs_update = true;
+                        bindings
+                            .insert_axis(axis, default_bindings.axis(axis).unwrap().clone())
+                            .expect("Expected to insert a missing axis entry");
+                    }
+                }
+
+                for action in default_bindings.actions() {
+                    if bindings.action_bindings(action).next().is_none() {
+                        log::warn!("Found missing actions bindings, updating the config");
+                        needs_update = true;
+                        for default_binding in default_bindings.action_bindings(action) {
+                            bindings
+                                .insert_action_binding(
+                                    action.clone(),
+                                    default_binding.iter().cloned(),
+                                )
+                                .expect("Expected to insert a missing action entry");
+                        }
+                    }
+                }
+
+                if needs_update {
+                    fs::write(
+                        bindings_config_path,
+                        ron::ser::to_string_pretty(&bindings, PrettyConfig::default())?,
+                    )?;
+                }
+
+                bindings
+            }
+        };
 
         let display_config_path = display_config_path(&project_dirs);
         let display = DisplayConfig::load(display_config_path.as_path()).or_else(

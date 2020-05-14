@@ -61,6 +61,16 @@ pub enum GameEngineState {
     Quit,
 }
 
+impl GameEngineState {
+    pub fn is_playing(&self) -> bool {
+        if let Self::Playing = self {
+            true
+        } else {
+            false
+        }
+    }
+}
+
 impl NewGameEngineState {
     pub fn shutdown() -> Self {
         NewGameEngineState(GameEngineState::ShuttingDown {

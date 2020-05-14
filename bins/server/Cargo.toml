@@ -28,5 +28,5 @@ path = "../../libs/game"
 features = []
 
 [dependencies.amethyst]
-git = "https://github.com/amethyst/amethyst"
+version = "0.15"
 features = ["empty"]
