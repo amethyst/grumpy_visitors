@@ -65,7 +65,7 @@ This project is in its early stage of development. There are only some very basi
 ### Roadmap to 0.2
 - [x] Rewrite networking with the upcoming version of `amethyst_net`
 - [x] Add profiling
-- [ ] Implement possibility to pause/unpause writing profiler traces
+- [x] Implement possibility to pause/unpause writing profiler traces
 - [x] Add visual indicators for better debugging (mobs health, network state, fps, latency etc)
 - [x] Refactor UI code (current definition files and the system are huge)
 - [x] Polish UI (transitions, resetting game states and menu screens, input validations)
