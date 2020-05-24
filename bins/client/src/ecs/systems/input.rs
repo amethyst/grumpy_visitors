@@ -157,6 +157,12 @@ impl InputSystem {
             *display_network_debug_info = !*display_network_debug_info;
         });
 
+        #[cfg(feature = "profiler")]
+        self.process_toggle_action(&system_data.input, "toggle_profiler", || {
+            log::info!("Toggling profiler");
+            thread_profiler::toggle_profiler();
+        });
+
         let action = direction
             .map(|direction| PlayerWalkAction::Walk { direction })
             .unwrap_or(PlayerWalkAction::Stop);

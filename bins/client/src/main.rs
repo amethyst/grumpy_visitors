@@ -51,11 +51,14 @@ use crate::{
 use gv_core::ecs::resources::net::PlayersNetStatus;
 
 fn main() -> amethyst::Result<()> {
+    #[cfg(feature = "profiler")]
+    thread_profiler::disable_profiler();
+
     let is_package_folder = env::current_dir()
         .ok()
         .map_or(false, |dir| dir.ends_with("bins/client"));
     if is_package_folder {
-        log::info!("Detected running in bins/client package directory, changing working directory to crate's root");
+        println!("Detected running in bins/client package directory, changing working directory to crate's root");
         let mut new_dir = env::current_dir().unwrap();
         new_dir.pop();
         new_dir.pop();

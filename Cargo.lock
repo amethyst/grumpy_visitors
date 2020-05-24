@@ -1591,6 +1591,7 @@ dependencies = [
  "log",
  "num",
  "rand 0.6.5",
+ "thread_profiler",
  "toml",
 ]
 
@@ -3770,8 +3771,7 @@ dependencies = [
 [[package]]
 name = "thread_profiler"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71b370904e74ab0a4264c6618d728a701c98bd4cd665eb4b4cc63d2c38034a0d"
+source = "git+https://github.com/mvlabat/thread_profiler.git?rev=e52cc59#e52cc59c7afcc6edfd491aab1bdbced82b8f9840"
 dependencies = [
  "lazy_static",
  "serde_json",

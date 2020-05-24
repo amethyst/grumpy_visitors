@@ -7,5 +7,6 @@
         // Shortcuts for debug info settings.
         "toggle_healthbars": [[Key(Slash)]],
         "toggle_network_debug_info": [[Key(Period)]],
+        "toggle_profiler": [[Key(RControl), Key(RShift), Key(P)]],
     },
 )
