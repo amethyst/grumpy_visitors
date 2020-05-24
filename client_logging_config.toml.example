@@ -5,9 +5,10 @@ log_gfx_backend_level = "Warn"
 log_gfx_rendy_level = "Warn"
 module_levels = [
     ["amethyst_assets", "Info"],
-    ["gfx_backend_vulkan", "Warn"],
+    ["gfx_backend_vulkan", "Off"],
     ["gv_game::ecs::systems", "Debug"],
     ["gv_game::ecs::systems::net_connection_manager", "Info"],
     ["gv_game::utils::net", "Info"],
     ["gv_client", "Debug"],
+    ["gv_client::ecs::systems::menu", "Info"],
 ]
