@@ -70,7 +70,7 @@ This project is in its early stage of development. There are only some very basi
 - [x] Refactor UI code (current definition files and the system are huge)
 - [x] Polish UI (transitions, resetting game states and menu screens, input validations)
 - [x] Better visuals (polishing animations, adding some nice shaders for spells)
-- [ ] Add some first unit tests
+- [ ] Fix some minor bugs ([#42](https://github.com/amethyst/grumpy_visitors/issues/42), [#43](https://github.com/amethyst/grumpy_visitors/issues/43))
 
 ### Things I'd like to fix some day
 - Starting a multiplayer game before the connected peers pop up in the players list may cause a crash
