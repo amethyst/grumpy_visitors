@@ -3,7 +3,7 @@
 [![GitHub pull requests](https://img.shields.io/github/issues/mvlabat/grumpy_visitors/good%20first%20issue?label=good%20first%20issues&color=7057ff)](https://github.com/mvlabat/grumpy_visitors/issues)
 
 Grumpy Visitors is a top-down 2D action arcade game.
-It's written in [Rust](https://www.rust-lang.org/) and running on [Amethyst](amethyst.rs) game engine.
+It's written in [Rust](https://www.rust-lang.org/) and running on [Amethyst](https://amethyst.rs) game engine.
 
 This project is highly inspired by Evil Invasion game. Unfortunately its official site is no longer available,
 as it's quite old and not really popular, but here is some recorded demo gameplay to get the idea:
