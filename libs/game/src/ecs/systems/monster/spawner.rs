@@ -76,7 +76,7 @@ impl<'s> System<'s> for MonsterSpawnerSystem {
                 ),
             );
         }
-        spawn_actions.oldest_updated_frame = system_data.game_time_service.game_frame_number();
+        spawn_actions.oldest_updated_frame = system_data.game_time_service.game_frame_number() + 1;
     }
 }
 
