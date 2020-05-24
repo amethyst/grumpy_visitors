@@ -26,14 +26,9 @@ impl<'a> GameTimeService<'a> {
     }
 
     pub fn level_duration(&self) -> Duration {
-        (self.engine_time.absolute_time() - self.game_time.level_started_at)
-            .checked_sub(
-                self.engine_time
-                    .fixed_time()
-                    .checked_mul(self.game_time.frames_skipped as u32)
-                    .expect("Expected to multiply Duration"),
-            )
-            .unwrap_or_else(|| Duration::new(0, 0))
+        let level_duration_secs =
+            self.game_frame_number() as f32 * self.engine_time.fixed_seconds();
+        Duration::from_secs_f32(level_duration_secs)
     }
 
     pub fn game_frame_number(&self) -> u64 {
