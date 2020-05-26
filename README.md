@@ -62,18 +62,15 @@ This project is in its early stage of development. There are only some very basi
 - Custom shaders (health HUD, missiles, repainting mage sprites in MP)
 - Menu states and transitions
 
-### Roadmap to 0.2
-- [x] Rewrite networking with the upcoming version of `amethyst_net`
-- [x] Add profiling
-- [x] Implement possibility to pause/unpause writing profiler traces
-- [x] Add visual indicators for better debugging (mobs health, network state, fps, latency etc)
-- [x] Refactor UI code (current definition files and the system are huge)
-- [x] Polish UI (transitions, resetting game states and menu screens, input validations)
-- [x] Better visuals (polishing animations, adding some nice shaders for spells)
-- [ ] Fix some minor bugs ([#42](https://github.com/amethyst/grumpy_visitors/issues/42), [#43](https://github.com/amethyst/grumpy_visitors/issues/43))
+### Roadmap to 0.3
+- [ ] New spell
+- [ ] New monster type
+- [ ] Statistics server ([#37](https://github.com/amethyst/grumpy_visitors/issues/37))
+- [ ] Migration to Legion ECS ([#47](https://github.com/amethyst/grumpy_visitors/issues/47))
+- [ ] WebSocket and WASM support ([#46](https://github.com/amethyst/grumpy_visitors/issues/46), tbd)
+- [ ] Quality of life improvements ([#44](https://github.com/amethyst/grumpy_visitors/issues/44), [#45](https://github.com/amethyst/grumpy_visitors/issues/45))
 
 ### Things I'd like to fix some day
-- Starting a multiplayer game before the connected peers pop up in the players list may cause a crash
 - The multiplayer game will eventually crash because of `ExceededMaxPacketSize` error
 - In multiplayer missiles are a little bit clunky when launching and sometimes desync
 - Current approach to run systems several times in 1 frame sucks (`ActionSystem`, I'm looking at you)
