@@ -302,6 +302,17 @@ impl<'a, 's> MonsterActionSubsystem<'a, 's> {
                     // TODO: implement cooling down for other attacks as well.
                     (MobAttackType::SlowMelee { .. }, _) if is_cooling_down => None,
                     (_, Some((target, _player_position))) => {
+                        if self.game_state_helper.is_authoritative() {
+                            let damage_history = damage_histories
+                                .get_mut(target)
+                                .expect("Expected player's DamageHistory");
+                            damage_history.add_entry(
+                                frame_number,
+                                DamageHistoryEntry {
+                                    damage: monster.attack_damage,
+                                },
+                            );
+                        }
                         Some(MobAction::Attack(MobAttackAction {
                             target,
                             attack_type: monster_definition.attack_type.randomize_params(0.2),
