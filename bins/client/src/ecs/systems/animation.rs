@@ -87,15 +87,23 @@ impl<'s> System<'s> for AnimationSystem {
                 })
                 .expect("Expected an initialized AnimationControlSet");
 
+            let player = players.get(parent.entity);
+            let monster = monsters.get(parent.entity);
+
             // TODO: set rate depending on base speed.
-            if let Some(player) = players.get(parent.entity) {
-                let rate = if entity_is_dead || player.velocity.norm_squared() == 0.0 {
+            let entity_velocity = player
+                .map(|player| player.velocity)
+                .or_else(|| monster.map(|monster| monster.velocity));
+            if let Some(entity_velocity) = entity_velocity {
+                let rate = if entity_is_dead || entity_velocity.norm_squared() == 0.0 {
                     0.0
                 } else {
                     1.0
                 };
                 control_set.set_rate(AnimationId::Walk, rate);
+            }
 
+            if let Some(player) = player {
                 let direction = if named.name == "mage_legs" {
                     Vector3::new(
                         -player.walking_direction.x,
@@ -111,7 +119,7 @@ impl<'s> System<'s> for AnimationSystem {
                 };
                 // TODO: educate myself about quaternions and rewrite that?
                 transform.face_towards(Vector3::new(0.0, 0.0, 1.0), direction);
-            } else if let Some(monster) = monsters.get(parent.entity) {
+            } else if let Some(monster) = monster {
                 let direction = Vector3::new(
                     monster.facing_direction.x,
                     monster.facing_direction.y,
