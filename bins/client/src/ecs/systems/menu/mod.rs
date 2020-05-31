@@ -394,7 +394,7 @@ impl<'s> System<'s> for MenuSystem {
         // Pass the events to the active menu screen handler.
         let state_update = match (&*system_data.game_engine_state, self.menu_screen) {
             (GameEngineState::Menu, GameMenuScreen::Loading) => {
-                StateUpdate::new_menu_screen(GameMenuScreen::LobbyMenu)
+                StateUpdate::new_menu_screen(GameMenuScreen::MainMenu)
             }
             (GameEngineState::Menu, menu_screen) => {
                 let menu_screen = self
