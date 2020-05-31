@@ -9,7 +9,7 @@ on:
       - '.rustfmt.toml'
       - '.cargo/config'
 
-name: Build Game
+name: Check the Game
 
 jobs:
   rustfmt:
