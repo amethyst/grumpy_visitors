@@ -47,8 +47,6 @@ which leads the build process to fail.
 Supported platforms:
 - Windows 10 (Vulkan)
 - Linux (Vulkan)
-  - though I myself failed to build it on my system because of
-  [(shaderc-rs#61)](https://github.com/google/shaderc-rs/issues/61)
 - MacOS (Metal)
 
 ## Current state
