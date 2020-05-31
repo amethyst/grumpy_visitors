@@ -1571,7 +1571,7 @@ dependencies = [
 
 [[package]]
 name = "gv_animation_prefabs"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "amethyst",
  "serde",
@@ -1580,7 +1580,7 @@ dependencies = [
 
 [[package]]
 name = "gv_client"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "amethyst",
  "amethyst-imgui",
@@ -1603,7 +1603,7 @@ dependencies = [
 
 [[package]]
 name = "gv_client_shared"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "amethyst",
  "directories",
@@ -1618,7 +1618,7 @@ dependencies = [
 
 [[package]]
 name = "gv_core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "amethyst",
  "bincode",
@@ -1634,7 +1634,7 @@ dependencies = [
 
 [[package]]
 name = "gv_game"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "amethyst",
  "bincode",
@@ -1651,7 +1651,7 @@ dependencies = [
 
 [[package]]
 name = "gv_server"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "amethyst",
  "bincode",
