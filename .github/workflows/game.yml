@@ -62,7 +62,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: -Z features=itarget -p gv_client -- -D warnings
+          args: -Z features=itarget -p gv_client --release -- -D warnings
 
   gv_server:
     name: Check gv_server
@@ -95,4 +95,4 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: -p gv_server -- -D warnings
+          args: -p gv_server --release -- -D warnings
