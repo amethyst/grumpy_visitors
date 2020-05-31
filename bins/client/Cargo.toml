@@ -9,7 +9,7 @@ default = []
 profiler = ["gv_game/profiler", "thread_profiler"]
 
 [dependencies]
-amethyst-imgui = { git = "https://github.com/Hugal31/amethyst-imgui", branch = "amethyst-v0.15" }
+amethyst-imgui = { git = "https://github.com/amethyst/amethyst-imgui", branch = "0.15-with-features" }
 bincode = "1.1.4"
 clap = "2.33.0"
 derivative = "2.1.1"

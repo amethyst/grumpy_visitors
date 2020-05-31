@@ -1,0 +1,104 @@
+name: Release the Game
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        build: [linux, macos, windows]
+
+        include:
+          - build: linux
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            client_bin: gv_client
+            server_bin: gv_server
+            archive: .tar.gz
+            type: application/gzip
+          - build: macos
+            os: macos-latest
+            target: x86_64-apple-darwin
+            client_bin: gv_client
+            server_bin: gv_server
+            archive: .tar.gz
+            type: application/gzip
+          - build: windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            client_bin: gv_client.exe
+            server_bin: gv_server.exe
+            archive: .zip
+            type: application/zip
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          lfs: true
+      - name: Checkout LFS objects
+        run: git lfs checkout
+
+      - name: Install Ubuntu dependencies
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: sudo apt-get install gcc pkg-config openssl libasound2-dev cmake build-essential python3 libfreetype6-dev libexpat1-dev libxcb-composite0-dev libssl-dev libx11-dev
+
+      - name: Install Windows dependencies
+        if: ${{ matrix.os == 'windows-latest' }}
+        uses: seanmiddleditch/gha-setup-ninja@master
+
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+          target: ${{ matrix.target }}
+
+      - name: Build gv_client
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: -p gv_client --release --target ${{ matrix.target }} -Z features=itarget
+
+      - name: Build gv_server
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: -p gv_server --release --target ${{ matrix.target }} -Z features=itarget
+
+      - name: Package
+        id: package
+        shell: bash
+        env:
+          BUILD_NAME: ${{ matrix.build }}
+          ARCHIVE_EXT: ${{ matrix.archive }}
+        run: |
+          name=grumpy_visitors
+          tag=$(git describe --tags --abbrev=0)
+          release_name="$name-$tag-$BUILD_NAME"
+          release_file="${release_name}${ARCHIVE_EXT}"
+          mkdir "$release_name"
+          cp target/${{ matrix.target }}/release/${{ matrix.client_bin }} "$release_name"
+          cp target/${{ matrix.target }}/release/${{ matrix.server_bin }} "$release_name"
+          cp -r README.md LICENSE resources "$release_name"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            7z a "$release_file" "$release_name"
+          else
+            tar czvf "$release_file" "$release_name"
+          fi
+          echo "::set-output name=asset_name::$release_file"
+          echo "::set-output name=asset_path::$release_file"
+
+      - name: Upload
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_name: ${{ steps.package.outputs.asset_name }}
+          asset_path: ${{ steps.package.outputs.asset_path }}
+          asset_content_type: ${{ matrix.type }}
