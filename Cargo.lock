@@ -106,7 +106,8 @@ dependencies = [
 [[package]]
 name = "amethyst-imgui"
 version = "0.7.0"
-source = "git+https://github.com/amethyst/amethyst-imgui?branch=0.15-with-features#bf2c915834dde436548ec9a746396fd9aad9a70e"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f05fcb01a7093632aea28ff9929e84ecbbc7317e2e6335aa7c5bc934109396ba"
 dependencies = [
  "amethyst",
  "derivative 1.0.4",
@@ -1580,7 +1581,7 @@ dependencies = [
 
 [[package]]
 name = "gv_client"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "amethyst",
  "amethyst-imgui",
