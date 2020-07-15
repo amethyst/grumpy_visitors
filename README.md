@@ -29,14 +29,14 @@ Everything's still just in my head and therefore almost anything is a subject to
 Grumpy Visitors relies on `git-lfs` to fetch game assets (images, etc.) See [git-lfs](https://github.com/git-lfs/git-lfs) for installation instructions if you don't already have it on your system. Then:
 
 ```bash
-git lfs install # (if this is your first time running git lfs)
+git lfs install # if this is your first time running git lfs
 git lfs pull
 ```
 
 ## Building
 ```bash
 cargo build -p gv_server # if you want to host a server for multiplayer
-cargo -Z features=itarget build -p gb_client
+cargo -Z features=itarget build -p gv_client
 ```
 
 **Please note** that specifying just a binary without a package (`cargo build --bin gv_server`) won't work.
