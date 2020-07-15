@@ -29,7 +29,7 @@ Everything's still just in my head and therefore almost anything is a subject to
 Grumpy Visitors relies on `git-lfs` to fetch game assets (images, etc.) See [git-lfs](https://github.com/git-lfs/git-lfs) for installation instructions if you don't already have it on your system. Then:
 
 ```bash
-git lfs install # (if this is your first time running git lfs)
+git lfs install # if this is your first time running git lfs
 git lfs pull
 ```
 
