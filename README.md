@@ -36,7 +36,7 @@ git lfs pull
 ## Building
 ```bash
 cargo build -p gv_server # if you want to host a server for multiplayer
-cargo -Z features=itarget build -p gb_client
+cargo -Z features=itarget build -p gv_client
 ```
 
 **Please note** that specifying just a binary without a package (`cargo build --bin gv_server`) won't work.
