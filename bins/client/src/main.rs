@@ -25,7 +25,11 @@ use amethyst::{
 };
 use amethyst_imgui::RenderImgui;
 
-use std::env;
+use std::{
+    env,
+    path::PathBuf,
+    io::{Error, ErrorKind},
+};
 
 use gv_animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
 use gv_client_shared::{ecs::resources::MultiplayerRoomState, settings::Settings};
@@ -50,26 +54,9 @@ use crate::{
 };
 use gv_core::ecs::resources::net::PlayersNetStatus;
 
-fn main() -> amethyst::Result<()> {
-    #[cfg(feature = "profiler")]
-    thread_profiler::disable_profiler();
-
-    let manifest = option_env!("CARGO_MANIFEST_DIR");
-    if let Some(m) = manifest { println!("Manifest is {}", m); }
-    
-    let is_package_folder = env::current_dir().ok()
-        .map_or(false, |dir| dir.ends_with("bins/client"));
-    if is_package_folder {
-        println!("Detected running in bins/client package directory, changing working directory to crate's root");
-        let mut new_dir = env::current_dir().unwrap();
-        new_dir.pop();
-        new_dir.pop();
-        env::set_current_dir(new_dir)?;
-    }
-
+fn change_to_resources_parent_dir() -> Result<(), Error> {
     let resources_in_working_dir = env::current_dir().ok()
         .map_or(false, |dir| dir.join("resources").exists());
-
     
     let mut resources_in_binary_dir = false;
     if let Some(exe_path) = env::current_exe().ok() {
@@ -77,6 +64,23 @@ fn main() -> amethyst::Result<()> {
             if exe_parent.join("resources").exists() {
                 resources_in_binary_dir = true;
             }
+        }
+    }
+
+    let mut resources_in_manifest_root = false;
+    let mut manifest_root = PathBuf::new();
+    let manifest_option = option_env!("CARGO_MANIFEST_DIR");
+    if let Some(manifest) = manifest_option {
+        let mut new_dir = PathBuf::from(manifest);
+        new_dir.pop();
+        new_dir.pop();
+
+        let is_package_folder = env::current_dir().ok()
+            .map_or(false, |dir| dir.starts_with(new_dir.clone()));
+
+        if is_package_folder && new_dir.join("resources").exists() {
+            resources_in_manifest_root = true;
+            manifest_root = new_dir;
         }
     }
     
@@ -87,7 +91,21 @@ fn main() -> amethyst::Result<()> {
         let exe_path = env::current_exe().unwrap();
         let exe_subpath = exe_path.parent().unwrap();
         env::set_current_dir(exe_subpath)?;
+    } else if resources_in_manifest_root {
+        println!("Detected running in package subdirectory, changing working directory to crate's root");
+        env::set_current_dir(manifest_root)?;
+    } else {
+        return Err(Error::new(ErrorKind::NotFound, "Could not find resources folder"));
     }
+
+    Ok(())
+}
+
+fn main() -> amethyst::Result<()> {
+    #[cfg(feature = "profiler")]
+    thread_profiler::disable_profiler();
+
+    change_to_resources_parent_dir()?;
 
     let _cli_matches = clap::App::new("grumpy_visitors")
         .version("0.1")
