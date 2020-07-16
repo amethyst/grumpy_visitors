@@ -1,7 +1,8 @@
 use amethyst::{
     config::Config,
-    input::{Bindings, StringBindings},
+    input::{Bindings, Button, StringBindings},
     window::{DisplayConfig, MonitorIdent},
+    winit::{VirtualKeyCode},
 };
 use directories::ProjectDirs;
 use ron::ser::PrettyConfig;
@@ -104,6 +105,17 @@ impl Settings {
 
     pub fn bindings(&self) -> &Bindings<StringBindings> {
         &self.bindings
+    }
+
+    pub fn get_action_keycode(&self, action: &'static str) -> Option<VirtualKeyCode> {
+        if let Some(button) = self.bindings.action_bindings(action).next() {
+            return match button[0] {
+                Button::Key(key) => Some(key),
+                _ => None,
+            };
+        } else {
+            return None;
+        }
     }
 
     pub fn display(&self) -> &DisplayConfig {
