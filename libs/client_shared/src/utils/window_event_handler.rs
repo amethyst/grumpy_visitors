@@ -14,8 +14,8 @@ pub fn handle_window_event(world: &World, event: &StateEvent) -> Option<SimpleTr
     let mut application_settings = world.fetch_mut::<Settings>();
     let display = application_settings.display();
 
-    let toggle_fullscreen = application_settings.get_action_keycode("toggle_fullscreen")?;
-    let log_dimensions = application_settings.get_action_keycode("log_dimensions")?;
+    let toggle_fullscreen = application_settings.get_action_keycode("toggle_fullscreen");
+    let log_dimensions = application_settings.get_action_keycode("log_dimensions");
 
     if let StateEvent::Window(event) = &event {
         if is_close_requested(&event) {
@@ -27,7 +27,7 @@ pub fn handle_window_event(world: &World, event: &StateEvent) -> Option<SimpleTr
                 event: winit::WindowEvent::KeyboardInput { input, .. },
                 ..
             } if input.state == ElementState::Released => {
-                if input.virtual_keycode == Some(toggle_fullscreen) {
+                if input.virtual_keycode == toggle_fullscreen {
                     let window = world.fetch_mut::<Window>();
 
                     let monitor_id = if display.fullscreen.is_some() {
@@ -43,7 +43,7 @@ pub fn handle_window_event(world: &World, event: &StateEvent) -> Option<SimpleTr
                         .save_fullscreen(fullscreen_monitor_ident)
                         .expect("Failed to save settings");
                     window.set_fullscreen(monitor_id);
-                } else if input.virtual_keycode == Some(log_dimensions) {
+                } else if input.virtual_keycode == log_dimensions {
                     let screen_dimensions = world.fetch::<ScreenDimensions>();
                     println!(
                         "{}:{}",
