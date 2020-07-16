@@ -4,6 +4,8 @@
         "horizontal": Emulated(pos: Key(D), neg: Key(A)),
     },
     actions: {
+        "toggle_fullscreen": [[Key(F11)]],
+        "log_dimensions": [[Key(F10)]],
         // Shortcuts for debug info settings.
         "toggle_healthbars": [[Key(Slash)]],
         "toggle_network_debug_info": [[Key(Period)]],
