@@ -54,8 +54,10 @@ fn main() -> amethyst::Result<()> {
     #[cfg(feature = "profiler")]
     thread_profiler::disable_profiler();
 
-    let is_package_folder = env::current_dir()
-        .ok()
+    let manifest = option_env!("CARGO_MANIFEST_DIR");
+    if let Some(m) = manifest { println!("Manifest is {}", m); }
+    
+    let is_package_folder = env::current_dir().ok()
         .map_or(false, |dir| dir.ends_with("bins/client"));
     if is_package_folder {
         println!("Detected running in bins/client package directory, changing working directory to crate's root");
@@ -63,6 +65,28 @@ fn main() -> amethyst::Result<()> {
         new_dir.pop();
         new_dir.pop();
         env::set_current_dir(new_dir)?;
+    }
+
+    let resources_in_working_dir = env::current_dir().ok()
+        .map_or(false, |dir| dir.join("resources").exists());
+
+    
+    let mut resources_in_binary_dir = false;
+    if let Some(exe_path) = env::current_exe().ok() {
+        if let Some(exe_parent) = exe_path.parent() {
+            if exe_parent.join("resources").exists() {
+                resources_in_binary_dir = true;
+            }
+        }
+    }
+    
+    if resources_in_working_dir {
+        println!("Using resources folder from working directory");
+    } else if resources_in_binary_dir {
+        println!("Using resources folder in the same subpath as binary, changing working directory to that");
+        let exe_path = env::current_exe().unwrap();
+        let exe_subpath = exe_path.parent().unwrap();
+        env::set_current_dir(exe_subpath)?;
     }
 
     let _cli_matches = clap::App::new("grumpy_visitors")
