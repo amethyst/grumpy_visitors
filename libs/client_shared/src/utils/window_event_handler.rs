@@ -1,10 +1,10 @@
 use amethyst::{
     ecs::{Join, World},
-    input::is_close_requested,
+    input::{is_close_requested},
     prelude::{SimpleTrans, StateEvent, Trans, WorldExt},
     renderer::{camera::Projection, Camera},
     window::{MonitorIdent, ScreenDimensions, Window},
-    winit::{self, ElementState, VirtualKeyCode},
+    winit::{self, ElementState},
 };
 
 use crate::settings::Settings;
@@ -13,6 +13,9 @@ use crate::settings::Settings;
 pub fn handle_window_event(world: &World, event: &StateEvent) -> Option<SimpleTrans> {
     let mut application_settings = world.fetch_mut::<Settings>();
     let display = application_settings.display();
+
+    let toggle_fullscreen = application_settings.get_action_keycode("toggle_fullscreen");
+    let log_dimensions = application_settings.get_action_keycode("log_dimensions");
 
     if let StateEvent::Window(event) = &event {
         if is_close_requested(&event) {
@@ -23,8 +26,8 @@ pub fn handle_window_event(world: &World, event: &StateEvent) -> Option<SimpleTr
             winit::Event::WindowEvent {
                 event: winit::WindowEvent::KeyboardInput { input, .. },
                 ..
-            } if input.state == ElementState::Released => match input.virtual_keycode {
-                Some(VirtualKeyCode::F11) => {
+            } if input.state == ElementState::Released => {
+                if input.virtual_keycode == toggle_fullscreen {
                     let window = world.fetch_mut::<Window>();
 
                     let monitor_id = if display.fullscreen.is_some() {
@@ -40,8 +43,7 @@ pub fn handle_window_event(world: &World, event: &StateEvent) -> Option<SimpleTr
                         .save_fullscreen(fullscreen_monitor_ident)
                         .expect("Failed to save settings");
                     window.set_fullscreen(monitor_id);
-                }
-                Some(VirtualKeyCode::F10) => {
+                } else if input.virtual_keycode == log_dimensions {
                     let screen_dimensions = world.fetch::<ScreenDimensions>();
                     println!(
                         "{}:{}",
@@ -49,7 +51,6 @@ pub fn handle_window_event(world: &World, event: &StateEvent) -> Option<SimpleTr
                         screen_dimensions.height()
                     );
                 }
-                _ => {}
             },
 
             winit::Event::WindowEvent {
