@@ -157,7 +157,7 @@ fn initialize_players(world: &mut World) {
                             },
                         )
                         .expect("Expected to insert EntityNetMetadata component");
-                    entity_net_id
+                    (entity_net_id, player.to_owned())
                 })
                 .collect();
             broadcast_message_reliable(

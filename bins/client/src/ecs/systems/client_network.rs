@@ -39,6 +39,7 @@ use gv_game::{
 use crate::ecs::resources::{
     LastAcknowledgedUpdate, ServerCommand, UiNetworkCommand, UiNetworkCommandResource,
 };
+use gv_core::ecs::resources::net::MultiplayerRoomPlayer;
 
 const HEARTBEAT_FRAME_INTERVAL: u64 = 10;
 
@@ -200,6 +201,11 @@ impl ClientNetworkSystem {
     }
 }
 
+fn update_room_players(multiplayer_game_state: &mut MultiplayerGameState, players: Vec<MultiplayerRoomPlayer>) {
+    log::info!("Updated room players (player count: {})", players.len());
+    *multiplayer_game_state.update_players() = players;
+}
+
 impl<'s> System<'s> for ClientNetworkSystem {
     type SystemData = ClientNetworkSystemData<'s>;
 
@@ -324,12 +330,20 @@ impl<'s> System<'s> for ClientNetworkSystem {
                             system_data.multiplayer_room_state.is_host = is_host;
                         }
                         ServerMessagePayload::UpdateRoomPlayers(players) => {
-                            log::info!("Updated room players (player count: {})", players.len());
-                            *system_data.multiplayer_game_state.update_players() = players;
+                            update_room_players(&mut system_data.multiplayer_game_state,
+                                                players);
                         }
-                        ServerMessagePayload::StartGame(entity_net_ids) => {
+                        ServerMessagePayload::StartGame(net_ids_and_players) => {
                             system_data.last_acknowledged_update.frame_number = 0;
                             system_data.last_acknowledged_update.id = 0;
+
+                            let (entity_net_ids, players): (Vec<u64>, Vec<MultiplayerRoomPlayer>) =
+                                net_ids_and_players.into_iter().unzip();
+
+                            if let Some(_) = system_data.multiplayer_game_state.read_updated_players() {
+                                update_room_players(&mut system_data.multiplayer_game_state,
+                                                    players);
+                            }
 
                             let connection_id = system_data
                                 .multiplayer_room_state

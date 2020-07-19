@@ -17,7 +17,7 @@ pub enum ServerMessagePayload {
     UpdateRoomPlayers(Vec<MultiplayerRoomPlayer>),
     /// Must have the same length as a last sent UpdateRoomPlayers,
     /// contains server (entity) ids for corresponding players.
-    StartGame(Vec<NetIdentifier>),
+    StartGame(Vec<(NetIdentifier, MultiplayerRoomPlayer)>),
     Handshake {
         net_id: NetIdentifier,
         is_host: bool,
