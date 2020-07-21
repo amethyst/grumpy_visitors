@@ -8,6 +8,15 @@ on:
       - 'rust-toolchain'
       - '.rustfmt.toml'
       - '.cargo/config'
+  pull_request:
+    paths:
+      - '.github/workflows/game.yml'
+      - 'bins/**'
+      - 'libs/**'
+      - 'Cargo.*'
+      - 'rust-toolchain'
+      - '.rustfmt.toml'
+      - '.cargo/config'
 
 name: Check the Game
 

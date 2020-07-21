@@ -1,6 +1,6 @@
 use amethyst::{
     ecs::{Join, World},
-    input::{is_close_requested},
+    input::is_close_requested,
     prelude::{SimpleTrans, StateEvent, Trans, WorldExt},
     renderer::{camera::Projection, Camera},
     window::{MonitorIdent, ScreenDimensions, Window},
@@ -51,7 +51,7 @@ pub fn handle_window_event(world: &World, event: &StateEvent) -> Option<SimpleTr
                         screen_dimensions.height()
                     );
                 }
-            },
+            }
 
             winit::Event::WindowEvent {
                 event: winit::WindowEvent::Resized(size),

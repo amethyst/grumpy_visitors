@@ -27,14 +27,15 @@ use amethyst_imgui::RenderImgui;
 
 use std::{
     env,
-    path::PathBuf,
     io::{Error, ErrorKind},
+    path::PathBuf,
 };
 
 use gv_animation_prefabs::{AnimationId, GameSpriteAnimationPrefab};
 use gv_client_shared::{ecs::resources::MultiplayerRoomState, settings::Settings};
-use gv_core::ecs::resources::world::{
-    ClientWorldUpdates, FramedUpdates, ReceivedServerWorldUpdate,
+use gv_core::ecs::resources::{
+    net::PlayersNetStatus,
+    world::{ClientWorldUpdates, FramedUpdates, ReceivedServerWorldUpdate},
 };
 use gv_game::{
     build_game_logic_systems,
@@ -52,14 +53,14 @@ use crate::{
     },
     rendering::*,
 };
-use gv_core::ecs::resources::net::PlayersNetStatus;
 
 fn change_to_resources_parent_dir() -> Result<(), Error> {
-    let resources_in_working_dir = env::current_dir().ok()
+    let resources_in_working_dir = env::current_dir()
+        .ok()
         .map_or(false, |dir| dir.join("resources").exists());
-    
+
     let mut resources_in_binary_dir = false;
-    if let Some(exe_path) = env::current_exe().ok() {
+    if let Ok(exe_path) = env::current_exe() {
         if let Some(exe_parent) = exe_path.parent() {
             if exe_parent.join("resources").exists() {
                 resources_in_binary_dir = true;
@@ -75,7 +76,8 @@ fn change_to_resources_parent_dir() -> Result<(), Error> {
         new_dir.pop();
         new_dir.pop();
 
-        let is_package_folder = env::current_dir().ok()
+        let is_package_folder = env::current_dir()
+            .ok()
             .map_or(false, |dir| dir.starts_with(new_dir.clone()));
 
         if is_package_folder && new_dir.join("resources").exists() {
@@ -83,7 +85,7 @@ fn change_to_resources_parent_dir() -> Result<(), Error> {
             manifest_root = new_dir;
         }
     }
-    
+
     if resources_in_working_dir {
         println!("Using resources folder from working directory");
     } else if resources_in_binary_dir {
@@ -92,10 +94,15 @@ fn change_to_resources_parent_dir() -> Result<(), Error> {
         let exe_subpath = exe_path.parent().unwrap();
         env::set_current_dir(exe_subpath)?;
     } else if resources_in_manifest_root {
-        println!("Detected running in package subdirectory, changing working directory to crate's root");
+        println!(
+            "Detected running in package subdirectory, changing working directory to crate's root"
+        );
         env::set_current_dir(manifest_root)?;
     } else {
-        return Err(Error::new(ErrorKind::NotFound, "Could not find resources folder"));
+        return Err(Error::new(
+            ErrorKind::NotFound,
+            "Could not find resources folder",
+        ));
     }
 
     Ok(())
