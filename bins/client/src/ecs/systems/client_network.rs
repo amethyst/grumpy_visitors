@@ -200,7 +200,10 @@ impl ClientNetworkSystem {
     }
 }
 
-fn update_room_players(multiplayer_game_state: &mut MultiplayerGameState, players: Vec<MultiplayerRoomPlayer>) {
+fn update_room_players(
+    multiplayer_game_state: &mut MultiplayerGameState,
+    players: Vec<MultiplayerRoomPlayer>,
+) {
     log::info!("Updated room players (player count: {})", players.len());
     *multiplayer_game_state.update_players() = players;
 }
@@ -329,19 +332,24 @@ impl<'s> System<'s> for ClientNetworkSystem {
                             system_data.multiplayer_room_state.is_host = is_host;
                         }
                         ServerMessagePayload::UpdateRoomPlayers(players) => {
-                            update_room_players(&mut system_data.multiplayer_game_state,
-                                                players);
+                            update_room_players(&mut system_data.multiplayer_game_state, players);
                         }
                         ServerMessagePayload::StartGame(net_ids_and_players) => {
                             system_data.last_acknowledged_update.frame_number = 0;
                             system_data.last_acknowledged_update.id = 0;
 
-                            let (entity_net_ids, players): (Vec<NetIdentifier>, Vec<MultiplayerRoomPlayer>) =
-                                net_ids_and_players.into_iter().unzip();
+                            let (entity_net_ids, players): (
+                                Vec<NetIdentifier>,
+                                Vec<MultiplayerRoomPlayer>,
+                            ) = net_ids_and_players.into_iter().unzip();
 
-                            if let Some(_) = system_data.multiplayer_game_state.read_updated_players() {
-                                update_room_players(&mut system_data.multiplayer_game_state,
-                                                    players);
+                            if let Some(_) =
+                                system_data.multiplayer_game_state.read_updated_players()
+                            {
+                                update_room_players(
+                                    &mut system_data.multiplayer_game_state,
+                                    players,
+                                );
                             }
 
                             let connection_id = system_data
