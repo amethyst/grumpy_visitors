@@ -16,7 +16,7 @@ use gv_core::{
     ecs::{
         components::NetConnectionModel,
         resources::{
-            net::{MultiplayerGameState, PlayersNetStatus},
+            net::{MultiplayerGameState, MultiplayerRoomPlayer, PlayersNetStatus},
             world::{
                 FramedUpdates, PlayerActionUpdates, ReceivedPlayerUpdate,
                 ReceivedServerWorldUpdate, ServerWorldUpdate, PAUSE_FRAME_THRESHOLD,
@@ -39,7 +39,6 @@ use gv_game::{
 use crate::ecs::resources::{
     LastAcknowledgedUpdate, ServerCommand, UiNetworkCommand, UiNetworkCommandResource,
 };
-use gv_core::ecs::resources::net::MultiplayerRoomPlayer;
 
 const HEARTBEAT_FRAME_INTERVAL: u64 = 10;
 
@@ -337,7 +336,7 @@ impl<'s> System<'s> for ClientNetworkSystem {
                             system_data.last_acknowledged_update.frame_number = 0;
                             system_data.last_acknowledged_update.id = 0;
 
-                            let (entity_net_ids, players): (Vec<u64>, Vec<MultiplayerRoomPlayer>) =
+                            let (entity_net_ids, players): (Vec<NetIdentifier>, Vec<MultiplayerRoomPlayer>) =
                                 net_ids_and_players.into_iter().unzip();
 
                             if let Some(_) = system_data.multiplayer_game_state.read_updated_players() {
