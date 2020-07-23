@@ -15,9 +15,8 @@ pub struct ServerMessage {
 pub enum ServerMessagePayload {
     Heartbeat,
     UpdateRoomPlayers(Vec<MultiplayerRoomPlayer>),
-    /// Must have the same length as a last sent UpdateRoomPlayers,
-    /// contains server (entity) ids for corresponding players.
-    StartGame(Vec<NetIdentifier>),
+    /// Contains pairs of server (entity) ids and their corresponding players.
+    StartGame(Vec<(NetIdentifier, MultiplayerRoomPlayer)>),
     Handshake {
         net_id: NetIdentifier,
         is_host: bool,
