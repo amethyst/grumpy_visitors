@@ -102,29 +102,18 @@ pub enum ConnectionStatus {
 
 impl ConnectionStatus {
     pub fn is_not_connected(&self) -> bool {
-        match self {
-            ConnectionStatus::NotConnected
+        matches!(self, ConnectionStatus::NotConnected
             | ConnectionStatus::Disconnected(_)
             | ConnectionStatus::ConnectionFailed(_)
-            | ConnectionStatus::ServerStartFailed => true,
-            _ => false,
-        }
+            | ConnectionStatus::ServerStartFailed)
     }
 
     pub fn is_connecting(&self) -> bool {
-        if let ConnectionStatus::Connecting(_) = self {
-            true
-        } else {
-            false
-        }
+        matches!(self, ConnectionStatus::Connecting(_))
     }
 
     pub fn is_connected(&self) -> bool {
-        if let ConnectionStatus::Connected(_) = self {
-            true
-        } else {
-            false
-        }
+        matches!(self, ConnectionStatus::Connected(_))
     }
 
     pub fn connection_id(&self) -> Option<NetIdentifier> {

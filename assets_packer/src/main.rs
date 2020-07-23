@@ -16,8 +16,7 @@ use amethyst::{
         TexturePrefab, Transparent,
     },
 };
-use failure;
-use image;
+
 use ron::ser::{to_string_pretty, PrettyConfig};
 use serde_derive::{Deserialize, Serialize};
 use texture_packer::{

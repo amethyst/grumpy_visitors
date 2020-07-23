@@ -66,10 +66,6 @@ pub enum DisconnectReason {
 
 impl ServerMessagePayload {
     pub fn is_heartbeat(&self) -> bool {
-        if let Self::Heartbeat = *self {
-            true
-        } else {
-            false
-        }
+        matches!(*self, Self::Heartbeat)
     }
 }

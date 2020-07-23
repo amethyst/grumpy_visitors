@@ -46,10 +46,6 @@ pub enum ClientMessagePayload {
 
 impl ClientMessagePayload {
     pub fn is_heartbeat(&self) -> bool {
-        if let Self::Heartbeat = *self {
-            true
-        } else {
-            false
-        }
+        matches!(*self, Self::Heartbeat)
     }
 }

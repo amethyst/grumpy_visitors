@@ -63,11 +63,7 @@ pub enum GameEngineState {
 
 impl GameEngineState {
     pub fn is_playing(&self) -> bool {
-        if let Self::Playing = self {
-            true
-        } else {
-            false
-        }
+        matches!(self, Self::Playing)
     }
 }
 

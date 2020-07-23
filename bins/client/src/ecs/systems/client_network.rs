@@ -252,14 +252,11 @@ impl<'s> System<'s> for ClientNetworkSystem {
         for connection_event in system_data.connection_events.0.drain(..) {
             // Ignore all the messages for disconnected models, except for Disconnected or Handshake.
             if net_connection_model.disconnected {
-                let ignore_event = match connection_event.event {
-                    NetEvent::Disconnected
-                    | NetEvent::Message(ServerMessage {
-                        payload: ServerMessagePayload::Handshake { .. },
-                        ..
-                    }) => false,
-                    _ => true,
-                };
+                let ignore_event = !matches!(connection_event.event, NetEvent::Disconnected
+                | NetEvent::Message(ServerMessage {
+                    payload: ServerMessagePayload::Handshake { .. },
+                    ..
+                }));
                 if ignore_event {
                     continue;
                 }
@@ -474,14 +471,10 @@ impl<'s> System<'s> for ClientNetworkSystem {
                                     "Received a Disconnect message: {:?}",
                                     disconnect_reason
                                 );
-                                let is_shutting_down_by_host =
-                                    if let ConnectionStatus::Disconnecting =
-                                        system_data.multiplayer_room_state.connection_status
-                                    {
-                                        true
-                                    } else {
-                                        false
-                                    };
+                                let is_shutting_down_by_host = matches!(
+                                    system_data.multiplayer_room_state.connection_status,
+                                    ConnectionStatus::Disconnecting
+                                );
 
                                 if !is_shutting_down_by_host {
                                     system_data.multiplayer_room_state.connection_status =
