@@ -340,14 +340,7 @@ impl<'s> System<'s> for ClientNetworkSystem {
                                 Vec<MultiplayerRoomPlayer>,
                             ) = net_ids_and_players.into_iter().unzip();
 
-                            if let Some(_) =
-                                system_data.multiplayer_game_state.read_updated_players()
-                            {
-                                update_room_players(
-                                    &mut system_data.multiplayer_game_state,
-                                    players,
-                                );
-                            }
+                            update_room_players(&mut system_data.multiplayer_game_state, players);
 
                             let connection_id = system_data
                                 .multiplayer_room_state
