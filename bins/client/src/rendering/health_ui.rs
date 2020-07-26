@@ -249,10 +249,7 @@ fn build_pipeline<B: Backend>(
     let pipes = PipelinesBuilder::new()
         .with_pipeline(
             PipelineDescBuilder::new()
-                .with_vertex_desc(&[(
-                    HealthUiVertexData::vertex(),
-                    pso::VertexInputRate::Instance(1),
-                )])
+                .with_vertex_desc(&[(HealthUiVertexData::vertex(), pso::VertexInputRate::Vertex)])
                 .with_input_assembler(pso::InputAssemblerDesc::new(hal::Primitive::TriangleList))
                 .with_shaders(util::simple_shader_set(
                     &shader_vertex,
