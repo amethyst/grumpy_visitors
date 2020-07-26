@@ -1,12 +1,8 @@
 #version 450
 
-layout(push_constant) uniform FragmentPushConstants {
-    layout(offset = 12)
-    float health;
-} pushConstants;
-
 layout(location = 0) in VertexData {
     vec2 uv;
+    float health;
 } vertex;
 
 layout(location = 0) out vec4 outColor;
@@ -20,8 +16,8 @@ void main()
     float r = dot(d, d) * 4.0;
     float a = 1.0 - smoothstep(0.98, 1.0, r);
 
-    vec3 mix_c = mix(border_color, blood_color, 1.0 - smoothstep(0.0, 0.1, vertex.uv.y - pushConstants.health));
-    vec4 remained_blood_color = vec4(mix_c, 1.0 - smoothstep(0.0, 0.1, vertex.uv.y - pushConstants.health));
+    vec3 mix_c = mix(border_color, blood_color, 1.0 - smoothstep(0.0, 0.1, vertex.uv.y - vertex.health));
+    vec4 remained_blood_color = vec4(mix_c, 1.0 - smoothstep(0.0, 0.1, vertex.uv.y - vertex.health));
 
     vec2 shadow_d = vertex.uv - vec2(0.65, 0.60);
     float shadow_r = dot(shadow_d, shadow_d) * 4.0;

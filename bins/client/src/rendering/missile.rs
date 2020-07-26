@@ -235,12 +235,14 @@ impl<B: Backend> RenderGroup<B, World> for DrawMissile<B> {
         _subpass: hal::pass::Subpass<'_, B>,
         _world: &World,
     ) {
-        let layout = &self.pipeline_layout;
-        encoder.bind_graphics_pipeline(&self.pipeline);
-        self.env.bind(index, layout, 0, &mut encoder);
-        self.vertex.bind(index, 0, 0, &mut encoder);
-        unsafe {
-            encoder.draw(0..4, 0..self.missiles_count);
+        if self.missiles_count > 0 {
+            let layout = &self.pipeline_layout;
+            encoder.bind_graphics_pipeline(&self.pipeline);
+            self.env.bind(index, layout, 0, &mut encoder);
+            self.vertex.bind(index, 0, 0, &mut encoder);
+            unsafe {
+                encoder.draw(0..4, 0..self.missiles_count);
+            }
         }
     }
 

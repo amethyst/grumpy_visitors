@@ -214,12 +214,14 @@ impl<B: Backend> RenderGroup<B, World> for DrawSpellParticle<B> {
         _subpass: hal::pass::Subpass<'_, B>,
         _world: &World,
     ) {
-        let layout = &self.pipeline_layout;
-        encoder.bind_graphics_pipeline(&self.pipeline);
-        self.env.bind(index, layout, 0, &mut encoder);
-        self.vertex.bind(index, 0, 0, &mut encoder);
-        unsafe {
-            encoder.draw(0..4, 0..self.particles_count);
+        if self.particles_count > 0 {
+            let layout = &self.pipeline_layout;
+            encoder.bind_graphics_pipeline(&self.pipeline);
+            self.env.bind(index, layout, 0, &mut encoder);
+            self.vertex.bind(index, 0, 0, &mut encoder);
+            unsafe {
+                encoder.draw(0..4, 0..self.particles_count);
+            }
         }
     }
 
