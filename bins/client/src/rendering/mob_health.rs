@@ -220,14 +220,15 @@ impl<B: Backend> RenderGroup<B, World> for DrawMobHealth<B> {
         _subpass: hal::pass::Subpass<'_, B>,
         _world: &World,
     ) {
-        let layout = &self.pipeline_layout;
-        encoder.bind_graphics_pipeline(&self.pipeline);
-        self.env.bind(index, layout, 0, &mut encoder);
-        self.vertex.bind(index, 0, 0, &mut encoder);
-        unsafe {
-            encoder.draw(0..4, 0..self.monsters_count);
+        if self.monsters_count > 0 {
+            let layout = &self.pipeline_layout;
+            encoder.bind_graphics_pipeline(&self.pipeline);
+            self.env.bind(index, layout, 0, &mut encoder);
+            self.vertex.bind(index, 0, 0, &mut encoder);
+            unsafe {
+                encoder.draw(0..4, 0..self.monsters_count);
+            }
         }
-        if self.monsters_count > 0 {}
     }
 
     fn dispose(self: Box<Self>, factory: &mut Factory<B>, _aux: &World) {
