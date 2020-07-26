@@ -13,6 +13,7 @@ use amethyst::{
 
 use gv_core::math::Vector3;
 
+/// Returns a tuple of positions, uv and indices for indexed drawing.
 pub fn generate_rectangle_vertices(
     left_bottom: Vector3,
     right_top: Vector3,

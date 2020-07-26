@@ -15,7 +15,7 @@ use gv_animation_prefabs::GameSpriteAnimationPrefab;
 #[cfg(feature = "client")]
 use gv_client_shared::ecs::{
     components::{PlayerColor, SpellParticle},
-    resources::{AssetHandles, DummyAssetHandles, HealthUiMesh},
+    resources::{AssetHandles, DummyAssetHandles},
 };
 use gv_core::ecs::resources::{GameEngineState, GameLevelState, GameTime, NewGameEngineState};
 
@@ -83,7 +83,6 @@ impl LoadingState {
             }
             (true, true, false, _) => {
                 self.rest_is_loaded = true;
-                HealthUiMesh::register(world);
 
                 let ui_font_handle = {
                     let loader = world.read_resource::<Loader>();

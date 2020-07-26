@@ -1,11 +1,10 @@
 use amethyst::{
-    assets::AssetStorage,
-    core::ecs::{Join, Read, ReadStorage, SystemData, World},
+    core::ecs::{Join, ReadStorage, SystemData, World},
     error::Error,
     renderer::{
         bundle::{RenderOrder, RenderPlan, RenderPlugin, Target},
         pipeline::{PipelineDescBuilder, PipelinesBuilder},
-        pod::ViewArgs,
+        pod::{IntoPod, ViewArgs},
         rendy::{
             command::{QueueId, RenderPassEncoder},
             factory::Factory,
@@ -13,20 +12,25 @@ use amethyst::{
                 render::{PrepareResult, RenderGroup, RenderGroupDesc},
                 GraphContext, NodeBuffer, NodeImage,
             },
-            hal::{self, device::Device, pso},
-            mesh::{AsVertex, Position, TexCoord, VertexFormat},
+            hal::{self, device::Device, format::Format, pso},
+            mesh::{AsVertex, VertexFormat},
             shader::{PathBufShaderInfo, Shader, ShaderKind, SourceLanguage, SpirvShader},
         },
-        submodules::{gather::CameraGatherer, DynamicUniform},
+        submodules::{
+            gather::CameraGatherer, DynamicIndexBuffer, DynamicUniform, DynamicVertexBuffer,
+        },
         types::Backend,
-        util, Mesh,
+        util,
     },
 };
+use glsl_layout::{float, vec2, vec3, AsStd140};
 
 use std::path::PathBuf;
 
-use gv_client_shared::ecs::{components::HealthUiGraphics, resources::HealthUiMesh};
-use gv_core::math::Vector2;
+use gv_client_shared::{
+    ecs::components::HealthUiGraphics, utils::graphic_helpers::generate_rectangle_vertices,
+};
+use gv_core::math::Vector3;
 
 #[derive(Default, Debug)]
 pub struct HealthUiPlugin {
@@ -76,20 +80,25 @@ lazy_static::lazy_static! {
     );
 }
 
-// TODO: hey mate, you don't use it.
-#[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
-pub struct HealthUiArgs;
-
-impl HealthUiArgs {
-    fn vertex_formats() -> Vec<VertexFormat> {
-        vec![TexCoord::vertex(), Position::vertex()]
-    }
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, AsStd140)]
+#[repr(C, align(4))]
+pub struct HealthUiVertexData {
+    pub uv: vec2,
+    pub position: vec3,
+    pub translation: vec2,
+    pub scale: float,
+    pub health: float,
 }
 
-impl AsVertex for HealthUiArgs {
+impl AsVertex for HealthUiVertexData {
     fn vertex() -> VertexFormat {
-        VertexFormat::new((Position::vertex(), TexCoord::vertex()))
+        VertexFormat::new((
+            (Format::Rg32Sfloat, "uv"),
+            (Format::Rgb32Sfloat, "position"),
+            (Format::Rg32Sfloat, "translation"),
+            (Format::R32Sfloat, "scale"),
+            (Format::R32Sfloat, "health"),
+        ))
     }
 }
 
@@ -129,6 +138,10 @@ impl<B: Backend> RenderGroupDesc<B, World> for DrawHealthUiDesc {
             pipeline,
             pipeline_layout,
             env,
+            vertex: DynamicVertexBuffer::new(),
+            index: DynamicIndexBuffer::new(),
+            indices_count: 0,
+            players_count: 0,
         }))
     }
 }
@@ -138,6 +151,10 @@ pub struct DrawHealthUi<B: Backend> {
     pipeline: B::GraphicsPipeline,
     pipeline_layout: B::PipelineLayout,
     env: DynamicUniform<B, ViewArgs>,
+    vertex: DynamicVertexBuffer<B, HealthUiVertexData>,
+    index: DynamicIndexBuffer<B, u16>,
+    indices_count: u32,
+    players_count: u32,
 }
 
 impl<B: Backend> RenderGroup<B, World> for DrawHealthUi<B> {
@@ -152,6 +169,34 @@ impl<B: Backend> RenderGroup<B, World> for DrawHealthUi<B> {
         let camera = CameraGatherer::gather(world);
         self.env.write(factory, index, camera.projview);
 
+        let health_ui_graphics = <ReadStorage<'_, HealthUiGraphics>>::fetch(world);
+
+        let mut vertices = Vec::new();
+        let (positions, uv, indices) = generate_rectangle_vertices(
+            Vector3::new(0.0, 0.0, 100.0),
+            Vector3::new(180.0, 180.0, 100.0),
+        );
+
+        let mut vertices_data = positions.iter().zip(uv.iter()).cycle();
+        for health_ui_graphics in (&health_ui_graphics).join() {
+            for (position, uv) in vertices_data.by_ref().take(positions.len()) {
+                vertices.push(HealthUiVertexData {
+                    uv: uv.0.into(),
+                    position: position.0.into(),
+                    translation: health_ui_graphics.screen_position.into_pod(),
+                    scale: health_ui_graphics.scale_ratio,
+                    health: health_ui_graphics.health,
+                });
+            }
+        }
+
+        self.indices_count = indices.len() as u32;
+        self.players_count = health_ui_graphics.count() as u32;
+        self.vertex
+            .write(factory, index, vertices.len() as u64, Some(vertices));
+        self.index
+            .write(factory, index, indices.len() as u64, Some(indices));
+
         PrepareResult::DrawRecord
     }
 
@@ -160,57 +205,17 @@ impl<B: Backend> RenderGroup<B, World> for DrawHealthUi<B> {
         mut encoder: RenderPassEncoder<'_, B>,
         index: usize,
         _: hal::pass::Subpass<'_, B>,
-        world: &World,
+        _: &World,
     ) {
-        let (mesh_storage, health_ui_mesh_handle, health_ui_graphics) = <(
-            Read<'_, AssetStorage<Mesh>>,
-            Option<Read<'_, HealthUiMesh>>,
-            ReadStorage<'_, HealthUiGraphics>,
-        )>::fetch(world);
-        if health_ui_mesh_handle.is_none() {
-            return;
-        }
+        if self.players_count > 0 {
+            let layout = &self.pipeline_layout;
+            encoder.bind_graphics_pipeline(&self.pipeline);
+            self.env.bind(index, layout, 0, &mut encoder);
+            self.index.bind(index, 0, &mut encoder);
+            self.vertex.bind(index, 0, 0, &mut encoder);
 
-        let layout = &self.pipeline_layout;
-
-        encoder.bind_graphics_pipeline(&self.pipeline);
-        self.env.bind(index, layout, 0, &mut encoder);
-
-        let mesh_id = health_ui_mesh_handle.as_ref().unwrap().0.id();
-        if let Some(mesh) = B::unwrap_mesh(unsafe { mesh_storage.get_by_id_unchecked(mesh_id) }) {
-            mesh.bind(0, &HealthUiArgs::vertex_formats(), &mut encoder)
-                .expect("Expected to bind a Mesh");
-            for health_ui_graphics in (health_ui_graphics).join() {
-                let constant = HealthUiVertPushConstant {
-                    translation: health_ui_graphics.screen_position,
-                    scale: health_ui_graphics.scale_ratio,
-                };
-                let push_constants: [u32; 3] = unsafe { std::mem::transmute(constant) };
-                unsafe {
-                    encoder.push_constants(
-                        layout,
-                        pso::ShaderStageFlags::VERTEX,
-                        0,
-                        &push_constants,
-                    );
-                }
-
-                let constant = HealthUiFragPushConstant {
-                    health: health_ui_graphics.health,
-                };
-                let push_constants: [u32; 1] = unsafe { std::mem::transmute(constant) };
-                unsafe {
-                    encoder.push_constants(
-                        layout,
-                        pso::ShaderStageFlags::FRAGMENT,
-                        std::mem::size_of::<HealthUiVertPushConstant>() as u32,
-                        &push_constants,
-                    );
-                }
-
-                unsafe {
-                    encoder.draw_indexed(0..mesh.len(), 0, 0..1);
-                }
+            unsafe {
+                encoder.draw_indexed(0..self.indices_count, 0, 0..self.players_count);
             }
         }
     }
@@ -232,57 +237,30 @@ fn build_pipeline<B: Backend>(
     framebuffer_height: u32,
     layouts: Vec<&B::DescriptorSetLayout>,
 ) -> Result<(B::GraphicsPipeline, B::PipelineLayout), failure::Error> {
-    let push_constants = vec![
-        (pso::ShaderStageFlags::VERTEX, 0..4),
-        (pso::ShaderStageFlags::FRAGMENT, 0..4),
-    ];
-
     let pipeline_layout = unsafe {
         factory
             .device()
-            .create_pipeline_layout(layouts, push_constants)
+            .create_pipeline_layout(layouts, None as Option<(_, _)>)
     }?;
 
     let shader_vertex = unsafe { VERTEX.module(factory).unwrap() };
     let shader_fragment = unsafe { FRAGMENT.module(factory).unwrap() };
 
-    let vertex_desc = HealthUiArgs::vertex_formats()
-        .iter()
-        .map(|f| (f.clone(), pso::VertexInputRate::Vertex))
-        .collect::<Vec<_>>();
-
     let pipes = PipelinesBuilder::new()
         .with_pipeline(
             PipelineDescBuilder::new()
-                .with_vertex_desc(&vertex_desc)
+                .with_vertex_desc(&[(
+                    HealthUiVertexData::vertex(),
+                    pso::VertexInputRate::Instance(1),
+                )])
                 .with_input_assembler(pso::InputAssemblerDesc::new(hal::Primitive::TriangleList))
-                .with_rasterizer(hal::pso::Rasterizer {
-                    polygon_mode: hal::pso::PolygonMode::Fill,
-                    cull_face: hal::pso::Face::NONE,
-                    front_face: hal::pso::FrontFace::Clockwise,
-                    depth_clamping: false,
-                    depth_bias: None,
-                    conservative: false,
-                })
                 .with_shaders(util::simple_shader_set(
                     &shader_vertex,
                     Some(&shader_fragment),
                 ))
                 .with_layout(&pipeline_layout)
                 .with_subpass(subpass)
-                .with_baked_states(hal::pso::BakedStates {
-                    viewport: Some(hal::pso::Viewport {
-                        rect: hal::pso::Rect {
-                            x: 0,
-                            y: 0,
-                            w: framebuffer_width as i16,
-                            h: framebuffer_height as i16,
-                        },
-                        depth: 0.0..1.0,
-                    }),
-                    scissor: None,
-                    ..Default::default()
-                })
+                .with_framebuffer_size(framebuffer_width, framebuffer_height)
                 .with_blend_targets(vec![pso::ColorBlendDesc {
                     mask: pso::ColorMask::ALL,
                     blend: Some(pso::BlendState::ALPHA),
@@ -308,17 +286,4 @@ fn build_pipeline<B: Backend>(
         }
         Ok(mut pipes) => Ok((pipes.remove(0), pipeline_layout)),
     }
-}
-
-#[repr(C)]
-#[derive(Debug, Clone, Copy)]
-pub struct HealthUiVertPushConstant {
-    translation: Vector2,
-    scale: f32,
-}
-
-#[repr(C)]
-#[derive(Debug, Clone, Copy)]
-pub struct HealthUiFragPushConstant {
-    health: f32,
 }
