@@ -16,7 +16,7 @@ use amethyst::{
     network::simulation::laminar::{LaminarConfig, LaminarNetworkBundle, LaminarSocket},
     prelude::{Application, GameDataBuilder, SystemDesc},
     renderer::{
-        plugins::{RenderFlat2D, RenderFlat3D, RenderToWindow},
+        plugins::{RenderFlat2D, RenderToWindow},
         types::DefaultBackend,
         RenderingBundle, SpriteRender,
     },
@@ -241,7 +241,6 @@ fn main() -> amethyst::Result<()> {
         .with_bundle(
             RenderingBundle::<DefaultBackend>::new()
                 .with_plugin(RenderToWindow::from_config(display_config))
-                .with_plugin(RenderFlat3D::default())
                 .with_plugin(RenderFlat2D::default())
                 .with_plugin(PaintMagePlugin::default())
                 .with_plugin(MissilePlugin::default())
