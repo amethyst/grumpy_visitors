@@ -35,6 +35,7 @@ git lfs pull
 
 ## Building
 ```bash
+# You can append --release flag to every command for building a better performing binary.
 cargo build -p gv_server # if you want to host a server for multiplayer
 cargo -Z features=itarget build -p gv_client
 ```
