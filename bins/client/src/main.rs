@@ -240,7 +240,9 @@ fn main() -> amethyst::Result<()> {
         )?
         .with_bundle(
             RenderingBundle::<DefaultBackend>::new()
-                .with_plugin(RenderToWindow::from_config(display_config))
+                .with_plugin(
+                    RenderToWindow::from_config(display_config).with_clear([0.0, 0.0, 0.0, 1.0]),
+                )
                 .with_plugin(RenderFlat2D::default())
                 .with_plugin(PaintMagePlugin::default())
                 .with_plugin(MissilePlugin::default())
