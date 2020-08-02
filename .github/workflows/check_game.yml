@@ -1,7 +1,7 @@
 on:
   push:
     paths:
-      - '.github/workflows/game.yml'
+      - '.github/workflows/**'
       - 'bins/**'
       - 'libs/**'
       - 'Cargo.*'
@@ -10,7 +10,7 @@ on:
       - '.cargo/config'
   pull_request:
     paths:
-      - '.github/workflows/game.yml'
+      - '.github/workflows/**'
       - 'bins/**'
       - 'libs/**'
       - 'Cargo.*'
