@@ -2,7 +2,7 @@ use amethyst::{
     ecs::{Join, World},
     input::is_close_requested,
     prelude::{SimpleTrans, StateEvent, Trans, WorldExt},
-    renderer::{camera::Projection, Camera},
+    renderer::Camera,
     window::{MonitorIdent, ScreenDimensions, Window},
     winit::{self, ElementState},
 };
@@ -63,14 +63,14 @@ pub fn handle_window_event(world: &World, event: &StateEvent) -> Option<SimpleTr
                 let (screen_width, screen_height) =
                     ((size.width * hidpi) as f32, (size.height * hidpi) as f32);
 
-                camera.set_projection(Projection::orthographic(
+                *camera = Camera::orthographic(
                     -screen_width / 2.0,
                     screen_width / 2.0,
                     -screen_height / 2.0,
                     screen_height / 2.0,
-                    0.1,
+                    0.01,
                     2000.0,
-                ));
+                );
             }
 
             _ => {}

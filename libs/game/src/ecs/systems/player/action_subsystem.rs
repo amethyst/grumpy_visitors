@@ -115,11 +115,8 @@ impl<'a, 's> PlayerActionSubsystem<'a, 's> {
             } = net_args.expect("Expected ApplyWalkActionNetArgs in multiplayer");
 
             // Update position if it's an authoritative server update.
-            if let Some(updated_position) = updates
-                .clone()
-                .and_then(|(updated_position, _)| updated_position)
-            {
-                *player_position = updated_position;
+            if let Some((Some(updated_position), _)) = &updates {
+                *player_position = updated_position.clone();
             }
 
             // Decide which source has an actual update and retrieve it.

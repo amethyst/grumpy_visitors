@@ -1,6 +1,6 @@
 [package]
 name = "gv_client"
-version = "0.2.3"
+version = "0.2.4"
 authors = []
 edition = "2018"
 
@@ -9,7 +9,7 @@ default = []
 profiler = ["gv_game/profiler", "thread_profiler"]
 
 [dependencies]
-amethyst-imgui = "0.7.0"
+amethyst-imgui = "0.7.1"
 bincode = "1.1.4"
 clap = "2.33.0"
 derivative = "2.1.1"

@@ -15,7 +15,7 @@ pub fn screen_to_world_from_global_matrix(
     let screen_point = Point3::new(screen_x, screen_y, 0.0).to_homogeneous();
     let vector = camera_global_matrix
         * camera
-            .as_matrix()
+            .matrix
             .try_inverse()
             .expect("Camera projection matrix is not invertible")
         * screen_point;

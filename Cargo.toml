@@ -14,3 +14,4 @@ opt-level = 3
 
 [patch.crates-io]
 thread_profiler = { git = "https://github.com/mvlabat/thread_profiler.git", rev = "e52cc59" } # toggleable profiler
+#amethyst = { git = "https://github.com/amethyst/amethyst.git", rev = "d31c82c" }
