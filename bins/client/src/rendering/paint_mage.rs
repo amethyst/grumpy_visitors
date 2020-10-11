@@ -9,7 +9,7 @@ use amethyst::{
     renderer::{
         batch::{GroupIterator, OrderedOneLevelBatch},
         bundle::{RenderOrder, RenderPlan, RenderPlugin, Target},
-        palette::Srgba,
+        palette::{encoding::Linear, rgb::Rgb, Alpha, Srgba},
         pipeline::{PipelineDescBuilder, PipelinesBuilder},
         pod::SpriteArgs,
         rendy::{
@@ -210,17 +210,18 @@ impl<B: Backend> RenderGroup<B, World> for DrawFlat2DTransparent<B> {
                 .filter_map(|(sprite_render, global, parent)| {
                     let player_color = player_colors.get(parent.entity)?.0;
 
+                    let tint_linear = Alpha::<Rgb<Linear<_>>, _>::new(
+                        player_color[0],
+                        player_color[1],
+                        player_color[2],
+                        1.0,
+                    );
                     let (batch_data, texture) = SpriteArgs::from_data(
                         &tex_storage,
                         &sprite_sheet_storage,
                         &sprite_render,
                         &global,
-                        Some(&Tint(Srgba::new(
-                            player_color[0],
-                            player_color[1],
-                            player_color[2],
-                            1.0,
-                        ))),
+                        Some(&Tint(Srgba::from_linear(tint_linear))),
                     )?;
                     let (tex_id, this_changed) = textures_ref.insert(
                         factory,
@@ -320,7 +321,7 @@ fn build_sprite_pipeline<B: Backend>(
                     },
                 }])
                 .with_depth_test(pso::DepthTest {
-                    fun: pso::Comparison::Less,
+                    fun: pso::Comparison::Greater,
                     write: !transparent,
                 }),
         )

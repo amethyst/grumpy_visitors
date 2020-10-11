@@ -263,7 +263,7 @@ fn build_pipeline<B: Backend>(
                     blend: Some(pso::BlendState::ALPHA),
                 }])
                 .with_depth_test(pso::DepthTest {
-                    fun: pso::Comparison::Less,
+                    fun: pso::Comparison::Greater,
                     write: false,
                 }),
         )

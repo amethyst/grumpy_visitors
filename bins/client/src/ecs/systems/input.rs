@@ -105,7 +105,7 @@ impl InputSystem {
                 .get(camera_entity)
                 .expect("Expected a Transform");
 
-            let position = camera.projection().screen_to_world_point(
+            let position = camera.screen_to_world_point(
                 Point3::new(mouse_x as f32, mouse_y as f32, 0.0),
                 system_data.screen_dimensions.diagonal(),
                 camera_transform,
