@@ -1666,7 +1666,7 @@ dependencies = [
 
 [[package]]
 name = "gv_client"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "amethyst",
  "amethyst-imgui",
@@ -1689,7 +1689,7 @@ dependencies = [
 
 [[package]]
 name = "gv_client_shared"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "amethyst",
  "directories",
@@ -1704,7 +1704,7 @@ dependencies = [
 
 [[package]]
 name = "gv_core"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "amethyst",
  "bincode",
@@ -1720,7 +1720,7 @@ dependencies = [
 
 [[package]]
 name = "gv_game"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "amethyst",
  "bincode",
@@ -1737,7 +1737,7 @@ dependencies = [
 
 [[package]]
 name = "gv_server"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "amethyst",
  "bincode",
