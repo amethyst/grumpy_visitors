@@ -1,5 +1,6 @@
 on:
   push:
+    branches: [master]
     paths:
       - '.github/workflows/**'
       - 'bins/**'
@@ -9,6 +10,7 @@ on:
       - '.rustfmt.toml'
       - '.cargo/config'
   pull_request:
+    branches: [master]
     paths:
       - '.github/workflows/**'
       - 'bins/**'
