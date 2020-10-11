@@ -406,10 +406,8 @@ impl<'s> System<'s> for MenuSystem {
                 }
                 menu_screen.update(
                     &mut system_data,
-                    button_pressed.as_ref().map(std::string::String::as_str),
-                    self.modal_window_id
-                        .as_ref()
-                        .map(std::string::String::as_str),
+                    button_pressed.as_deref(),
+                    self.modal_window_id.as_deref(),
                 )
             }
             (GameEngineState::Playing, menu_screen) if menu_screen != GameMenuScreen::Hidden => {
@@ -417,10 +415,8 @@ impl<'s> System<'s> for MenuSystem {
             }
             (GameEngineState::Playing, _) => self.menu_screens.hidden_menu_screen.update(
                 &mut system_data,
-                button_pressed.as_ref().map(std::string::String::as_str),
-                self.modal_window_id
-                    .as_ref()
-                    .map(std::string::String::as_str),
+                button_pressed.as_deref(),
+                self.modal_window_id.as_deref(),
             ),
             _ => StateUpdate::None,
         };
@@ -499,9 +495,7 @@ impl<'s> System<'s> for MenuSystem {
         };
 
         if self.modal_window_id.is_some() {
-            if let Some(UI_MODAL_CONFIRM_BUTTON) =
-                button_pressed.as_ref().map(std::string::String::as_str)
-            {
+            if let Some(UI_MODAL_CONFIRM_BUTTON) = button_pressed.as_deref() {
                 self.modal_window_id = None;
                 elements_to_hide.append(&mut modal_window_with_confirmation());
             }
